@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -50,5 +50,11 @@ TBD.
 
 ## Evidence
 
-TBD.
-
+- `cd backend && .venv/bin/pytest`: 48 passed, 1 third-party deprecation warning from FastAPI/Starlette TestClient.
+- `cd backend && .venv/bin/ruff check .`: passed.
+- `cd backend && .venv/bin/black --check .`: passed.
+- `cd backend && .venv/bin/mypy app`: passed.
+- Money tests cover integer minor units, positive transaction amounts, float/string/bool rejection, invalid currency rejection, uppercase currency normalization, default `VND`, and simple formatting.
+- Category tests cover stable default expense/income slugs, deterministic lookup, transaction/category type enforcement, explicit unknown-category fallback helpers, and wrong-type fallback rejection.
+- Vietnamese amount normalization tests cover `35k`, `35 nghìn`, `35 ngàn`, `1tr`, `1 triệu`, and `1m` as standalone deterministic amount fragments.
+- No database schema, transaction API, account balance, budget, dashboard, AI provider, frontend, or chat behavior was added.

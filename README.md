@@ -227,9 +227,10 @@ This repository is in Harness v0.
 
 The Pocket Ledger AI product spec and Phase 0 intake artifacts are present. The
 only application implementation currently present is the Phase 1 FastAPI
-backend foundation and local database infrastructure. Ledger domain behavior,
-product database tables, frontend, AI provider integration, transactions,
-budgets, and dashboard business logic are still unimplemented.
+backend foundation, local database infrastructure, and pure Money/Category
+domain primitives. Product database tables, transaction mutation behavior,
+frontend, AI provider integration, budgets, and dashboard business logic are
+still unimplemented.
 
 ## Backend
 

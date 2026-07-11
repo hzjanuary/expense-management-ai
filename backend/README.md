@@ -15,11 +15,12 @@ Implemented:
 - async session factory and FastAPI DB session dependency
 - Alembic migration configuration
 - empty initial infrastructure migration
+- pure Money and Category domain primitives
 
 Not implemented yet:
 
-- ledger domain
 - product database tables
+- transaction mutation behavior
 - transactions
 - budgets
 - dashboard business logic

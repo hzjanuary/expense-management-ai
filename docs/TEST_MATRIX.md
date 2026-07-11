@@ -25,7 +25,7 @@ implemented until tests or validation evidence exist.
 | US-101 | Backend health and typed settings foundation | yes | yes | no | yes | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app`; live `curl /health` smoke passed |
 | US-102 | Frontend shell with dashboard/chat/history/budget placeholders | yes | no | yes | yes | planned | none |
 | US-103 | Local SQLite database and migrations foundation | yes | yes | no | yes | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app`; Alembic current/upgrade/downgrade/upgrade on temp SQLite DB |
-| US-201 | Money uses integer minor units and categories are seeded | yes | yes | no | no | planned | none |
+| US-201 | Money uses integer minor units and categories are seeded | yes | no | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-202 | Manual expense creation decreases account balance | yes | yes | no | no | planned | none |
 | US-203 | Manual income creation increases account balance | yes | yes | no | no | planned | none |
 | US-204 | Transaction list supports filters and excludes soft deletes | yes | yes | no | no | planned | none |
