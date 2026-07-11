@@ -2,12 +2,9 @@ import asyncio
 from typing import Any
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.core.config import get_settings
-from app.main import create_app
 from tests.conftest import (
     count_transactions,
     fetch_account,
@@ -15,81 +12,80 @@ from tests.conftest import (
     seed_cash_account,
 )
 
-DEFAULT_PAYLOAD: dict[str, Any] = {
-    "type": "expense",
-    "amount_minor": 35000,
+INCOME_PAYLOAD: dict[str, Any] = {
+    "type": "income",
+    "amount_minor": 10_000_000,
     "currency": "VND",
-    "category_slug": "food",
-    "description": "ăn trưa",
-    "occurred_at": "2026-07-11T12:00:00+07:00",
+    "category_slug": "salary",
+    "description": "lương tháng 7",
+    "occurred_at": "2026-07-11T09:00:00+07:00",
     "source": "manual",
 }
 
 
-def test_create_manual_expense_persists_transaction_and_updates_balance(
+def test_create_manual_income_persists_transaction_and_updates_balance(
     transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
     client, session_factory = transaction_api_client
     asyncio.run(seed_cash_account(session_factory))
 
-    response = client.post("/api/v1/transactions", json=DEFAULT_PAYLOAD)
+    response = client.post("/api/v1/transactions", json=INCOME_PAYLOAD)
 
     assert response.status_code == 201
     body = response.json()
-    assert body["type"] == "expense"
-    assert body["amount_minor"] == 35000
+    assert body["type"] == "income"
+    assert body["amount_minor"] == 10_000_000
     assert body["currency"] == "VND"
-    assert body["category_slug"] == "food"
-    assert body["description"] == "ăn trưa"
-    assert body["occurred_at"] == "2026-07-11T12:00:00+07:00"
+    assert body["category_slug"] == "salary"
+    assert body["description"] == "lương tháng 7"
+    assert body["occurred_at"] == "2026-07-11T09:00:00+07:00"
     assert body["source"] == "manual"
 
     account = asyncio.run(fetch_account(session_factory))
     transaction = asyncio.run(fetch_transaction(session_factory))
 
-    assert account.current_balance_minor == 965000
+    assert account.current_balance_minor == 11_000_000
     assert transaction.id == body["id"]
     assert transaction.account_id == account.id
-    assert transaction.type == "expense"
+    assert transaction.type == "income"
     assert transaction.source == "manual"
 
 
-def test_create_manual_expense_creates_default_account_when_missing(
+def test_create_manual_income_creates_default_account_when_missing(
     transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
     client, session_factory = transaction_api_client
 
-    response = client.post("/api/v1/transactions", json=DEFAULT_PAYLOAD)
+    response = client.post("/api/v1/transactions", json=INCOME_PAYLOAD)
 
     assert response.status_code == 201
     account = asyncio.run(fetch_account(session_factory))
     assert account.opening_balance_minor == 0
-    assert account.current_balance_minor == -35000
+    assert account.current_balance_minor == 10_000_000
 
 
-@pytest.mark.parametrize("amount", [35.5, 0, -35000])
-def test_invalid_amount_is_rejected_without_mutation(
+def test_expense_category_is_rejected_for_income_without_mutation(
     transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
-    amount: float | int,
 ) -> None:
     client, session_factory = transaction_api_client
     asyncio.run(seed_cash_account(session_factory))
-    payload = {**DEFAULT_PAYLOAD, "amount_minor": amount}
+    payload = {**INCOME_PAYLOAD, "category_slug": "food"}
 
     response = client.post("/api/v1/transactions", json=payload)
 
     assert response.status_code == 422
+    assert response.json()["detail"] == "category food cannot be used for income"
     account = asyncio.run(fetch_account(session_factory))
     assert account.current_balance_minor == 1_000_000
     assert asyncio.run(count_transactions(session_factory)) == 0
 
 
-def test_unsupported_currency_is_rejected_without_mutation(
+def test_unsupported_currency_is_rejected_for_income_without_mutation(
     transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
     client, session_factory = transaction_api_client
     asyncio.run(seed_cash_account(session_factory))
-    payload = {**DEFAULT_PAYLOAD, "currency": "USD"}
+    payload = {**INCOME_PAYLOAD, "currency": "USD"}
 
     response = client.post("/api/v1/transactions", json=payload)
 
@@ -100,28 +96,29 @@ def test_unsupported_currency_is_rejected_without_mutation(
     assert asyncio.run(count_transactions(session_factory)) == 0
 
 
-def test_income_category_is_rejected_for_expense_without_mutation(
+@pytest.mark.parametrize("amount", [1000.5, 0, -1000])
+def test_invalid_income_amount_is_rejected_without_mutation(
     transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+    amount: float | int,
 ) -> None:
     client, session_factory = transaction_api_client
     asyncio.run(seed_cash_account(session_factory))
-    payload = {**DEFAULT_PAYLOAD, "category_slug": "salary"}
+    payload = {**INCOME_PAYLOAD, "amount_minor": amount}
 
     response = client.post("/api/v1/transactions", json=payload)
 
     assert response.status_code == 422
-    assert response.json()["detail"] == "category salary cannot be used for expense"
     account = asyncio.run(fetch_account(session_factory))
     assert account.current_balance_minor == 1_000_000
     assert asyncio.run(count_transactions(session_factory)) == 0
 
 
-def test_unknown_category_is_rejected_without_mutation(
+def test_unknown_income_category_is_rejected_without_mutation(
     transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
     client, session_factory = transaction_api_client
     asyncio.run(seed_cash_account(session_factory))
-    payload = {**DEFAULT_PAYLOAD, "category_slug": "not-a-category"}
+    payload = {**INCOME_PAYLOAD, "category_slug": "not-a-category"}
 
     response = client.post("/api/v1/transactions", json=payload)
 
@@ -132,13 +129,13 @@ def test_unknown_category_is_rejected_without_mutation(
     assert asyncio.run(count_transactions(session_factory)) == 0
 
 
-def test_currency_must_match_account_without_mutation(
+def test_income_currency_must_match_account_without_mutation(
     transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
     client, session_factory = transaction_api_client
     asyncio.run(seed_cash_account(session_factory, currency="USD"))
 
-    response = client.post("/api/v1/transactions", json=DEFAULT_PAYLOAD)
+    response = client.post("/api/v1/transactions", json=INCOME_PAYLOAD)
 
     assert response.status_code == 422
     assert (
@@ -147,20 +144,3 @@ def test_currency_must_match_account_without_mutation(
     account = asyncio.run(fetch_account(session_factory))
     assert account.current_balance_minor == 1_000_000
     assert asyncio.run(count_transactions(session_factory)) == 0
-
-
-def test_health_does_not_require_database_connection(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    get_settings.cache_clear()
-    monkeypatch.setenv(
-        "POCKET_LEDGER_DATABASE_URL",
-        "sqlite+aiosqlite:////tmp/pocket-ledger-health-missing/health.db",
-    )
-
-    app: FastAPI = create_app()
-    response = TestClient(app).get("/health")
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
-    get_settings.cache_clear()

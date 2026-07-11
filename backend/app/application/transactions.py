@@ -1,5 +1,6 @@
+import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,8 +10,13 @@ from app.db.repositories import (
     create_default_account,
     create_transaction,
     get_default_account,
+    list_transactions,
 )
-from app.domain.categories import CategoryValidationError, get_category_for_transaction
+from app.domain.categories import (
+    CategoryValidationError,
+    get_category,
+    get_category_for_transaction,
+)
 from app.domain.enums import TransactionType
 from app.domain.money import Money, MoneyValidationError
 
@@ -19,8 +25,11 @@ class TransactionValidationError(ValueError):
     """Raised when a transaction command violates deterministic ledger rules."""
 
 
+_MONTH_PATTERN = re.compile(r"^(?P<year>\d{4})-(?P<month>\d{2})$")
+
+
 @dataclass(frozen=True, slots=True)
-class CreateExpenseCommand:
+class CreateManualTransactionCommand:
     type: str
     amount_minor: int
     currency: str
@@ -31,20 +40,37 @@ class CreateExpenseCommand:
 
 
 @dataclass(frozen=True, slots=True)
-class CreateExpenseResult:
+class CreateManualTransactionResult:
     transaction: TransactionModel
     account_balance_minor: int
 
 
-async def create_manual_expense(
-    session: AsyncSession,
-    command: CreateExpenseCommand,
-) -> CreateExpenseResult:
-    if command.type != TransactionType.EXPENSE.value:
-        raise TransactionValidationError("only expense transactions are supported")
+@dataclass(frozen=True, slots=True)
+class ListTransactionsQuery:
+    month: str | None = None
+    category: str | None = None
+    type: str | None = None
+    q: str | None = None
+    limit: int = 50
+    offset: int = 0
 
+
+@dataclass(frozen=True, slots=True)
+class ListTransactionsResult:
+    items: list[TransactionModel]
+    limit: int
+    offset: int
+    total: int
+
+
+async def create_manual_transaction(
+    session: AsyncSession,
+    command: CreateManualTransactionCommand,
+) -> CreateManualTransactionResult:
     if command.source != "manual":
         raise TransactionValidationError("only manual source is supported")
+
+    transaction_type = _parse_transaction_type(command.type)
 
     try:
         money = Money(
@@ -53,7 +79,7 @@ async def create_manual_expense(
         )
         category = get_category_for_transaction(
             command.category_slug,
-            TransactionType.EXPENSE,
+            transaction_type,
         )
     except (MoneyValidationError, CategoryValidationError) as error:
         raise TransactionValidationError(str(error)) from error
@@ -71,12 +97,15 @@ async def create_manual_expense(
             )
 
         _validate_account_currency(account, money.currency)
-        account.current_balance_minor -= money.amount_minor
+        account.current_balance_minor += _balance_delta(
+            transaction_type,
+            money.amount_minor,
+        )
 
         transaction = await create_transaction(
             session,
             account_id=account.id,
-            transaction_type=TransactionType.EXPENSE.value,
+            transaction_type=transaction_type.value,
             amount_minor=money.amount_minor,
             currency=money.currency,
             category_slug=category.slug,
@@ -85,10 +114,109 @@ async def create_manual_expense(
             source="manual",
         )
 
-    return CreateExpenseResult(
+    return CreateManualTransactionResult(
         transaction=transaction,
         account_balance_minor=account.current_balance_minor,
     )
+
+
+async def list_filtered_transactions(
+    session: AsyncSession,
+    query: ListTransactionsQuery,
+) -> ListTransactionsResult:
+    month_start, month_end = _parse_month_range(query.month)
+    category_slug = _parse_category_filter(query.category)
+    transaction_type = _parse_optional_transaction_type(query.type)
+    search_text = _parse_search_text(query.q)
+
+    items, total = await list_transactions(
+        session,
+        month_start=month_start,
+        month_end=month_end,
+        category_slug=category_slug,
+        transaction_type=transaction_type.value if transaction_type else None,
+        q=search_text,
+        limit=query.limit,
+        offset=query.offset,
+    )
+
+    return ListTransactionsResult(
+        items=items,
+        limit=query.limit,
+        offset=query.offset,
+        total=total,
+    )
+
+
+CreateExpenseCommand = CreateManualTransactionCommand
+CreateExpenseResult = CreateManualTransactionResult
+create_manual_expense = create_manual_transaction
+
+
+def _parse_transaction_type(value: str) -> TransactionType:
+    try:
+        transaction_type = TransactionType(value)
+    except ValueError as error:
+        raise TransactionValidationError(
+            "only expense and income transactions are supported"
+        ) from error
+
+    if transaction_type not in {TransactionType.EXPENSE, TransactionType.INCOME}:
+        raise TransactionValidationError(
+            "only expense and income transactions are supported"
+        )
+    return transaction_type
+
+
+def _parse_optional_transaction_type(value: str | None) -> TransactionType | None:
+    if value is None:
+        return None
+    return _parse_transaction_type(value)
+
+
+def _parse_month_range(value: str | None) -> tuple[datetime | None, datetime | None]:
+    if value is None:
+        return None, None
+
+    match = _MONTH_PATTERN.match(value)
+    if match is None:
+        raise TransactionValidationError("month must use YYYY-MM format")
+
+    year = int(match.group("year"))
+    month = int(match.group("month"))
+    if month < 1 or month > 12:
+        raise TransactionValidationError("month must use YYYY-MM format")
+
+    next_year = year + 1 if month == 12 else year
+    next_month = 1 if month == 12 else month + 1
+    return (
+        datetime(year, month, 1, tzinfo=UTC),
+        datetime(next_year, next_month, 1, tzinfo=UTC),
+    )
+
+
+def _parse_category_filter(value: str | None) -> str | None:
+    if value is None:
+        return None
+    try:
+        return get_category(value).slug
+    except CategoryValidationError as error:
+        raise TransactionValidationError(str(error)) from error
+
+
+def _parse_search_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    stripped = value.strip()
+    return stripped if stripped else None
+
+
+def _balance_delta(transaction_type: TransactionType, amount_minor: int) -> int:
+    if transaction_type is TransactionType.EXPENSE:
+        return -amount_minor
+    if transaction_type is TransactionType.INCOME:
+        return amount_minor
+    raise TransactionValidationError("unsupported transaction type")
 
 
 def _validate_account_currency(account: AccountModel, currency: str) -> None:

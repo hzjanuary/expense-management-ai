@@ -29,7 +29,7 @@ Response:
 POST /api/v1/transactions
 ```
 
-Request:
+Expense request:
 
 ```json
 {
@@ -39,6 +39,20 @@ Request:
   "category_slug": "food",
   "description": "ăn trưa",
   "occurred_at": "2026-07-11T12:00:00+07:00",
+  "source": "manual"
+}
+```
+
+Income request:
+
+```json
+{
+  "type": "income",
+  "amount_minor": 10000000,
+  "currency": "VND",
+  "category_slug": "salary",
+  "description": "lương tháng 7",
+  "occurred_at": "2026-07-11T09:00:00+07:00",
   "source": "manual"
 }
 ```
@@ -61,17 +75,45 @@ Response:
 ## List Transactions
 
 ```http
-GET /api/v1/transactions?month=2026-07&category=food&type=expense&q=trua
+GET /api/v1/transactions?month=2026-07&category=food&type=expense&q=trua&limit=20&offset=0
 ```
 
-Expected behavior:
+Response:
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "type": "expense",
+      "amount_minor": 35000,
+      "currency": "VND",
+      "category_slug": "food",
+      "description": "ăn trưa",
+      "merchant": null,
+      "occurred_at": "2026-07-11T12:00:00+07:00",
+      "source": "manual"
+    }
+  ],
+  "limit": 20,
+  "offset": 0,
+  "total": 1
+}
+```
+
+Rules:
 
 - Supports month filter.
 - Supports category filter.
 - Supports type filter.
-- Supports description search.
+- Supports description and merchant search.
 - Excludes soft-deleted transactions by default.
-- Supports pagination when implemented.
+- Supports pagination with `limit` default `50`, minimum `1`, maximum `100`.
+- Supports `offset` default `0`, minimum `0`.
+- Returns `total` as total matching rows before pagination.
+- Orders by `occurred_at DESC`, then `created_at DESC`, then `id DESC`.
+- Unknown category slugs are rejected.
+- Valid category/type combinations with no matching rows return an empty list.
 
 ## Parse Chat Message
 

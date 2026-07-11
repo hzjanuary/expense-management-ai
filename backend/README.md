@@ -16,13 +16,12 @@ Implemented:
 - Alembic migration configuration
 - empty initial infrastructure migration
 - pure Money and Category domain primitives
-- manual expense creation API
+- manual expense and income creation API
+- transaction list API with filters and pagination
 - account and transaction persistence tables
 
 Not implemented yet:
 
-- manual income creation
-- transaction list and filters
 - budgets
 - dashboard business logic
 - AI provider integration
@@ -32,7 +31,7 @@ Not implemented yet:
 
 The backend uses async SQLAlchemy with SQLite for local-first MVP persistence.
 US-103 added infrastructure only. US-202 adds `accounts` and `transactions`
-for manual expense creation.
+for manual expense and income creation.
 
 Default database URL:
 
@@ -87,7 +86,7 @@ Settings are loaded from environment variables with the `POCKET_LEDGER_` prefix.
 | default account name | `POCKET_LEDGER_DEFAULT_ACCOUNT_NAME` | `Cash Wallet` |
 | default account opening balance | `POCKET_LEDGER_DEFAULT_ACCOUNT_OPENING_BALANCE_MINOR` | `0` |
 
-## Manual Expense API
+## Manual Transaction API
 
 ```bash
 curl -i -X POST http://127.0.0.1:8000/api/v1/transactions \
@@ -103,7 +102,16 @@ curl -i -X POST http://127.0.0.1:8000/api/v1/transactions \
   }'
 ```
 
-US-202 supports only `type = "expense"` and `source = "manual"`.
+Manual transactions support `type = "expense"` or `type = "income"` with
+`source = "manual"`.
+
+List transactions:
+
+```bash
+curl -i 'http://127.0.0.1:8000/api/v1/transactions?month=2026-07&limit=20&offset=0'
+```
+
+Supported list filters: `month`, `category`, `type`, `q`, `limit`, and `offset`.
 
 ## Validate
 
