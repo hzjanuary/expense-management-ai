@@ -52,8 +52,9 @@ Response:
   "amount_minor": 35000,
   "currency": "VND",
   "category_slug": "food",
-  "description": "an trua",
-  "occurred_at": "2026-07-11T12:00:00+07:00"
+  "description": "ăn trưa",
+  "occurred_at": "2026-07-11T12:00:00+07:00",
+  "source": "manual"
 }
 ```
 

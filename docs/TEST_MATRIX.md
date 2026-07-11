@@ -26,7 +26,7 @@ implemented until tests or validation evidence exist.
 | US-102 | Frontend shell with dashboard/chat/history/budget placeholders | yes | no | yes | yes | planned | none |
 | US-103 | Local SQLite database and migrations foundation | yes | yes | no | yes | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app`; Alembic current/upgrade/downgrade/upgrade on temp SQLite DB |
 | US-201 | Money uses integer minor units and categories are seeded | yes | no | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
-| US-202 | Manual expense creation decreases account balance | yes | yes | no | no | planned | none |
+| US-202 | Manual expense creation decreases account balance | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app`; Alembic upgrade/downgrade/upgrade on isolated SQLite DB |
 | US-203 | Manual income creation increases account balance | yes | yes | no | no | planned | none |
 | US-204 | Transaction list supports filters and excludes soft deletes | yes | yes | no | no | planned | none |
 | US-205 | Dashboard totals are computed from transactions | yes | yes | no | no | planned | none |

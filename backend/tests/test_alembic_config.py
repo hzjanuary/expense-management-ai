@@ -18,4 +18,4 @@ def test_initial_migration_contains_no_product_domain_tables() -> None:
     migration_text = migration.read_text(encoding="utf-8")
 
     assert "create_table" not in migration_text
-    assert Base.metadata.tables == {}
+    assert {"accounts", "transactions"} == set(Base.metadata.tables)

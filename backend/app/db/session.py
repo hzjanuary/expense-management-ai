@@ -36,10 +36,26 @@ def create_session_factory(
     return async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
-engine = create_engine()
-async_session_factory = create_session_factory(engine)
+_engine: AsyncEngine | None = None
+_async_session_factory: async_sessionmaker[AsyncSession] | None = None
+
+
+def get_engine() -> AsyncEngine:
+    global _engine
+
+    if _engine is None:
+        _engine = create_engine()
+    return _engine
+
+
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    global _async_session_factory
+
+    if _async_session_factory is None:
+        _async_session_factory = create_session_factory(get_engine())
+    return _async_session_factory
 
 
 async def get_db_session() -> AsyncIterator[AsyncSession]:
-    async with async_session_factory() as session:
+    async with get_session_factory()() as session:
         yield session
