@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -52,5 +52,11 @@ Add proof commands when the backend toolchain exists.
 
 ## Evidence
 
-TBD.
-
+- `cd backend && python3 -m venv .venv && .venv/bin/python -m pip install -e ".[dev]"`: completed.
+- `cd backend && .venv/bin/pytest`: 6 passed, 1 third-party deprecation warning from FastAPI/Starlette TestClient.
+- `cd backend && .venv/bin/ruff check .`: passed.
+- `cd backend && .venv/bin/black --check .`: passed.
+- `cd backend && .venv/bin/mypy app`: passed.
+- `cd backend && .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8010`: backend started locally.
+- `curl -i http://127.0.0.1:8010/health`: returned HTTP 200 with body `{"status":"ok"}` and an `X-Request-ID` response header.
+- `curl -i http://127.0.0.1:8010/ -H 'X-Request-ID: smoke-root'`: returned HTTP 200 with body `{"name":"Pocket Ledger AI","status":"ok"}` and preserved `X-Request-ID: smoke-root`.

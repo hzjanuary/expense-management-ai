@@ -225,15 +225,49 @@ full model, the degrade ladder, and how to wire a tool into a flow step.
 
 This repository is in Harness v0.
 
-There is no application implementation and no baked-in product specification
-yet. The current work is the reusable project harness: the file structure,
-agent operating model, feature intake process, story templates, and validation
-expectations that help humans and agents turn a future user-provided spec into
-implementation work.
+The Pocket Ledger AI product spec and Phase 0 intake artifacts are present. The
+only application implementation currently present is the Phase 1 FastAPI
+backend foundation and local database infrastructure. Ledger domain behavior,
+product database tables, frontend, AI provider integration, transactions,
+budgets, and dashboard business logic are still unimplemented.
+
+## Backend
+
+The Pocket Ledger AI backend lives in `backend/`.
+
+```bash
+cd backend
+python3 -m venv .venv
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/uvicorn app.main:app --reload
+```
+
+Validation:
+
+```bash
+cd backend
+.venv/bin/pytest
+.venv/bin/ruff check .
+.venv/bin/black --check .
+.venv/bin/mypy app
+```
+
+Database migrations:
+
+```bash
+cd backend
+POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-migration.db \
+.venv/bin/alembic current
+POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-migration.db \
+.venv/bin/alembic upgrade head
+POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-migration.db \
+.venv/bin/alembic downgrade base
+```
 
 ## Product Sources
 
-No product contract is currently defined.
+The Pocket Ledger AI product contract is defined under
+`docs/product/expense-ai/`.
 
 When a user provides a project specification, add or reference it as the input
 spec for the first buildout, then derive smaller living artifacts from it:

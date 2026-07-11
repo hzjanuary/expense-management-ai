@@ -3,6 +3,12 @@ harness.db
 harness.db-wal
 harness.db-shm
 
+# Local application database files.
+data/
+*.db
+*.db-wal
+*.db-shm
+
 # macOS Finder metadata.
 .DS_Store
 
@@ -13,6 +19,16 @@ dist/
 # JavaScript dependencies for local web UI packages.
 node_modules/
 *.tsbuildinfo
+
+# Python virtual environments for local backend work.
+.venv/
+
+# Python local test, typecheck, and packaging output.
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
 
 # Local web UI build and test output.
 desktop-dist/

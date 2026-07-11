@@ -22,9 +22,9 @@ implemented until tests or validation evidence exist.
 | US-001 | Product contract docs exist and preserve accepted spec intent | no | no | no | yes | planned | none |
 | US-002 | MVP story backlog exists with validation expectations | no | yes | no | yes | planned | none |
 | US-003 | Architecture decisions are recorded from template | no | yes | no | yes | planned | none |
-| US-101 | Backend health and typed settings foundation | yes | yes | no | yes | planned | none |
+| US-101 | Backend health and typed settings foundation | yes | yes | no | yes | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app`; live `curl /health` smoke passed |
 | US-102 | Frontend shell with dashboard/chat/history/budget placeholders | yes | no | yes | yes | planned | none |
-| US-103 | Local SQLite database and migrations foundation | yes | yes | no | yes | planned | none |
+| US-103 | Local SQLite database and migrations foundation | yes | yes | no | yes | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app`; Alembic current/upgrade/downgrade/upgrade on temp SQLite DB |
 | US-201 | Money uses integer minor units and categories are seeded | yes | yes | no | no | planned | none |
 | US-202 | Manual expense creation decreases account balance | yes | yes | no | no | planned | none |
 | US-203 | Manual income creation increases account balance | yes | yes | no | no | planned | none |

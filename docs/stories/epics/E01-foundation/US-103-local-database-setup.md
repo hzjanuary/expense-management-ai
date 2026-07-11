@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -51,5 +51,14 @@ Keep database proof expectations in `docs/TEST_MATRIX.md`.
 
 ## Evidence
 
-TBD.
-
+- `cd backend && .venv/bin/python -m pip install -e ".[dev]"`: completed with `aiosqlite`, `SQLAlchemy`, and `Alembic` installed.
+- `cd backend && .venv/bin/pytest`: 10 passed, 1 third-party deprecation warning from FastAPI/Starlette TestClient.
+- `cd backend && .venv/bin/ruff check .`: passed.
+- `cd backend && .venv/bin/black --check .`: passed.
+- `cd backend && .venv/bin/mypy app`: passed.
+- `cd backend && POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-us103-alembic.db .venv/bin/alembic current`: passed against isolated temp SQLite DB.
+- `cd backend && POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-us103-alembic.db .venv/bin/alembic upgrade head`: passed.
+- `cd backend && POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-us103-alembic.db .venv/bin/alembic downgrade base`: passed.
+- `cd backend && POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-us103-alembic.db .venv/bin/alembic upgrade head`: passed.
+- Temp migration DB inspection showed only `alembic_version`; no Account, Category, Transaction, Budget, or AI tables were created.
+- `curl -i http://127.0.0.1:8011/health`: returned HTTP 200 with body `{"status":"ok"}` and an `X-Request-ID` response header after DB infrastructure was added.
