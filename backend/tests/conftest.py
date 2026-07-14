@@ -49,11 +49,26 @@ async def seed_cash_account(
     balance_minor: int = 1_000_000,
     currency: str = "VND",
 ) -> None:
+    await seed_account(
+        session_factory,
+        name="Cash Wallet",
+        balance_minor=balance_minor,
+        currency=currency,
+    )
+
+
+async def seed_account(
+    session_factory: async_sessionmaker[AsyncSession],
+    *,
+    name: str,
+    balance_minor: int,
+    currency: str = "VND",
+) -> None:
     async with session_factory() as session:
         async with session.begin():
             session.add(
                 AccountModel(
-                    name="Cash Wallet",
+                    name=name,
                     currency=currency,
                     opening_balance_minor=balance_minor,
                     current_balance_minor=balance_minor,

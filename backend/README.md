@@ -18,6 +18,7 @@ Implemented:
 - pure Money and Category domain primitives
 - manual expense and income creation API
 - transaction list API with filters and pagination
+- dashboard summary API
 - account and transaction persistence tables
 
 Not implemented yet:
@@ -112,6 +113,12 @@ curl -i 'http://127.0.0.1:8000/api/v1/transactions?month=2026-07&limit=20&offset
 ```
 
 Supported list filters: `month`, `category`, `type`, `q`, `limit`, and `offset`.
+
+Dashboard summary:
+
+```bash
+curl -i 'http://127.0.0.1:8000/api/v1/dashboard/summary?month=2026-07'
+```
 
 ## Validate
 

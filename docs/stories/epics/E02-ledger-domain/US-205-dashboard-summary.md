@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -25,16 +25,20 @@ Compute dashboard balance, income, expense, and category totals from non-deleted
 - Dashboard summary returns monthly expenses.
 - Dashboard summary returns category breakdown.
 - Values are computed from transaction records.
-- Tests cover expense/income/category totals.
+- Soft-deleted transactions are excluded.
+- Invalid month is rejected deterministically.
+- Endpoint is read-only and does not change balances.
+- Tests cover balance, expense, income, category totals, date filtering, deleted transaction exclusion, invalid month, and read-only behavior.
 
 ## Design Notes
 
 - Commands: none.
 - Queries: dashboard summary by month.
 - API: `GET /api/v1/dashboard/summary`.
-- Tables: account, transaction, category, budget.
+- Tables: existing `accounts`, `transactions`.
 - Domain rules: computed totals exclude soft-deleted transactions.
-- UI surfaces: dashboard.
+- Category slugs remain deterministic domain definitions; no category or budget tables are created.
+- UI surfaces: dashboard is covered later by frontend stories.
 
 ## Validation
 
@@ -48,9 +52,25 @@ Compute dashboard balance, income, expense, and category totals from non-deleted
 
 ## Harness Delta
 
-TBD.
+US-205 adds a read-only dashboard summary:
+
+- New route: `GET /api/v1/dashboard/summary?month=YYYY-MM`.
+- Computes total account balance from account current balances.
+- Computes monthly income and expense totals from non-deleted transactions in the requested month.
+- Groups category breakdown by category slug and transaction type.
+- Orders category breakdown by type, amount descending, then category slug.
+- Requires an explicit `month` query parameter and rejects invalid month format.
+- Does not store derived totals.
+- No schema change or migration was required.
+
+Out of scope remained deferred: budgets, AI providers, frontend, chat flows, delete endpoints, export, and spending insight intents.
 
 ## Evidence
 
-TBD.
+Validation completed on 2026-07-14:
 
+- `cd backend && .venv/bin/pytest` -> 90 passed.
+- `cd backend && .venv/bin/ruff check .` -> passed.
+- `cd backend && .venv/bin/black --check .` -> passed.
+- `cd backend && .venv/bin/mypy app` -> passed.
+- Alembic validation was not rerun because US-205 required no schema or migration changes.

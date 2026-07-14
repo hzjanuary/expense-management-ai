@@ -193,14 +193,18 @@ Response:
 {
   "currency": "VND",
   "total_balance_minor": 965000,
-  "monthly_income_minor": 0,
+  "monthly_income_minor": 10000000,
   "monthly_expense_minor": 35000,
   "category_breakdown": [
     {
       "category_slug": "food",
-      "spent_minor": 35000,
-      "budget_minor": 2000000,
-      "remaining_minor": 1965000
+      "type": "expense",
+      "amount_minor": 35000
+    },
+    {
+      "category_slug": "salary",
+      "type": "income",
+      "amount_minor": 10000000
     }
   ]
 }
@@ -208,8 +212,13 @@ Response:
 
 Rules:
 
-- Values are computed from non-deleted transactions.
-- Category totals are grouped by the requested month.
+- `month=YYYY-MM` is required.
+- Invalid month format is rejected.
+- `total_balance_minor` is computed from account current balances.
+- Monthly income and expense values are computed from non-deleted transactions.
+- Category totals are grouped by category slug and transaction type for the requested month.
+- Category breakdown is ordered by type, amount descending, then category slug.
+- No dashboard totals are stored.
 
 ## Provider Status
 

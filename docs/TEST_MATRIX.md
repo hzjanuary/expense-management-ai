@@ -29,7 +29,7 @@ implemented until tests or validation evidence exist.
 | US-202 | Manual expense creation decreases account balance | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app`; Alembic upgrade/downgrade/upgrade on isolated SQLite DB |
 | US-203 | Manual income creation increases account balance | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-204 | Transaction list supports filters and excludes soft deletes | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
-| US-205 | Dashboard totals are computed from transactions | yes | yes | no | no | planned | none |
+| US-205 | Dashboard totals are computed from transactions | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-301 | LLM provider interface returns structured drafts/status only | yes | no | no | no | planned | none |
 | US-302 | Ollama adapter supports local structured output and graceful failure | yes | yes | no | yes | planned | none |
 | US-303 | AI parse returns a draft for Vietnamese shorthand without ledger mutation | yes | yes | no | no | planned | none |

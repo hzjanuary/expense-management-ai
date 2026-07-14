@@ -97,6 +97,61 @@ async def list_transactions(
     return list(items_result.scalars().all()), total
 
 
+async def get_total_account_balance_minor(session: AsyncSession) -> int:
+    result = await session.execute(
+        select(func.coalesce(func.sum(AccountModel.current_balance_minor), 0))
+    )
+    return int(result.scalar_one())
+
+
+async def get_monthly_transaction_type_totals(
+    session: AsyncSession,
+    *,
+    month_start: datetime,
+    month_end: datetime,
+) -> dict[str, int]:
+    result = await session.execute(
+        select(
+            TransactionModel.type,
+            func.coalesce(func.sum(TransactionModel.amount_minor), 0),
+        )
+        .where(
+            TransactionModel.deleted_at.is_(None),
+            TransactionModel.occurred_at >= month_start,
+            TransactionModel.occurred_at < month_end,
+        )
+        .group_by(TransactionModel.type)
+    )
+    return {
+        str(transaction_type): int(total) for transaction_type, total in result.all()
+    }
+
+
+async def get_monthly_category_breakdown(
+    session: AsyncSession,
+    *,
+    month_start: datetime,
+    month_end: datetime,
+) -> list[tuple[str, str, int]]:
+    result = await session.execute(
+        select(
+            TransactionModel.category_slug,
+            TransactionModel.type,
+            func.coalesce(func.sum(TransactionModel.amount_minor), 0),
+        )
+        .where(
+            TransactionModel.deleted_at.is_(None),
+            TransactionModel.occurred_at >= month_start,
+            TransactionModel.occurred_at < month_end,
+        )
+        .group_by(TransactionModel.category_slug, TransactionModel.type)
+    )
+    return [
+        (str(category_slug), str(transaction_type), int(amount_minor))
+        for category_slug, transaction_type, amount_minor in result.all()
+    ]
+
+
 def _filtered_transactions_statement(
     *,
     month_start: datetime | None,
