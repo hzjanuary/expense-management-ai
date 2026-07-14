@@ -72,6 +72,41 @@ Expected enum values:
 - Ollama is the first MVP provider.
 - llama.cpp-compatible providers may be added later behind the same interface.
 
+Provider interface:
+
+```python
+class LlmProvider(Protocol):
+    async def parse_transaction_text(
+        self,
+        request: TransactionParseRequest,
+    ) -> TransactionParseResult:
+        ...
+
+    async def get_status(self) -> LlmProviderStatus:
+        ...
+```
+
+`TransactionParseRequest` minimum fields:
+
+- `message`
+- `locale`, default `vi-VN`
+- `default_currency`, default `VND`
+- `timezone`, default `Asia/Ho_Chi_Minh`
+
+`LlmProviderStatus` minimum fields:
+
+- `provider_name`
+- `model_name`
+- `available`
+- `reason`
+
+Normalized provider errors:
+
+- `LlmProviderError`
+- `LlmProviderUnavailableError`
+- `LlmProviderTimeoutError`
+- `LlmProviderInvalidResponseError`
+
 ## Validation Rules
 
 The backend must reject parsed output when:

@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -26,13 +26,16 @@ Define a provider interface that returns structured drafts and status without co
 - Provider errors are normalized.
 - Provider health status is available.
 - Unit tests use fake provider.
+- Provider output does not persist records.
+- Provider output does not mutate transactions or account balances.
+- No real model adapter or AI parse API is added.
 
 ## Design Notes
 
 - Commands: parse text into draft.
 - Queries: provider status.
-- API: provider status endpoint consumes this interface.
-- Tables: optional parse-attempt persistence in later stories.
+- API: none in this story; provider status endpoint consumes this interface later.
+- Tables: none; parse-attempt persistence is deferred to later stories.
 - Domain rules: provider cannot mutate ledger.
 - UI surfaces: provider status display later.
 
@@ -48,9 +51,23 @@ Define a provider interface that returns structured drafts and status without co
 
 ## Harness Delta
 
-TBD.
+US-301 adds the provider contract only:
+
+- New `app.ai` package with typed request/result/status models.
+- New `LlmProvider` protocol with `parse_transaction_text` and `get_status`.
+- Supported intent enum: `create_transaction`, `query_spending`, `set_budget`, `unknown`.
+- Normalized errors: base, unavailable, timeout, and invalid response.
+- Deterministic fake provider for tests.
+- No real provider dependency, API route, persistence table, or ledger mutation was added.
+
+Out of scope remained deferred: Ollama, llama.cpp, cloud providers, AI parse API, AI confirm API, AI draft persistence, budgets, frontend, chat UI, export/delete, and spending insight intents.
 
 ## Evidence
 
-TBD.
+Validation completed on 2026-07-14:
 
+- `cd backend && .venv/bin/pytest` -> 101 passed.
+- `cd backend && .venv/bin/ruff check .` -> passed.
+- `cd backend && .venv/bin/black --check .` -> passed.
+- `cd backend && .venv/bin/mypy app` -> passed.
+- Alembic validation was not rerun because US-301 required no schema or migration changes.
