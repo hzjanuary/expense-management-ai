@@ -12,6 +12,7 @@ dependencies = [
     "aiosqlite>=0.21.0",
     "alembic>=1.17.0",
     "fastapi>=0.116.0",
+    "httpx>=0.28.0",
     "pydantic-settings>=2.10.0",
     "sqlalchemy[asyncio]>=2.0.45",
     "uvicorn[standard]>=0.35.0",
@@ -20,7 +21,6 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "black>=25.1.0",
-    "httpx>=0.28.0",
     "mypy>=1.16.0",
     "pytest>=8.4.0",
     "ruff>=0.12.0",

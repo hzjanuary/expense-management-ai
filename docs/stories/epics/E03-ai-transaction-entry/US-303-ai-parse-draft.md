@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -25,16 +25,18 @@ Parse chat text into a transaction draft without mutating the ledger.
 - API returns transaction draft.
 - `35k` is normalized to `35000`.
 - Category maps to `food`.
-- Date maps to current local date.
+- Date remains conservative as `occurred_at = null` for relative text in US-303.
 - Draft does not mutate ledger.
 - Tests cover Vietnamese shorthand amounts.
+- Provider unavailable, timeout, and invalid response errors map to safe API errors.
+- Provider output is validated against money, currency, transaction type, and category rules.
 
 ## Design Notes
 
-- Commands: create AI draft.
+- Commands: parse AI draft in memory.
 - Queries: none.
 - API: `POST /api/v1/ai/parse`.
-- Tables: AI parse attempt and draft storage if needed.
+- Tables: none in US-303; draft persistence is out of scope.
 - Domain rules: parse route cannot create transactions.
 - UI surfaces: chat entry panel.
 
@@ -50,8 +52,15 @@ Parse chat text into a transaction draft without mutating the ledger.
 
 ## Harness Delta
 
-TBD.
+- Added safe AI parse API route backed by the existing LLM provider interface.
+- Added provider factory behavior: Ollama when enabled, fake provider for local/test/development, unavailable in production-like mode when Ollama is disabled.
+- Added application-level draft validation before returning a typed response.
+- Preserved ledger mutation safety: no transaction command handler, database write, draft persistence, or balance update occurs in US-303.
 
 ## Evidence
 
-TBD.
+- `cd backend && .venv/bin/pytest` -> 129 passed, 1 skipped.
+- `cd backend && .venv/bin/ruff check .` -> passed.
+- `cd backend && .venv/bin/black --check .` -> passed.
+- `cd backend && .venv/bin/mypy app` -> passed.
+- Alembic validation not run because no schema or migration files changed.

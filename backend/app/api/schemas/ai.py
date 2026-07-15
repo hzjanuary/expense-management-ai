@@ -1,0 +1,73 @@
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.domain.money import MoneyValidationError, normalize_currency
+
+
+class AiParseRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    message: str = Field(min_length=1)
+    locale: str = "vi-VN"
+    default_currency: str = "VND"
+    timezone: str = "Asia/Ho_Chi_Minh"
+
+    @field_validator("message")
+    @classmethod
+    def validate_message(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("message is required")
+        return stripped
+
+    @field_validator("default_currency")
+    @classmethod
+    def validate_default_currency(cls, value: str) -> str:
+        try:
+            return normalize_currency(value)
+        except MoneyValidationError as error:
+            raise ValueError(str(error)) from error
+
+
+class AiTransactionDraftResponse(BaseModel):
+    type: str
+    amount_minor: int
+    currency: str
+    category_slug: str
+    description: str
+    merchant: str | None
+    occurred_at: datetime | None
+    source: str
+
+
+class AiParseResponse(BaseModel):
+    intent: str
+    draft_id: str | None
+    draft: AiTransactionDraftResponse | None
+    needs_confirmation: bool
+    confidence: str
+    missing_fields: list[str]
+
+
+class AiConfirmRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    draft_id: str = Field(min_length=1)
+
+
+class AiConfirmedTransactionResponse(BaseModel):
+    id: str
+    type: str
+    amount_minor: int
+    currency: str
+    category_slug: str
+    description: str
+    merchant: str | None
+    occurred_at: datetime
+    source: str
+
+
+class AiConfirmResponse(BaseModel):
+    transaction: AiConfirmedTransactionResponse
+    account_balance_minor: int

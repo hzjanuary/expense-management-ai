@@ -5,6 +5,7 @@ from app.ai.errors import (
     LlmProviderUnavailableError,
 )
 from app.ai.fake import FakeLlmProvider
+from app.ai.ollama import OllamaLlmProvider
 from app.ai.providers import LlmProvider
 from app.ai.schemas import (
     Confidence,
@@ -23,6 +24,7 @@ __all__ = [
     "LlmProviderStatus",
     "LlmProviderTimeoutError",
     "LlmProviderUnavailableError",
+    "OllamaLlmProvider",
     "SupportedIntent",
     "TransactionParseRequest",
     "TransactionParseResult",

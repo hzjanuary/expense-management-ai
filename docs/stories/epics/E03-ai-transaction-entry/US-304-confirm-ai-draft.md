@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -27,13 +27,15 @@ Create a ledger transaction exactly once from a valid confirmed AI draft.
 - Draft cannot be confirmed twice.
 - Expired draft cannot be confirmed.
 - Tests cover duplicate confirmation prevention.
+- Confirmation revalidates stored draft rules before ledger mutation.
+- Confirmation does not call the LLM provider.
 
 ## Design Notes
 
 - Commands: confirm AI draft.
 - Queries: dashboard summary after confirmation.
 - API: `POST /api/v1/ai/confirm`.
-- Tables: transaction, AI parse attempt/draft.
+- Tables: transaction, `ai_transaction_drafts`.
 - Domain rules: idempotency and expiration are enforced.
 - UI surfaces: confirmation action.
 
@@ -49,9 +51,19 @@ Create a ledger transaction exactly once from a valid confirmed AI draft.
 
 ## Harness Delta
 
-TBD.
+- Added `ai_transaction_drafts` persistence with pending, confirmed, and expired lifecycle.
+- Updated `POST /api/v1/ai/parse` to return `draft_id` for confirmable create-transaction drafts and persist only validated drafts.
+- Added `POST /api/v1/ai/confirm` to revalidate a pending draft, create one `ai_chat` transaction, update balance, and mark the draft confirmed atomically.
+- Added duplicate-confirmation, expiration, invalid draft, currency mismatch, and no-provider-call regression proof.
 
 ## Evidence
 
-TBD.
-
+- `cd backend && .venv/bin/pytest` -> 139 passed, 1 skipped.
+- `cd backend && .venv/bin/ruff check .` -> passed.
+- `cd backend && .venv/bin/black --check .` -> passed.
+- `cd backend && .venv/bin/mypy app` -> passed.
+- `POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-us304-alembic.db .venv/bin/alembic current` -> `0003 (head)`.
+- `POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-us304-alembic.db .venv/bin/alembic upgrade head` -> passed.
+- `POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-us304-alembic.db .venv/bin/alembic downgrade base` -> passed.
+- `POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-us304-alembic.db .venv/bin/alembic upgrade head` -> passed.
+- Async SQLite validation commands were run outside the current sandbox because `aiosqlite` connections hang inside it.

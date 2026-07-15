@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.db.base import Base
-from app.db.models import AccountModel, TransactionModel
+from app.db.models import AccountModel, AiTransactionDraftModel, TransactionModel
 from app.db.session import create_engine, create_session_factory, get_db_session
 from app.main import create_app
 
@@ -91,6 +91,27 @@ async def count_transactions(
 ) -> int:
     async with session_factory() as session:
         result = await session.execute(select(func.count(TransactionModel.id)))
+        return result.scalar_one()
+
+
+async def count_ai_transaction_drafts(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> int:
+    async with session_factory() as session:
+        result = await session.execute(select(func.count(AiTransactionDraftModel.id)))
+        return result.scalar_one()
+
+
+async def fetch_ai_transaction_draft(
+    session_factory: async_sessionmaker[AsyncSession],
+    draft_id: str,
+) -> AiTransactionDraftModel:
+    async with session_factory() as session:
+        result = await session.execute(
+            select(AiTransactionDraftModel).where(
+                AiTransactionDraftModel.id == draft_id
+            )
+        )
         return result.scalar_one()
 
 

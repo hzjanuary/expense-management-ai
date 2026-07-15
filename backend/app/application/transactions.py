@@ -37,6 +37,9 @@ class CreateManualTransactionCommand:
     description: str
     occurred_at: datetime
     source: str
+    merchant: str | None = None
+    raw_user_text: str | None = None
+    parser_confidence: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +73,17 @@ async def create_manual_transaction(
     if command.source != "manual":
         raise TransactionValidationError("only manual source is supported")
 
+    async with session.begin():
+        return await create_validated_transaction_in_session(session, command)
+
+
+async def create_validated_transaction_in_session(
+    session: AsyncSession,
+    command: CreateManualTransactionCommand,
+) -> CreateManualTransactionResult:
+    if command.source not in {"manual", "ai_chat"}:
+        raise TransactionValidationError("unsupported transaction source")
+
     transaction_type = _parse_transaction_type(command.type)
 
     try:
@@ -86,33 +100,35 @@ async def create_manual_transaction(
 
     settings = get_settings()
 
-    async with session.begin():
-        account = await get_default_account(session, settings.default_account_name)
-        if account is None:
-            account = await create_default_account(
-                session,
-                name=settings.default_account_name,
-                currency=settings.default_currency,
-                opening_balance_minor=settings.default_account_opening_balance_minor,
-            )
-
-        _validate_account_currency(account, money.currency)
-        account.current_balance_minor += _balance_delta(
-            transaction_type,
-            money.amount_minor,
-        )
-
-        transaction = await create_transaction(
+    account = await get_default_account(session, settings.default_account_name)
+    if account is None:
+        account = await create_default_account(
             session,
-            account_id=account.id,
-            transaction_type=transaction_type.value,
-            amount_minor=money.amount_minor,
-            currency=money.currency,
-            category_slug=category.slug,
-            description=command.description,
-            occurred_at=command.occurred_at,
-            source="manual",
+            name=settings.default_account_name,
+            currency=settings.default_currency,
+            opening_balance_minor=settings.default_account_opening_balance_minor,
         )
+
+    _validate_account_currency(account, money.currency)
+    account.current_balance_minor += _balance_delta(
+        transaction_type,
+        money.amount_minor,
+    )
+
+    transaction = await create_transaction(
+        session,
+        account_id=account.id,
+        transaction_type=transaction_type.value,
+        amount_minor=money.amount_minor,
+        currency=money.currency,
+        category_slug=category.slug,
+        description=command.description,
+        merchant=command.merchant,
+        occurred_at=command.occurred_at,
+        source=command.source,
+        raw_user_text=command.raw_user_text,
+        parser_confidence=command.parser_confidence,
+    )
 
     return CreateManualTransactionResult(
         transaction=transaction,

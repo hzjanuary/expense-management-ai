@@ -30,6 +30,8 @@ Source input: `docs/product/expense-ai/SPEC.md`
 - Clearing AI history removes raw user text and parse attempts.
 - Clearing AI history must not delete ledger transactions.
 - If a parse attempt created a transaction, the ledger transaction remains and the historical parse metadata may be removed or anonymized according to the implementation story.
+- AI transaction drafts store validated draft fields and raw user text locally for confirmation lifecycle.
+- AI drafts are local SQLite records and are not sent to cloud providers in MVP.
 
 ## Soft Delete Behavior
 
@@ -53,4 +55,3 @@ Source input: `docs/product/expense-ai/SPEC.md`
 - Cloud LLM credentials.
 - Bank-link credentials.
 - Native mobile secure enclave integration.
-

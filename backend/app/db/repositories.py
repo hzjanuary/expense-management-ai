@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AccountModel, TransactionModel
+from app.db.models import AccountModel, AiTransactionDraftModel, TransactionModel
 
 
 async def get_default_account(
@@ -45,6 +45,9 @@ async def create_transaction(
     description: str,
     occurred_at: datetime,
     source: str,
+    merchant: str | None = None,
+    raw_user_text: str | None = None,
+    parser_confidence: str | None = None,
 ) -> TransactionModel:
     transaction = TransactionModel(
         account_id=account_id,
@@ -53,12 +56,72 @@ async def create_transaction(
         currency=currency,
         category_slug=category_slug,
         description=description,
+        merchant=merchant,
         occurred_at=occurred_at,
         source=source,
+        raw_user_text=raw_user_text,
+        parser_confidence=parser_confidence,
     )
     session.add(transaction)
     await session.flush()
     return transaction
+
+
+async def create_ai_transaction_draft(
+    session: AsyncSession,
+    *,
+    intent: str,
+    transaction_type: str,
+    amount_minor: int,
+    currency: str,
+    category_slug: str,
+    description: str,
+    merchant: str | None,
+    occurred_at: datetime | None,
+    occurred_at_text: str | None,
+    source: str,
+    confidence: str,
+    needs_confirmation: bool,
+    missing_fields_json: str,
+    raw_user_text: str,
+    provider_name: str,
+    model_name: str,
+    status: str,
+    expires_at: datetime,
+) -> AiTransactionDraftModel:
+    draft = AiTransactionDraftModel(
+        intent=intent,
+        transaction_type=transaction_type,
+        amount_minor=amount_minor,
+        currency=currency,
+        category_slug=category_slug,
+        description=description,
+        merchant=merchant,
+        occurred_at=occurred_at,
+        occurred_at_text=occurred_at_text,
+        source=source,
+        confidence=confidence,
+        needs_confirmation=needs_confirmation,
+        missing_fields_json=missing_fields_json,
+        raw_user_text=raw_user_text,
+        provider_name=provider_name,
+        model_name=model_name,
+        status=status,
+        expires_at=expires_at,
+    )
+    session.add(draft)
+    await session.flush()
+    return draft
+
+
+async def get_ai_transaction_draft(
+    session: AsyncSession,
+    draft_id: str,
+) -> AiTransactionDraftModel | None:
+    result = await session.execute(
+        select(AiTransactionDraftModel).where(AiTransactionDraftModel.id == draft_id)
+    )
+    return result.scalar_one_or_none()
 
 
 async def list_transactions(

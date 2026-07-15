@@ -107,6 +107,45 @@ Normalized provider errors:
 - `LlmProviderTimeoutError`
 - `LlmProviderInvalidResponseError`
 
+Ollama adapter behavior:
+
+- Disabled by default through `POCKET_LEDGER_OLLAMA_ENABLED=false`.
+- Uses the local chat endpoint with `stream=false`.
+- Sends `TransactionParseResult.model_json_schema()` through the Ollama `format` field.
+- Uses `temperature=0`.
+- Validates `message.content` with `TransactionParseResult` before returning it.
+- Maps disabled/unreachable, timeout, and invalid structured output failures to normalized provider errors.
+- Does not persist parse output or mutate ledger records.
+
+Provider selection for API parsing:
+
+- If `POCKET_LEDGER_OLLAMA_ENABLED=true`, the API uses the Ollama provider.
+- If Ollama is disabled and `POCKET_LEDGER_ENVIRONMENT` is `local`, `test`, or `development`, the API may use the deterministic fake provider for local development and tests.
+- If Ollama is disabled in production-like environments, the API reports provider unavailable instead of silently using fake output.
+
+Parse draft API behavior:
+
+- `POST /api/v1/ai/parse` returns a typed draft and, for confirmable create-transaction results, a `draft_id`.
+- Returned drafts use `source = "ai_chat"`.
+- Confirmable create-transaction drafts are persisted locally from US-304 onward.
+- Unknown or unsupported input is returned without a confirmable draft.
+- Relative date text such as `hôm nay` may remain unresolved; the API returns `occurred_at = null` until date resolution is implemented.
+- The parse API must not call transaction creation command handlers.
+- The parse API must not create transactions or update account balances.
+- Unknown or unsupported input returns `intent = "unknown"`, low confidence, `needs_confirmation = true`, and no draft.
+- Provider failures map to safe API errors without exposing raw model output.
+
+Confirm draft API behavior:
+
+- `POST /api/v1/ai/confirm` loads a stored pending draft by `draft_id`.
+- Confirmation revalidates the stored draft using deterministic money, currency, transaction type, and category rules.
+- Confirmation uses the same deterministic ledger mutation path as manual transactions, with `source = "ai_chat"`.
+- Confirmation never calls the LLM provider.
+- Confirmation creates exactly one transaction and stores `created_transaction_id` on the draft.
+- Confirmed drafts cannot be confirmed again.
+- Expired drafts are rejected.
+- If a draft has no resolved `occurred_at`, confirmation time is used as the transaction timestamp.
+
 ## Validation Rules
 
 The backend must reject parsed output when:

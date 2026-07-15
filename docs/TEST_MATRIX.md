@@ -31,9 +31,9 @@ implemented until tests or validation evidence exist.
 | US-204 | Transaction list supports filters and excludes soft deletes | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-205 | Dashboard totals are computed from transactions | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-301 | LLM provider interface returns structured drafts/status only | yes | no | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
-| US-302 | Ollama adapter supports local structured output and graceful failure | yes | yes | no | yes | planned | none |
-| US-303 | AI parse returns a draft for Vietnamese shorthand without ledger mutation | yes | yes | no | no | planned | none |
-| US-304 | Confirmed AI draft creates exactly one transaction | yes | yes | no | no | planned | none |
+| US-302 | Ollama adapter supports local structured output and graceful failure | yes | yes | no | yes | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app`; real Ollama smoke skipped unless `POCKET_LEDGER_RUN_OLLAMA_INTEGRATION=1` |
+| US-303 | AI parse returns a draft for Vietnamese shorthand without ledger mutation | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
+| US-304 | Confirmed AI draft creates exactly one transaction | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app`; Alembic current/upgrade/downgrade/upgrade on isolated SQLite DB |
 | US-305 | Low-confidence AI output asks clarification and does not mutate ledger | yes | yes | yes | no | planned | none |
 | US-401 | Monthly and category budgets are validated and persisted | yes | yes | yes | no | planned | none |
 | US-402 | Category remaining budget is computed and displayed | yes | yes | yes | no | planned | none |

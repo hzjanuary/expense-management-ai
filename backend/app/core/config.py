@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./data/pocket_ledger.db"
     default_account_name: str = Field(default="Cash Wallet", min_length=1)
     default_account_opening_balance_minor: int = Field(default=0, ge=0)
+    ollama_base_url: str = Field(default="http://127.0.0.1:11434", min_length=1)
+    ollama_model: str = Field(default="qwen2.5:3b", min_length=1)
+    ollama_timeout_seconds: float = Field(default=10, gt=0)
+    ollama_enabled: bool = False
+    ai_draft_ttl_seconds: int = Field(default=900, gt=0)
 
     model_config = SettingsConfigDict(
         env_prefix="POCKET_LEDGER_",

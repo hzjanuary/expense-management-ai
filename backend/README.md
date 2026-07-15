@@ -19,13 +19,16 @@ Implemented:
 - manual expense and income creation API
 - transaction list API with filters and pagination
 - dashboard summary API
+- LLM provider interface and Ollama adapter
+- AI parse draft API
+- AI draft confirmation API
 - account and transaction persistence tables
+- AI transaction draft persistence table
 
 Not implemented yet:
 
 - budgets
-- dashboard business logic
-- AI provider integration
+- AI history clearing
 - frontend
 
 ## Database
@@ -86,6 +89,11 @@ Settings are loaded from environment variables with the `POCKET_LEDGER_` prefix.
 | database URL | `POCKET_LEDGER_DATABASE_URL` | `sqlite+aiosqlite:///./data/pocket_ledger.db` |
 | default account name | `POCKET_LEDGER_DEFAULT_ACCOUNT_NAME` | `Cash Wallet` |
 | default account opening balance | `POCKET_LEDGER_DEFAULT_ACCOUNT_OPENING_BALANCE_MINOR` | `0` |
+| Ollama enabled | `POCKET_LEDGER_OLLAMA_ENABLED` | `false` |
+| Ollama base URL | `POCKET_LEDGER_OLLAMA_BASE_URL` | `http://127.0.0.1:11434` |
+| Ollama model | `POCKET_LEDGER_OLLAMA_MODEL` | `qwen2.5:3b` |
+| Ollama timeout seconds | `POCKET_LEDGER_OLLAMA_TIMEOUT_SECONDS` | `10` |
+| AI draft TTL seconds | `POCKET_LEDGER_AI_DRAFT_TTL_SECONDS` | `900` |
 
 ## Manual Transaction API
 
@@ -118,6 +126,39 @@ Dashboard summary:
 
 ```bash
 curl -i 'http://127.0.0.1:8000/api/v1/dashboard/summary?month=2026-07'
+```
+
+## LLM Providers
+
+The Ollama adapter is disabled by default. `POST /api/v1/ai/parse` uses Ollama
+when `POCKET_LEDGER_OLLAMA_ENABLED=true`; otherwise local/test/development
+environments use the deterministic fake provider. Production-like environments
+with Ollama disabled report provider unavailable.
+
+Parse a draft without mutating the ledger:
+
+```bash
+curl -i -X POST http://127.0.0.1:8000/api/v1/ai/parse \
+  -H 'Content-Type: application/json' \
+  -d '{"message": "Hôm nay tôi tiêu 35k vào ăn trưa"}'
+```
+
+Confirm a stored AI draft:
+
+```bash
+curl -i -X POST http://127.0.0.1:8000/api/v1/ai/confirm \
+  -H 'Content-Type: application/json' \
+  -d '{"draft_id": "<draft_id>"}'
+```
+
+Confirmation revalidates the stored draft, creates exactly one ledger
+transaction with `source = "ai_chat"`, and marks the draft confirmed.
+
+Normal tests use mocked HTTP behavior for Ollama. To opt into the real local
+Ollama smoke test:
+
+```bash
+POCKET_LEDGER_RUN_OLLAMA_INTEGRATION=1 .venv/bin/pytest tests/test_ollama_provider.py
 ```
 
 ## Validate
