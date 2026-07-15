@@ -342,3 +342,30 @@ def test_confirmation_does_not_call_provider_again(
     assert transaction.source == "ai_chat"
     assert transaction.raw_user_text == "Hôm nay tôi tiêu 35k vào ăn trưa"
     assert transaction.parser_confidence == "high"
+
+
+def test_complete_low_confidence_draft_mutates_only_after_confirmation(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    asyncio.run(seed_cash_account(session_factory, balance_minor=1_000_000))
+    provider = CountingLlmProvider(
+        create_transaction_result(
+            needs_confirmation=True,
+            confidence=Confidence.LOW,
+        )
+    )
+    override_provider(client, provider)
+    draft_id = parse_draft(client)
+
+    assert asyncio.run(count_transactions(session_factory)) == 0
+    account_before = asyncio.run(fetch_account(session_factory))
+    assert account_before.current_balance_minor == 1_000_000
+
+    response = confirm_draft(client, draft_id)
+
+    assert response.status_code == 200
+    assert response.json()["account_balance_minor"] == 965_000
+    transaction = asyncio.run(fetch_transaction(session_factory))
+    assert transaction.source == "ai_chat"
+    assert transaction.parser_confidence == "low"

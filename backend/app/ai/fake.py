@@ -51,11 +51,43 @@ class FakeLlmProvider:
                 confidence=Confidence.HIGH,
             )
 
+        if _is_missing_amount_sample(request.message):
+            return TransactionParseResult(
+                intent=SupportedIntent.CREATE_TRANSACTION,
+                transaction_type="expense",
+                amount_minor=None,
+                currency=request.default_currency,
+                category_slug="food",
+                description="ăn trưa",
+                merchant=None,
+                occurred_at_text="hôm nay",
+                occurred_at_iso=None,
+                needs_confirmation=True,
+                confidence=Confidence.LOW,
+                missing_fields=["amount_minor"],
+            )
+
+        if _is_missing_category_sample(request.message):
+            return TransactionParseResult(
+                intent=SupportedIntent.CREATE_TRANSACTION,
+                transaction_type="expense",
+                amount_minor=35_000,
+                currency=request.default_currency,
+                category_slug=None,
+                description="chi tiêu",
+                merchant=None,
+                occurred_at_text="hôm nay",
+                occurred_at_iso=None,
+                needs_confirmation=True,
+                confidence=Confidence.LOW,
+                missing_fields=["category_slug"],
+            )
+
         return TransactionParseResult(
             intent=SupportedIntent.UNKNOWN,
             needs_confirmation=True,
             confidence=Confidence.LOW,
-            missing_fields=["intent", "amount_minor", "category_slug"],
+            missing_fields=["intent"],
         )
 
     async def get_status(self) -> LlmProviderStatus:
@@ -90,3 +122,15 @@ class FakeLlmProvider:
 def _is_lunch_expense_sample(message: str) -> bool:
     normalized = message.casefold()
     return "tiêu" in normalized and "35k" in normalized and "ăn trưa" in normalized
+
+
+def _is_missing_amount_sample(message: str) -> bool:
+    normalized = message.casefold()
+    return (
+        "ăn trưa" in normalized and "35k" not in normalized and "tiêu" not in normalized
+    )
+
+
+def _is_missing_category_sample(message: str) -> bool:
+    normalized = message.casefold()
+    return "tiêu" in normalized and "35k" in normalized and "ăn trưa" not in normalized

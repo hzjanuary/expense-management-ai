@@ -41,6 +41,11 @@ class AiTransactionDraftResponse(BaseModel):
     source: str
 
 
+class AiClarificationResponse(BaseModel):
+    message: str
+    fields: list[str]
+
+
 class AiParseResponse(BaseModel):
     intent: str
     draft_id: str | None
@@ -48,6 +53,7 @@ class AiParseResponse(BaseModel):
     needs_confirmation: bool
     confidence: str
     missing_fields: list[str]
+    clarification: AiClarificationResponse | None = None
 
 
 class AiConfirmRequest(BaseModel):

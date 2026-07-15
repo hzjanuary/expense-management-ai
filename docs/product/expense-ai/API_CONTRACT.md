@@ -147,7 +147,25 @@ Response:
   },
   "needs_confirmation": false,
   "confidence": "high",
-  "missing_fields": []
+  "missing_fields": [],
+  "clarification": null
+}
+```
+
+Clarification response:
+
+```json
+{
+  "intent": "create_transaction",
+  "draft_id": null,
+  "draft": null,
+  "needs_confirmation": true,
+  "confidence": "low",
+  "missing_fields": ["amount_minor"],
+  "clarification": {
+    "message": "Bạn muốn ghi khoản này với số tiền bao nhiêu?",
+    "fields": ["amount_minor"]
+  }
 }
 ```
 
@@ -160,7 +178,11 @@ Unknown response:
   "draft": null,
   "needs_confirmation": true,
   "confidence": "low",
-  "missing_fields": ["intent"]
+  "missing_fields": ["intent"],
+  "clarification": {
+    "message": "Mình chưa hiểu bạn muốn ghi giao dịch hay hỏi thông tin gì. Bạn có thể nói rõ hơn không?",
+    "fields": ["intent"]
+  }
 }
 ```
 
@@ -169,6 +191,8 @@ Mutation rule:
 - This route must not create or update ledger transactions.
 - Confirmable `create_transaction` drafts are stored locally for explicit confirmation.
 - Unknown or unsupported input does not create a confirmable draft.
+- Incomplete or invalid provider drafts do not create a confirmable draft.
+- Complete valid low-confidence drafts may create a pending draft, but still require explicit confirmation.
 
 Rules:
 
@@ -178,6 +202,10 @@ Rules:
 - Invalid provider output returns a safe API error and does not expose raw model output.
 - For US-303, relative date text such as `hôm nay` is not resolved; `occurred_at` may be `null`.
 - From US-304 onward, confirmable create-transaction responses include `draft_id`.
+- From US-305 onward, ambiguous or low-confidence responses include `clarification`.
+- Missing amount asks for amount.
+- Missing or invalid category asks for category.
+- Category/type mismatch asks for category and does not persist a confirmable draft.
 - Provider unavailable returns `503`.
 - Provider timeout returns `504`.
 - Invalid provider structured output returns `502`.

@@ -12,6 +12,7 @@ from app.ai.errors import (
 from app.ai.factory import get_llm_provider
 from app.ai.providers import LlmProvider
 from app.api.schemas.ai import (
+    AiClarificationResponse,
     AiConfirmedTransactionResponse,
     AiConfirmRequest,
     AiConfirmResponse,
@@ -87,6 +88,13 @@ async def parse_ai_draft(
             source=result.draft.source,
         )
 
+    clarification = None
+    if result.clarification is not None:
+        clarification = AiClarificationResponse(
+            message=result.clarification.message,
+            fields=result.clarification.fields,
+        )
+
     return AiParseResponse(
         intent=result.intent,
         draft_id=result.draft_id,
@@ -94,6 +102,7 @@ async def parse_ai_draft(
         needs_confirmation=result.needs_confirmation,
         confidence=result.confidence,
         missing_fields=result.missing_fields,
+        clarification=clarification,
     )
 
 

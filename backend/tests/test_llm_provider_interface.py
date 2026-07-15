@@ -98,7 +98,7 @@ async def test_fake_provider_returns_unknown_for_unparseable_input() -> None:
     assert result.intent == SupportedIntent.UNKNOWN
     assert result.needs_confirmation is True
     assert result.confidence == Confidence.LOW
-    assert result.missing_fields == ["intent", "amount_minor", "category_slug"]
+    assert result.missing_fields == ["intent"]
 
 
 @pytest.mark.anyio

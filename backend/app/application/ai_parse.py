@@ -66,6 +66,12 @@ class TransactionDraft:
 
 
 @dataclass(frozen=True, slots=True)
+class Clarification:
+    message: str
+    fields: list[str]
+
+
+@dataclass(frozen=True, slots=True)
 class AiParseResult:
     intent: str
     draft_id: str | None
@@ -73,6 +79,7 @@ class AiParseResult:
     needs_confirmation: bool
     confidence: str
     missing_fields: list[str]
+    clarification: Clarification | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -102,13 +109,33 @@ async def parse_ai_transaction_draft(
     provider_result = await provider.parse_transaction_text(request)
 
     if provider_result.intent is not SupportedIntent.CREATE_TRANSACTION:
+        missing_fields = _normalize_missing_fields(provider_result.missing_fields)
         return AiParseResult(
             intent=provider_result.intent.value,
             draft_id=None,
             draft=None,
             needs_confirmation=provider_result.needs_confirmation,
             confidence=provider_result.confidence.value,
-            missing_fields=provider_result.missing_fields,
+            missing_fields=missing_fields,
+            clarification=_build_clarification(
+                provider_result.intent.value,
+                missing_fields,
+            ),
+        )
+
+    clarification = _clarification_for_create_transaction_result(provider_result)
+    if clarification is not None:
+        missing_fields = _normalize_missing_fields(
+            provider_result.missing_fields or clarification.fields
+        )
+        return AiParseResult(
+            intent=SupportedIntent.CREATE_TRANSACTION.value,
+            draft_id=None,
+            draft=None,
+            needs_confirmation=True,
+            confidence=provider_result.confidence.value,
+            missing_fields=missing_fields,
+            clarification=clarification,
         )
 
     draft = _validate_create_transaction_draft(provider_result)
@@ -147,6 +174,7 @@ async def parse_ai_transaction_draft(
         needs_confirmation=provider_result.needs_confirmation,
         confidence=provider_result.confidence.value,
         missing_fields=provider_result.missing_fields,
+        clarification=_build_confirmation_clarification(provider_result),
     )
 
 
@@ -220,6 +248,141 @@ def _validate_create_transaction_draft(
         description=description,
         merchant=result.merchant,
         occurred_at=_parse_occurred_at(result.occurred_at_iso),
+    )
+
+
+def _clarification_for_create_transaction_result(
+    result: TransactionParseResult,
+) -> Clarification | None:
+    missing_fields = _missing_required_create_transaction_fields(result)
+    if missing_fields:
+        return _build_clarification(
+            SupportedIntent.CREATE_TRANSACTION.value,
+            missing_fields,
+        )
+
+    try:
+        _validate_create_transaction_draft(result)
+    except AiParseValidationError as error:
+        return _clarification_from_validation_error(str(error))
+
+    return None
+
+
+def _missing_required_create_transaction_fields(
+    result: TransactionParseResult,
+) -> list[str]:
+    missing_fields = _normalize_missing_fields(result.missing_fields)
+
+    required_checks = (
+        ("transaction_type", result.transaction_type),
+        ("amount_minor", result.amount_minor),
+        ("currency", result.currency),
+        ("category_slug", result.category_slug),
+        ("description", result.description),
+    )
+    for field, value in required_checks:
+        if value is None:
+            missing_fields.append(field)
+        elif isinstance(value, str) and not value.strip():
+            missing_fields.append(field)
+
+    return _dedupe_fields(missing_fields)
+
+
+def _normalize_missing_fields(fields: list[str]) -> list[str]:
+    normalized = ["intent" if field == "intent" else field for field in fields]
+    return _dedupe_fields(normalized)
+
+
+def _dedupe_fields(fields: list[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for field in fields:
+        if field not in seen:
+            seen.add(field)
+            deduped.append(field)
+    return deduped
+
+
+def _build_clarification(intent: str, fields: list[str]) -> Clarification:
+    normalized_fields = _normalize_missing_fields(fields)
+    if intent != SupportedIntent.CREATE_TRANSACTION.value:
+        return Clarification(
+            message=(
+                "Mình chưa hiểu bạn muốn ghi giao dịch hay hỏi thông tin gì. "
+                "Bạn có thể nói rõ hơn không?"
+            ),
+            fields=normalized_fields or ["intent"],
+        )
+
+    if "amount_minor" in normalized_fields:
+        return Clarification(
+            message="Bạn muốn ghi khoản này với số tiền bao nhiêu?",
+            fields=["amount_minor"],
+        )
+    if "category_slug" in normalized_fields:
+        return Clarification(
+            message="Khoản này thuộc danh mục nào?",
+            fields=["category_slug"],
+        )
+    if "transaction_type" in normalized_fields:
+        return Clarification(
+            message="Đây là khoản chi hay khoản thu?",
+            fields=["transaction_type"],
+        )
+    if "currency" in normalized_fields:
+        return Clarification(
+            message="Bạn muốn ghi giao dịch này bằng đơn vị tiền nào?",
+            fields=["currency"],
+        )
+    if "description" in normalized_fields:
+        return Clarification(
+            message="Bạn muốn mô tả giao dịch này là gì?",
+            fields=["description"],
+        )
+
+    return Clarification(
+        message="Mình cần bạn xác nhận thêm thông tin trước khi ghi sổ.",
+        fields=normalized_fields,
+    )
+
+
+def _clarification_from_validation_error(message: str) -> Clarification:
+    if "category" in message:
+        return Clarification(
+            message="Khoản này thuộc danh mục nào?",
+            fields=["category_slug"],
+        )
+    if "transaction_type" in message or "expense and income" in message:
+        return Clarification(
+            message="Đây là khoản chi hay khoản thu?",
+            fields=["transaction_type"],
+        )
+    if "amount_minor" in message:
+        return Clarification(
+            message="Bạn muốn ghi khoản này với số tiền bao nhiêu?",
+            fields=["amount_minor"],
+        )
+    if "currency" in message:
+        return Clarification(
+            message="Bạn muốn ghi giao dịch này bằng đơn vị tiền nào?",
+            fields=["currency"],
+        )
+    return Clarification(
+        message="Mình cần bạn xác nhận thêm thông tin trước khi ghi sổ.",
+        fields=[],
+    )
+
+
+def _build_confirmation_clarification(
+    result: TransactionParseResult,
+) -> Clarification | None:
+    if result.confidence is not Confidence.LOW:
+        return None
+    return Clarification(
+        message="Mình hiểu giao dịch này nhưng cần bạn xác nhận trước khi ghi sổ.",
+        fields=[],
     )
 
 

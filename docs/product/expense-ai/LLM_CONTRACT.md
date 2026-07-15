@@ -134,6 +134,11 @@ Parse draft API behavior:
 - The parse API must not create transactions or update account balances.
 - Unknown or unsupported input returns `intent = "unknown"`, low confidence, `needs_confirmation = true`, and no draft.
 - Provider failures map to safe API errors without exposing raw model output.
+- Ambiguous, incomplete, or invalid create-transaction output returns `needs_confirmation = true`, no `draft_id`, no draft, and a deterministic clarification message.
+- Missing amount asks for `amount_minor`.
+- Missing, invalid, or mismatched category asks for `category_slug`.
+- Unknown intent asks the user to clarify intent.
+- Complete and valid low-confidence drafts are persisted as pending drafts and still require explicit confirmation before ledger mutation.
 
 Confirm draft API behavior:
 

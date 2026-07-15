@@ -99,6 +99,7 @@ def test_ai_parse_accepts_vietnamese_sample_with_default_fake_provider(
     assert payload["needs_confirmation"] is False
     assert payload["confidence"] == "high"
     assert payload["missing_fields"] == []
+    assert payload["clarification"] is None
     draft = payload["draft"]
     assert isinstance(draft, dict)
     assert draft["type"] == "expense"
@@ -131,7 +132,58 @@ def test_ai_parse_returns_unknown_low_confidence_for_unparseable_input(
         "draft": None,
         "needs_confirmation": True,
         "confidence": "low",
-        "missing_fields": ["intent", "amount_minor", "category_slug"],
+        "missing_fields": ["intent"],
+        "clarification": {
+            "message": (
+                "Mình chưa hiểu bạn muốn ghi giao dịch hay hỏi thông tin gì. "
+                "Bạn có thể nói rõ hơn không?"
+            ),
+            "fields": ["intent"],
+        },
+    }
+    assert asyncio.run(count_ai_transaction_drafts(session_factory)) == 0
+
+
+def test_ai_parse_missing_amount_returns_clarification_without_draft(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    asyncio.run(seed_cash_account(session_factory, balance_minor=1_000_000))
+
+    payload = parse_payload(client, "Hôm nay tôi ăn trưa")
+
+    assert payload["intent"] == "create_transaction"
+    assert payload["draft_id"] is None
+    assert payload["draft"] is None
+    assert payload["needs_confirmation"] is True
+    assert payload["confidence"] == "low"
+    assert payload["missing_fields"] == ["amount_minor"]
+    assert payload["clarification"] == {
+        "message": "Bạn muốn ghi khoản này với số tiền bao nhiêu?",
+        "fields": ["amount_minor"],
+    }
+    assert asyncio.run(count_ai_transaction_drafts(session_factory)) == 0
+    assert asyncio.run(count_transactions(session_factory)) == 0
+    account = asyncio.run(fetch_account(session_factory))
+    assert account.current_balance_minor == 1_000_000
+
+
+def test_ai_parse_missing_category_returns_clarification_without_draft(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+
+    payload = parse_payload(client, "Hôm nay tôi tiêu 35k")
+
+    assert payload["intent"] == "create_transaction"
+    assert payload["draft_id"] is None
+    assert payload["draft"] is None
+    assert payload["needs_confirmation"] is True
+    assert payload["confidence"] == "low"
+    assert payload["missing_fields"] == ["category_slug"]
+    assert payload["clarification"] == {
+        "message": "Khoản này thuộc danh mục nào?",
+        "fields": ["category_slug"],
     }
     assert asyncio.run(count_ai_transaction_drafts(session_factory)) == 0
 
@@ -205,10 +257,10 @@ def test_ai_parse_maps_provider_errors_to_safe_api_errors(
     assert response.json()["detail"] == expected_detail
 
 
-def test_ai_parse_rejects_provider_output_with_unknown_category(
+def test_ai_parse_invalid_category_returns_clarification_without_draft(
     transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
-    client, _session_factory = transaction_api_client
+    client, session_factory = transaction_api_client
     override_provider(
         client,
         StaticLlmProvider(result=create_transaction_result(category_slug="unknown")),
@@ -219,14 +271,22 @@ def test_ai_parse_rejects_provider_output_with_unknown_category(
         json={"message": "Hôm nay tôi tiêu 35k vào ăn trưa"},
     )
 
-    assert response.status_code == 422
-    assert "unknown category" in response.json()["detail"]
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["draft_id"] is None
+    assert payload["draft"] is None
+    assert payload["missing_fields"] == ["category_slug"]
+    assert payload["clarification"] == {
+        "message": "Khoản này thuộc danh mục nào?",
+        "fields": ["category_slug"],
+    }
+    assert asyncio.run(count_ai_transaction_drafts(session_factory)) == 0
 
 
-def test_ai_parse_rejects_income_category_for_expense(
+def test_ai_parse_income_category_for_expense_returns_clarification_without_draft(
     transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
-    client, _session_factory = transaction_api_client
+    client, session_factory = transaction_api_client
     override_provider(
         client,
         StaticLlmProvider(result=create_transaction_result(category_slug="salary")),
@@ -237,17 +297,31 @@ def test_ai_parse_rejects_income_category_for_expense(
         json={"message": "Hôm nay tôi tiêu 35k vào ăn trưa"},
     )
 
-    assert response.status_code == 422
-    assert "cannot be used for expense" in response.json()["detail"]
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["draft_id"] is None
+    assert payload["draft"] is None
+    assert payload["missing_fields"] == ["category_slug"]
+    assert payload["clarification"] == {
+        "message": "Khoản này thuộc danh mục nào?",
+        "fields": ["category_slug"],
+    }
+    assert asyncio.run(count_ai_transaction_drafts(session_factory)) == 0
 
 
-def test_ai_parse_rejects_missing_high_confidence_amount(
+def test_ai_parse_income_with_expense_category_returns_clarification_without_draft(
     transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
 ) -> None:
-    client, _session_factory = transaction_api_client
+    client, session_factory = transaction_api_client
     override_provider(
         client,
-        StaticLlmProvider(result=create_transaction_result(amount_minor=None)),
+        StaticLlmProvider(
+            result=create_transaction_result(
+                transaction_type="income",
+                category_slug="food",
+                description="ăn trưa",
+            )
+        ),
     )
 
     response = client.post(
@@ -255,8 +329,79 @@ def test_ai_parse_rejects_missing_high_confidence_amount(
         json={"message": "Hôm nay tôi tiêu 35k vào ăn trưa"},
     )
 
-    assert response.status_code == 422
-    assert response.json()["detail"] == "amount_minor is required"
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["draft_id"] is None
+    assert payload["draft"] is None
+    assert payload["missing_fields"] == ["category_slug"]
+    assert payload["clarification"] == {
+        "message": "Khoản này thuộc danh mục nào?",
+        "fields": ["category_slug"],
+    }
+    assert asyncio.run(count_ai_transaction_drafts(session_factory)) == 0
+
+
+def test_ai_parse_missing_high_confidence_amount_returns_clarification(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    override_provider(
+        client,
+        StaticLlmProvider(
+            result=create_transaction_result(
+                amount_minor=None,
+                missing_fields=["amount_minor"],
+                needs_confirmation=True,
+                confidence=Confidence.LOW,
+            )
+        ),
+    )
+
+    payload = parse_payload(client)
+
+    assert payload["draft_id"] is None
+    assert payload["draft"] is None
+    assert payload["missing_fields"] == ["amount_minor"]
+    assert payload["clarification"] == {
+        "message": "Bạn muốn ghi khoản này với số tiền bao nhiêu?",
+        "fields": ["amount_minor"],
+    }
+    assert asyncio.run(count_ai_transaction_drafts(session_factory)) == 0
+
+
+def test_ai_parse_complete_low_confidence_valid_draft_is_persisted_for_confirmation(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    asyncio.run(seed_cash_account(session_factory, balance_minor=1_000_000))
+    override_provider(
+        client,
+        StaticLlmProvider(
+            result=create_transaction_result(
+                needs_confirmation=True,
+                confidence=Confidence.LOW,
+            )
+        ),
+    )
+
+    payload = parse_payload(client)
+
+    assert isinstance(payload["draft_id"], str)
+    assert isinstance(payload["draft"], dict)
+    assert payload["needs_confirmation"] is True
+    assert payload["confidence"] == "low"
+    assert payload["clarification"] == {
+        "message": "Mình hiểu giao dịch này nhưng cần bạn xác nhận trước khi ghi sổ.",
+        "fields": [],
+    }
+    assert asyncio.run(count_transactions(session_factory)) == 0
+    account = asyncio.run(fetch_account(session_factory))
+    assert account.current_balance_minor == 1_000_000
+    stored_draft = asyncio.run(
+        fetch_ai_transaction_draft(session_factory, str(payload["draft_id"]))
+    )
+    assert stored_draft.status == "pending"
+    assert stored_draft.confidence == "low"
 
 
 def test_ai_parse_does_not_create_transaction_or_change_balance(
