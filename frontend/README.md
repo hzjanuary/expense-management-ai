@@ -4,18 +4,18 @@ Next.js frontend shell for Pocket Ledger AI.
 
 ## Scope
 
-US-102 provides a placeholder-only application shell:
+The frontend currently provides:
 
 - App Router layout.
 - Dashboard route.
 - Static summary cards.
 - Chat entry placeholder.
-- Transaction history placeholder.
+- Recent transactions UI backed by the existing backend list endpoint.
 - Budget settings placeholder.
 - Shared VND money formatting helper.
 - Typed access to `NEXT_PUBLIC_API_BASE_URL`.
 
-The shell does not fetch backend data or submit mutations yet.
+The shell does not submit mutations yet.
 
 ## Configuration
 
@@ -25,7 +25,8 @@ Create `.env.local` if you need to override the backend URL:
 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8010
 ```
 
-The app renders without a running backend.
+The dashboard renders without a running backend. Recent transactions show a
+safe error state until the backend is available.
 
 ## Setup
 

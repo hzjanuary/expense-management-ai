@@ -2,7 +2,7 @@ import { AppShell } from "@/components/app-shell";
 import { BudgetSettingsPlaceholder } from "@/components/budget-settings-placeholder";
 import { ChatEntryPlaceholder } from "@/components/chat-entry-placeholder";
 import { DashboardSummaryCards } from "@/components/dashboard-summary-cards";
-import { TransactionHistoryPlaceholder } from "@/components/transaction-history-placeholder";
+import { RecentTransactions } from "@/components/recent-transactions";
 
 export default function DashboardPage() {
   return (
@@ -12,7 +12,7 @@ export default function DashboardPage() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
           <div className="grid gap-6">
             <ChatEntryPlaceholder />
-            <TransactionHistoryPlaceholder />
+            <RecentTransactions />
           </div>
           <BudgetSettingsPlaceholder />
         </div>
