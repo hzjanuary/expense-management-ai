@@ -1,9 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import Select, func, or_, select
+from sqlalchemy import Select, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.db.models import AccountModel, AiTransactionDraftModel, TransactionModel
+from app.db.models import (
+    AccountModel,
+    AiTransactionDraftModel,
+    BudgetPeriodModel,
+    CategoryBudgetModel,
+    TransactionModel,
+)
 
 
 async def get_default_account(
@@ -124,6 +131,69 @@ async def get_ai_transaction_draft(
     return result.scalar_one_or_none()
 
 
+async def get_budget_period(
+    session: AsyncSession,
+    *,
+    year: int,
+    month: int,
+    currency: str,
+) -> BudgetPeriodModel | None:
+    result = await session.execute(
+        select(BudgetPeriodModel)
+        .options(selectinload(BudgetPeriodModel.category_budgets))
+        .where(
+            BudgetPeriodModel.year == year,
+            BudgetPeriodModel.month == month,
+            BudgetPeriodModel.currency == currency,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def create_budget_period(
+    session: AsyncSession,
+    *,
+    year: int,
+    month: int,
+    currency: str,
+    total_budget_minor: int,
+) -> BudgetPeriodModel:
+    budget_period = BudgetPeriodModel(
+        year=year,
+        month=month,
+        currency=currency,
+        total_budget_minor=total_budget_minor,
+    )
+    session.add(budget_period)
+    await session.flush()
+    return budget_period
+
+
+async def replace_category_budgets(
+    session: AsyncSession,
+    *,
+    budget_period_id: str,
+    category_budgets: list[tuple[str, int]],
+) -> list[CategoryBudgetModel]:
+    await session.execute(
+        delete(CategoryBudgetModel).where(
+            CategoryBudgetModel.budget_period_id == budget_period_id
+        )
+    )
+
+    rows = [
+        CategoryBudgetModel(
+            budget_period_id=budget_period_id,
+            category_slug=category_slug,
+            budget_minor=budget_minor,
+        )
+        for category_slug, budget_minor in category_budgets
+    ]
+    session.add_all(rows)
+    await session.flush()
+    return rows
+
+
 async def list_transactions(
     session: AsyncSession,
     *,
@@ -213,6 +283,45 @@ async def get_monthly_category_breakdown(
         (str(category_slug), str(transaction_type), int(amount_minor))
         for category_slug, transaction_type, amount_minor in result.all()
     ]
+
+
+async def get_monthly_expense_total(
+    session: AsyncSession,
+    *,
+    month_start: datetime,
+    month_end: datetime,
+) -> int:
+    result = await session.execute(
+        select(func.coalesce(func.sum(TransactionModel.amount_minor), 0)).where(
+            TransactionModel.deleted_at.is_(None),
+            TransactionModel.type == "expense",
+            TransactionModel.occurred_at >= month_start,
+            TransactionModel.occurred_at < month_end,
+        )
+    )
+    return int(result.scalar_one())
+
+
+async def get_monthly_expense_totals_by_category(
+    session: AsyncSession,
+    *,
+    month_start: datetime,
+    month_end: datetime,
+) -> dict[str, int]:
+    result = await session.execute(
+        select(
+            TransactionModel.category_slug,
+            func.coalesce(func.sum(TransactionModel.amount_minor), 0),
+        )
+        .where(
+            TransactionModel.deleted_at.is_(None),
+            TransactionModel.type == "expense",
+            TransactionModel.occurred_at >= month_start,
+            TransactionModel.occurred_at < month_end,
+        )
+        .group_by(TransactionModel.category_slug)
+    )
+    return {str(category_slug): int(total) for category_slug, total in result.all()}
 
 
 def _filtered_transactions_statement(

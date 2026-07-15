@@ -295,6 +295,121 @@ Rules:
 - Category breakdown is ordered by type, amount descending, then category slug.
 - No dashboard totals are stored.
 
+## Monthly Budget Setup
+
+```http
+PUT /api/v1/budgets/monthly/{year}/{month}
+```
+
+Request:
+
+```json
+{
+  "currency": "VND",
+  "total_budget_minor": 5000000,
+  "category_budgets": [
+    {
+      "category_slug": "food",
+      "budget_minor": 2000000
+    },
+    {
+      "category_slug": "transport",
+      "budget_minor": 800000
+    }
+  ]
+}
+```
+
+Response:
+
+```json
+{
+  "year": 2026,
+  "month": 7,
+  "currency": "VND",
+  "total_budget_minor": 5000000,
+  "category_budgets": [
+    {
+      "category_slug": "food",
+      "budget_minor": 2000000
+    },
+    {
+      "category_slug": "transport",
+      "budget_minor": 800000
+    }
+  ]
+}
+```
+
+```http
+GET /api/v1/budgets/monthly/{year}/{month}?currency=VND
+```
+
+Rules:
+
+- Budget setup is scoped by year, month, and currency.
+- Missing budget setup returns `404`.
+- `year` must be between `1900` and `9999`.
+- `month` must be between `1` and `12`.
+- Budget amounts use integer minor units and may be zero.
+- Float, string, and negative budget amounts are rejected.
+- Category budget slugs must be valid expense categories.
+- Income categories, unknown categories, and duplicate category slugs are rejected.
+- Category budget totals cannot exceed the total monthly budget.
+- Updating an existing budget replaces the submitted category budget list.
+- Budget setup does not store spent or remaining values; remaining calculations belong to budget summary/progress stories.
+- Budget setup must not mutate transactions or account balances.
+
+## Monthly Budget Remaining
+
+```http
+GET /api/v1/budgets/monthly/{year}/{month}/remaining?currency=VND
+```
+
+Response:
+
+```json
+{
+  "year": 2026,
+  "month": 7,
+  "currency": "VND",
+  "total_budget_minor": 5000000,
+  "total_expense_minor": 35000,
+  "total_remaining_minor": 4965000,
+  "categories": [
+    {
+      "category_slug": "food",
+      "budget_minor": 2000000,
+      "spent_minor": 35000,
+      "remaining_minor": 1965000,
+      "is_over_budget": false
+    },
+    {
+      "category_slug": "transport",
+      "budget_minor": 800000,
+      "spent_minor": 0,
+      "remaining_minor": 800000,
+      "is_over_budget": false
+    }
+  ]
+}
+```
+
+Rules:
+
+- Missing budget setup returns `404`.
+- Invalid year, month, or currency is rejected with `422`.
+- `spent_minor` is computed from non-deleted expense transactions in the selected month.
+- Income transactions, soft-deleted transactions, and transactions outside the selected month do not count as spending.
+- `remaining_minor = budget_minor - spent_minor`.
+- `is_over_budget = spent_minor > budget_minor`.
+- `total_expense_minor` includes all non-deleted expense transactions in the selected month, including categories without configured category budgets.
+- `total_remaining_minor = total_budget_minor - total_expense_minor`.
+- The response returns configured category budgets only; unbudgeted categories are not invented.
+- Categories are ordered by over-budget first, then spent descending, then category slug ascending.
+- Spent and remaining totals are computed at read time and are not stored.
+- Budget remaining reads must not mutate budgets, transactions, accounts, or AI draft rows.
+
 ## Provider Status
 
 ```http

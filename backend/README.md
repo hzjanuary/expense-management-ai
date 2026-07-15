@@ -22,12 +22,15 @@ Implemented:
 - LLM provider interface and Ollama adapter
 - AI parse draft API
 - AI draft confirmation API
+- monthly budget setup API
+- monthly budget remaining API
 - account and transaction persistence tables
 - AI transaction draft persistence table
+- budget setup persistence tables
 
 Not implemented yet:
 
-- budgets
+- budget dashboard progress UI
 - AI history clearing
 - frontend
 
@@ -127,6 +130,39 @@ Dashboard summary:
 ```bash
 curl -i 'http://127.0.0.1:8000/api/v1/dashboard/summary?month=2026-07'
 ```
+
+Monthly budget setup:
+
+```bash
+curl -i -X PUT http://127.0.0.1:8000/api/v1/budgets/monthly/2026/7 \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "currency": "VND",
+    "total_budget_minor": 5000000,
+    "category_budgets": [
+      {"category_slug": "food", "budget_minor": 2000000},
+      {"category_slug": "transport", "budget_minor": 800000}
+    ]
+  }'
+```
+
+Read configured budget setup:
+
+```bash
+curl -i 'http://127.0.0.1:8000/api/v1/budgets/monthly/2026/7?currency=VND'
+```
+
+Budget setup stores configured totals only. Spent and remaining budget values
+are not calculated by US-401.
+
+Read computed budget remaining values:
+
+```bash
+curl -i 'http://127.0.0.1:8000/api/v1/budgets/monthly/2026/7/remaining?currency=VND'
+```
+
+Budget remaining values are computed from non-deleted monthly expense
+transactions and are not persisted.
 
 ## LLM Providers
 

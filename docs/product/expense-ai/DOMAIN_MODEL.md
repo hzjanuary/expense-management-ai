@@ -134,7 +134,7 @@ Validation:
 CategoryBudget
 - id
 - budget_period_id
-- category_id
+- category_slug
 - budget_minor
 - spent_minor
 - remaining_minor
@@ -144,6 +144,12 @@ MVP rule:
 
 - `budget_minor` may be stored.
 - `spent_minor` and `remaining_minor` should be computed from non-deleted transactions.
+- Budget setup stores valid expense category slugs only.
+- Income categories and unknown category slugs are rejected for category budgets.
+- One category budget may exist per budget period and category slug.
+- Remaining budget views compute category spending from non-deleted expense transactions in the selected month.
+- Income transactions, soft-deleted transactions, and transactions outside the selected month do not count as category spending.
+- Total monthly expense includes all non-deleted monthly expense transactions, including unbudgeted categories.
 
 ## ChatMessage
 
@@ -180,4 +186,3 @@ Rules:
 - A parse attempt may create a draft, not a transaction.
 - `created_transaction_id` is set only after a confirmed draft creates a ledger transaction.
 - Raw text may be stored for debugging, but clearing AI history must remove it.
-

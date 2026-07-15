@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -127,4 +127,73 @@ class AiTransactionDraftModel(Base):
         nullable=False,
         default=utc_now,
         onupdate=utc_now,
+    )
+
+
+class BudgetPeriodModel(Base):
+    __tablename__ = "budget_periods"
+    __table_args__ = (
+        UniqueConstraint(
+            "year",
+            "month",
+            "currency",
+            name="uq_budget_periods_year_month_currency",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_string)
+    month: Mapped[int] = mapped_column(Integer, nullable=False)
+    year: Mapped[int] = mapped_column(Integer, nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    total_budget_minor: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+
+    category_budgets: Mapped[list["CategoryBudgetModel"]] = relationship(
+        back_populates="budget_period",
+        cascade="all, delete-orphan",
+    )
+
+
+class CategoryBudgetModel(Base):
+    __tablename__ = "category_budgets"
+    __table_args__ = (
+        UniqueConstraint(
+            "budget_period_id",
+            "category_slug",
+            name="uq_category_budgets_period_category",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uuid_string)
+    budget_period_id: Mapped[str] = mapped_column(
+        ForeignKey("budget_periods.id"),
+        nullable=False,
+        index=True,
+    )
+    category_slug: Mapped[str] = mapped_column(String(80), nullable=False)
+    budget_minor: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+    )
+
+    budget_period: Mapped[BudgetPeriodModel] = relationship(
+        back_populates="category_budgets",
     )

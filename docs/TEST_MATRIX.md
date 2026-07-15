@@ -35,8 +35,8 @@ implemented until tests or validation evidence exist.
 | US-303 | AI parse returns a draft for Vietnamese shorthand without ledger mutation | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-304 | Confirmed AI draft creates exactly one transaction | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app`; Alembic current/upgrade/downgrade/upgrade on isolated SQLite DB |
 | US-305 | Low-confidence AI output asks clarification and does not mutate ledger | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
-| US-401 | Monthly and category budgets are validated and persisted | yes | yes | yes | no | planned | none |
-| US-402 | Category remaining budget is computed and displayed | yes | yes | yes | no | planned | none |
+| US-401 | Monthly and category budgets are validated and persisted | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app`; Alembic current/upgrade/downgrade/upgrade on isolated SQLite DB |
+| US-402 | Category remaining budget is computed from configured budgets and transactions | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-403 | Recent transactions UI updates after creation | yes | yes | yes | yes | planned | none |
 | US-404 | Chat-to-ledger UI records canonical expense after confirmation | yes | yes | yes | yes | planned | none |
 | US-501 | Spending questions answer from DB totals | yes | yes | yes | no | planned | none |

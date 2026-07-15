@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.routes.ai import router as ai_router
+from app.api.routes.budgets import router as budgets_router
 from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.health import router as health_router
 from app.api.routes.transactions import router as transactions_router
@@ -17,6 +18,7 @@ def create_app() -> FastAPI:
     api.add_middleware(RequestContextMiddleware)
     api.include_router(health_router)
     api.include_router(ai_router)
+    api.include_router(budgets_router)
     api.include_router(dashboard_router)
     api.include_router(transactions_router)
 
