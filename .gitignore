@@ -31,6 +31,7 @@ __pycache__/
 *.egg-info/
 
 # Local web UI build and test output.
+.next/
 desktop-dist/
 test-results/
 tsconfig.tsbuildinfo

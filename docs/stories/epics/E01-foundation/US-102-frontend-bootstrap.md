@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -25,7 +25,9 @@ Create the initial Next.js web shell with dashboard, chat input, transaction his
 - Chat input placeholder exists.
 - Transaction history placeholder exists.
 - Budget settings placeholder exists.
-- Frontend lint/typecheck passes.
+- Frontend lint/typecheck/build passes.
+- Frontend renders without backend connectivity.
+- No real transaction, dashboard, budget, AI, chat, export, delete, or auth behavior is implemented.
 
 ## Design Notes
 
@@ -35,22 +37,30 @@ Create the initial Next.js web shell with dashboard, chat input, transaction his
 - Tables: none.
 - Domain rules: no financial mutation in frontend.
 - UI surfaces: dashboard shell, chat panel, history, budget settings.
+- Package manager: npm.
+- No frontend test runner is configured in US-102; proof is lint, typecheck, build, and local startup smoke.
 
 ## Validation
 
 | Layer | Expected proof |
 | --- | --- |
-| Unit | Component smoke tests once configured. |
+| Unit | Not configured for US-102; no test runner added. |
 | Integration | Not required for placeholder shell. |
-| E2E | Browser smoke test that main route loads. |
-| Platform | Local frontend startup. |
-| Release | Lint/typecheck. |
+| E2E | Local `/dashboard` smoke returned HTTP 200. |
+| Platform | Local frontend startup passed. |
+| Release | Lint/typecheck/build passed. |
 
 ## Harness Delta
 
-Add frontend proof commands when package scripts exist.
+- Added frontend npm proof commands: `lint`, `typecheck`, and `build`.
+- Added root and frontend README command documentation.
 
 ## Evidence
 
-TBD.
-
+- `cd frontend && npm install` - passed; generated `package-lock.json`.
+- `cd frontend && npm run lint` - passed.
+- `cd frontend && npm run typecheck` - passed.
+- `cd frontend && npm run build` - passed.
+- `cd frontend && npm run dev -- --hostname 127.0.0.1 --port 3000` - passed with local server ready.
+- `curl -I http://127.0.0.1:3000/dashboard` - passed, returned `HTTP/1.1 200 OK`.
+- `git diff --check` - passed.

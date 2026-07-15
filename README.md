@@ -10,6 +10,31 @@ decisions future agents should inherit.
 
 The app is what users touch. The harness is what agents touch.
 
+## Pocket Ledger AI Local Surfaces
+
+This repository now contains the local-first expense manager implementation
+surfaces under:
+
+- `backend/` — FastAPI backend.
+- `frontend/` — Next.js frontend shell.
+
+Frontend setup and validation:
+
+```bash
+cd frontend
+npm install
+npm run lint
+npm run typecheck
+npm run build
+```
+
+Start the frontend shell:
+
+```bash
+cd frontend
+npm run dev
+```
+
 ## Why Star This Repo
 
 Star this repo if you want practical, reusable patterns for making AI-assisted
