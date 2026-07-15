@@ -410,6 +410,79 @@ Rules:
 - Spent and remaining totals are computed at read time and are not stored.
 - Budget remaining reads must not mutate budgets, transactions, accounts, or AI draft rows.
 
+## Query Spending
+
+```http
+POST /api/v1/ai/query-spending
+```
+
+Request:
+
+```json
+{
+  "message": "Tháng này tôi ăn uống hết bao nhiêu?",
+  "locale": "vi-VN",
+  "currency": "VND",
+  "timezone": "Asia/Ho_Chi_Minh"
+}
+```
+
+Response:
+
+```json
+{
+  "intent": "query_spending",
+  "category_slug": "food",
+  "currency": "VND",
+  "date_range": {
+    "start": "2026-07-01T00:00:00+07:00",
+    "end": "2026-08-01T00:00:00+07:00",
+    "label": "this_month"
+  },
+  "amount_minor": 35000,
+  "transaction_count": 1,
+  "answer": "Tháng này bạn đã chi 35.000₫ cho food.",
+  "needs_clarification": false,
+  "clarification": null
+}
+```
+
+Clarification response:
+
+```json
+{
+  "intent": "query_spending",
+  "category_slug": null,
+  "currency": "VND",
+  "date_range": null,
+  "amount_minor": null,
+  "transaction_count": 0,
+  "answer": null,
+  "needs_clarification": true,
+  "clarification": {
+    "message": "Bạn muốn hỏi chi tiêu cho danh mục nào?",
+    "fields": ["category_slug"]
+  }
+}
+```
+
+Rules:
+
+- The provider may classify intent, category, currency, and date range.
+- The provider must not answer or invent totals.
+- The API computes `amount_minor` and `transaction_count` from persisted ledger records.
+- US-501 supports `date_range.label = "this_month"`.
+- `this_month` uses the request timezone and spans the first instant of the current month inclusive to the first instant of the next month exclusive.
+- Category must be a valid expense category.
+- Income categories, unknown categories, and unsupported date ranges return a safe clarification response.
+- Empty messages and invalid currency/timezone values are rejected with `422`.
+- Provider unavailable returns `503`.
+- Provider timeout returns `504`.
+- Invalid provider structured output returns `502`.
+- The endpoint counts only non-deleted expense transactions matching the category, currency, and date range.
+- Income transactions, other categories, out-of-range transactions, and soft-deleted transactions do not count.
+- The endpoint must not mutate transactions, accounts, budgets, or AI draft rows.
+
 ## Provider Status
 
 ```http

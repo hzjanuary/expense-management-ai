@@ -22,6 +22,7 @@ Implemented:
 - LLM provider interface and Ollama adapter
 - AI parse draft API
 - AI draft confirmation API
+- AI query spending API
 - monthly budget setup API
 - monthly budget remaining API
 - account and transaction persistence tables
@@ -189,6 +190,15 @@ curl -i -X POST http://127.0.0.1:8000/api/v1/ai/confirm \
 
 Confirmation revalidates the stored draft, creates exactly one ledger
 transaction with `source = "ai_chat"`, and marks the draft confirmed.
+
+Ask a spending question. The provider classifies the query, but the amount is
+computed from persisted ledger records:
+
+```bash
+curl -i -X POST http://127.0.0.1:8000/api/v1/ai/query-spending \
+  -H 'Content-Type: application/json' \
+  -d '{"message": "Tháng này tôi ăn uống hết bao nhiêu?"}'
+```
 
 Normal tests use mocked HTTP behavior for Ollama. To opt into the real local
 Ollama smoke test:

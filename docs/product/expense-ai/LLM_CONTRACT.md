@@ -49,6 +49,7 @@ Transaction parse output:
   "merchant": null,
   "occurred_at_text": "hôm nay",
   "occurred_at_iso": null,
+  "date_range_label": null,
   "needs_confirmation": false,
   "confidence": "high",
   "missing_fields": []
@@ -209,3 +210,8 @@ LLM output may extract the phrase, but final normalization must be deterministic
 - The answer must be computed from local ledger records.
 - The answer must not rely on provider-generated totals.
 - Responses must include the amount and explicit date range when answering a query.
+- For US-501, query classification uses `intent = "query_spending"`, a valid expense `category_slug`, `currency`, and `date_range_label = "this_month"`.
+- Food query phrases such as `ăn uống`, `ăn ngoài`, and `food` map to category `food`.
+- Missing, invalid, or income-only categories should produce clarification rather than a fabricated total.
+- Unsupported date ranges should produce clarification.
+- The backend computes `amount_minor` and `transaction_count` from non-deleted expense transactions only.

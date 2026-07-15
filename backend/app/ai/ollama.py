@@ -25,7 +25,10 @@ Use intent "unknown" when the user intent is unsupported. Use
 needs_confirmation=true for ambiguous cases. Do not invent amounts, categories,
 merchants, or dates. Vietnamese amount rules: 35k, 35 nghìn, and 35 ngàn mean
 35000; 1tr, 1 triệu, and 1m mean 1000000. You are not allowed to perform ledger
-mutations, create transactions, update balances, or persist records."""
+mutations, create transactions, update balances, or persist records. For
+spending questions, classify intent as query_spending and extract category_slug,
+currency, and date_range_label only. For US-501, supported query date range is
+this_month. Do not answer totals yourself."""
 
 
 @dataclass(slots=True)

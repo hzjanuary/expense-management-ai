@@ -8,7 +8,11 @@ import { TransactionRow } from "@/components/transaction-row";
 
 type LoadState = "idle" | "loading" | "loaded" | "error";
 
-export function RecentTransactions() {
+type RecentTransactionsProps = {
+  refreshSignal?: number;
+};
+
+export function RecentTransactions({ refreshSignal = 0 }: RecentTransactionsProps) {
   const [transactions, setTransactions] = useState<TransactionListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [state, setState] = useState<LoadState>("idle");
@@ -27,7 +31,7 @@ export function RecentTransactions() {
 
   useEffect(() => {
     void loadTransactions();
-  }, [loadTransactions]);
+  }, [loadTransactions, refreshSignal]);
 
   const isLoading = state === "idle" || state === "loading";
   const isRefreshing = state === "loaded";
@@ -94,7 +98,7 @@ function EmptyState() {
     <div className="bg-white p-4">
       <p className="text-sm font-medium text-ledger-ink">No transactions yet.</p>
       <p className="mt-1 text-sm text-ledger-muted">
-        Add your first expense from the API or future chat flow.
+        Add your first expense from the API or the chat flow.
       </p>
     </div>
   );

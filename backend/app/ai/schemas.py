@@ -55,6 +55,7 @@ class TransactionParseResult(BaseModel):
     merchant: str | None = None
     occurred_at_text: str | None = None
     occurred_at_iso: str | None = None
+    date_range_label: str | None = None
     needs_confirmation: bool
     confidence: Confidence
     missing_fields: list[str] = Field(default_factory=list)
