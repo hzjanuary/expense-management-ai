@@ -23,6 +23,7 @@ User text
 
 - `create_transaction`
 - `query_spending`
+- `budget_remaining`
 - `set_budget`
 - `unknown`
 
@@ -58,7 +59,7 @@ Transaction parse output:
 
 Expected enum values:
 
-- `intent`: `create_transaction`, `query_spending`, `set_budget`, `unknown`
+- `intent`: `create_transaction`, `query_spending`, `budget_remaining`, `set_budget`, `unknown`
 - `transaction_type`: `expense`, `income`, `transfer`
 - `confidence`: `high`, `medium`, `low`
 
@@ -215,3 +216,15 @@ LLM output may extract the phrase, but final normalization must be deterministic
 - Missing, invalid, or income-only categories should produce clarification rather than a fabricated total.
 - Unsupported date ranges should produce clarification.
 - The backend computes `amount_minor` and `transaction_count` from non-deleted expense transactions only.
+
+## Budget Remaining Query Rules
+
+- The LLM may classify a budget remaining intent and extract category/date range.
+- The answer must be computed from configured local budgets and local ledger records.
+- The answer must not rely on provider-generated budget totals.
+- For US-502, query classification uses `intent = "budget_remaining"`, a valid expense `category_slug`, `currency`, and `date_range_label = "this_month"`.
+- Food budget phrases such as `tiền ăn`, `ăn uống`, `ăn ngoài`, and `food` map to category `food`.
+- Missing, invalid, or income-only categories should produce clarification rather than a fabricated budget answer.
+- Unsupported date ranges should produce clarification.
+- Missing budget setup should return an explicit no-budget answer rather than fabricated values.
+- The backend computes `spent_minor`, `remaining_minor`, `is_over_budget`, and `transaction_count` from configured budgets and non-deleted expense transactions only.

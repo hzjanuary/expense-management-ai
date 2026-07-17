@@ -23,6 +23,7 @@ Implemented:
 - AI parse draft API
 - AI draft confirmation API
 - AI query spending API
+- AI query budget remaining API
 - monthly budget setup API
 - monthly budget remaining API
 - account and transaction persistence tables
@@ -198,6 +199,15 @@ computed from persisted ledger records:
 curl -i -X POST http://127.0.0.1:8000/api/v1/ai/query-spending \
   -H 'Content-Type: application/json' \
   -d '{"message": "Tháng này tôi ăn uống hết bao nhiêu?"}'
+```
+
+Ask a budget remaining question. The provider classifies the query, but the
+remaining budget is computed from configured budgets and persisted transactions:
+
+```bash
+curl -i -X POST http://127.0.0.1:8000/api/v1/ai/query-budget-remaining \
+  -H 'Content-Type: application/json' \
+  -d '{"message": "Còn bao nhiêu tiền ăn tháng này?"}'
 ```
 
 Normal tests use mocked HTTP behavior for Ollama. To opt into the real local

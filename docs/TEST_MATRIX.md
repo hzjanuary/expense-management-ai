@@ -40,7 +40,7 @@ implemented until tests or validation evidence exist.
 | US-403 | Recent Transactions UI reads transaction list and supports refresh | yes | yes | yes | yes | implemented | `npm run lint`; `npm run typecheck`; `npm run build`; local `/dashboard` smoke returned `HTTP 200` |
 | US-404 | Chat-to-ledger UI records canonical expense after confirmation | yes | yes | yes | yes | implemented | `npm run lint`; `npm run typecheck`; `npm run build`; local `/dashboard` smoke returned `HTTP 200` |
 | US-501 | Spending questions answer from DB totals | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
-| US-502 | Budget remaining questions use configured budgets and no-fabrication rules | yes | yes | yes | no | planned | none |
+| US-502 | Budget remaining questions use configured budgets and no-fabrication rules | yes | yes | no | no | implemented | `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-503 | Spending breakdown questions compute top category deterministically | yes | yes | yes | no | planned | none |
 | US-601 | Export transactions as user-triggered CSV/JSON | yes | yes | yes | yes | planned | none |
 | US-602 | Soft delete excludes transactions from lists and totals | yes | yes | yes | no | planned | none |

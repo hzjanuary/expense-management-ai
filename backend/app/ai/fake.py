@@ -83,6 +83,33 @@ class FakeLlmProvider:
                 missing_fields=["category_slug"],
             )
 
+        if _is_food_budget_remaining_query_sample(request.message):
+            return TransactionParseResult(
+                intent=SupportedIntent.BUDGET_REMAINING,
+                transaction_type=None,
+                amount_minor=None,
+                currency=request.default_currency,
+                category_slug="food",
+                description=None,
+                merchant=None,
+                occurred_at_text=None,
+                occurred_at_iso=None,
+                date_range_label="this_month",
+                needs_confirmation=False,
+                confidence=Confidence.HIGH,
+                missing_fields=[],
+            )
+
+        if _is_missing_budget_remaining_category_sample(request.message):
+            return TransactionParseResult(
+                intent=SupportedIntent.BUDGET_REMAINING,
+                currency=request.default_currency,
+                date_range_label="this_month",
+                needs_confirmation=True,
+                confidence=Confidence.LOW,
+                missing_fields=["category_slug"],
+            )
+
         if _is_food_spending_query_sample(request.message):
             return TransactionParseResult(
                 intent=SupportedIntent.QUERY_SPENDING,
@@ -177,3 +204,27 @@ def _is_food_spending_query_sample(message: str) -> bool:
 def _is_missing_query_category_sample(message: str) -> bool:
     normalized = message.casefold()
     return "tháng này" in normalized and "bao nhiêu" in normalized
+
+
+def _is_food_budget_remaining_query_sample(message: str) -> bool:
+    normalized = message.casefold()
+    return (
+        "tháng này" in normalized
+        and "bao nhiêu" in normalized
+        and ("còn" in normalized or "ngân sách" in normalized or "budget" in normalized)
+        and (
+            "tiền ăn" in normalized
+            or "ăn uống" in normalized
+            or "ăn ngoài" in normalized
+            or "food" in normalized
+        )
+    )
+
+
+def _is_missing_budget_remaining_category_sample(message: str) -> bool:
+    normalized = message.casefold()
+    return (
+        "tháng này" in normalized
+        and "bao nhiêu" in normalized
+        and ("còn" in normalized or "ngân sách" in normalized or "budget" in normalized)
+    )

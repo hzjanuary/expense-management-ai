@@ -483,6 +483,87 @@ Rules:
 - Income transactions, other categories, out-of-range transactions, and soft-deleted transactions do not count.
 - The endpoint must not mutate transactions, accounts, budgets, or AI draft rows.
 
+## Query Budget Remaining
+
+```http
+POST /api/v1/ai/query-budget-remaining
+```
+
+Request:
+
+```json
+{
+  "message": "Còn bao nhiêu tiền ăn tháng này?",
+  "locale": "vi-VN",
+  "currency": "VND",
+  "timezone": "Asia/Ho_Chi_Minh"
+}
+```
+
+Response:
+
+```json
+{
+  "intent": "budget_remaining",
+  "category_slug": "food",
+  "currency": "VND",
+  "date_range": {
+    "start": "2026-07-01T00:00:00+07:00",
+    "end": "2026-08-01T00:00:00+07:00",
+    "label": "this_month"
+  },
+  "budget_minor": 2000000,
+  "spent_minor": 35000,
+  "remaining_minor": 1965000,
+  "is_over_budget": false,
+  "transaction_count": 1,
+  "answer": "Tháng này bạn còn 1.965.000₫ cho food.",
+  "needs_clarification": false,
+  "clarification": null
+}
+```
+
+No-budget response:
+
+```json
+{
+  "intent": "budget_remaining",
+  "category_slug": "food",
+  "currency": "VND",
+  "date_range": {
+    "start": "2026-07-01T00:00:00+07:00",
+    "end": "2026-08-01T00:00:00+07:00",
+    "label": "this_month"
+  },
+  "budget_minor": null,
+  "spent_minor": 35000,
+  "remaining_minor": null,
+  "is_over_budget": null,
+  "transaction_count": 1,
+  "answer": "Bạn chưa thiết lập ngân sách cho food tháng này.",
+  "needs_clarification": false,
+  "clarification": null
+}
+```
+
+Rules:
+
+- The provider may classify intent, category, currency, and date range.
+- The provider must not answer or invent budget totals.
+- The API computes `spent_minor`, `remaining_minor`, `is_over_budget`, and `transaction_count` from configured budget and ledger records.
+- US-502 supports `date_range.label = "this_month"`.
+- `this_month` uses the request timezone and spans the first instant of the current month inclusive to the first instant of the next month exclusive.
+- Category must be a valid expense category.
+- Income categories, unknown categories, and unsupported date ranges return a safe clarification response.
+- Missing budget setup returns `200` with `budget_minor = null`, `remaining_minor = null`, and an explicit no-budget answer.
+- Empty messages and invalid currency/timezone values are rejected with `422`.
+- Provider unavailable returns `503`.
+- Provider timeout returns `504`.
+- Invalid provider structured output returns `502`.
+- Spending counts only non-deleted expense transactions matching the category, currency, and date range.
+- Income transactions, other categories, out-of-range transactions, and soft-deleted transactions do not count.
+- The endpoint must not mutate transactions, accounts, budgets, or AI draft rows.
+
 ## Provider Status
 
 ```http

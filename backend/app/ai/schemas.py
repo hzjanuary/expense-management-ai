@@ -8,6 +8,7 @@ from app.domain.money import MoneyValidationError, normalize_currency
 class SupportedIntent(StrEnum):
     CREATE_TRANSACTION = "create_transaction"
     QUERY_SPENDING = "query_spending"
+    BUDGET_REMAINING = "budget_remaining"
     SET_BUDGET = "set_budget"
     UNKNOWN = "unknown"
 

@@ -120,3 +120,43 @@ class AiQuerySpendingResponse(BaseModel):
     answer: str | None
     needs_clarification: bool = False
     clarification: AiClarificationResponse | None = None
+
+
+class AiQueryBudgetRemainingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    message: str = Field(min_length=1)
+    locale: str = "vi-VN"
+    currency: str = "VND"
+    timezone: str = "Asia/Ho_Chi_Minh"
+
+    @field_validator("message")
+    @classmethod
+    def validate_query_message(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("message is required")
+        return stripped
+
+    @field_validator("currency")
+    @classmethod
+    def validate_currency(cls, value: str) -> str:
+        try:
+            return normalize_currency(value)
+        except MoneyValidationError as error:
+            raise ValueError(str(error)) from error
+
+
+class AiQueryBudgetRemainingResponse(BaseModel):
+    intent: str
+    category_slug: str | None
+    currency: str
+    date_range: AiQueryDateRangeResponse | None
+    budget_minor: int | None
+    spent_minor: int | None
+    remaining_minor: int | None
+    is_over_budget: bool | None
+    transaction_count: int
+    answer: str | None
+    needs_clarification: bool = False
+    clarification: AiClarificationResponse | None = None
