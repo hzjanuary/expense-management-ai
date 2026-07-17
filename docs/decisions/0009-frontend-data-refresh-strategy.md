@@ -4,7 +4,7 @@ Date: 2026-07-17
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -16,16 +16,31 @@ financial totals.
 
 ## Decision
 
-Propose a shared frontend data-fetching and refresh strategy for release
-readiness. The implementation should use one consistent cache/revalidation
-pattern for:
+Use a lightweight dashboard-owned refresh strategy for release readiness rather
+than adding a data-fetching library.
+
+US-702 implements:
+
+- same-origin frontend API route handlers for live financial data,
+- server-to-server backend calls through server-only `BACKEND_INTERNAL_URL`,
+- `cache: "no-store"` and `Cache-Control: no-store` for financial responses,
+- typed frontend API modules at the boundary,
+- component-local fetch state with `AbortController` cancellation,
+- monotonic request sequence checks so stale month responses cannot overwrite
+  newer data,
+- a dashboard-owned selected month and refresh revision,
+- callback-based invalidation after AI confirmation.
+
+The shared refresh revision is passed to:
 
 - recent transactions,
 - dashboard summary,
-- budget remaining,
-- budget setup,
-- insight answers where refresh is meaningful,
-- post-confirm and post-delete invalidation.
+- budget remaining.
+
+Future UI stories should reuse the same explicit invalidation boundary where it
+fits, especially after soft deletion in US-705. Insight answers may fetch on
+demand rather than subscribe to this dashboard refresh signal unless the UI
+needs cross-panel invalidation.
 
 The browser must treat backend API responses as authoritative and format
 integer minor-unit values for display only.
@@ -44,17 +59,23 @@ Positive:
 - Reduces inconsistent refresh behavior across dashboard, budget, and history.
 - Makes E2E assertions easier because one mutation can invalidate known views.
 - Keeps financial calculations in the backend.
+- Avoids adding SWR, TanStack Query, or another global state/cache dependency
+  before the frontend needs it.
+- Keeps Compose server-side proxy traffic on `BACKEND_INTERNAL_URL` without
+  exposing container-only URLs to the browser.
 
 Tradeoffs:
 
 - Adds frontend architecture constraints before implementation.
-- A data-fetching library may add dependency surface if one is not already
-  installed.
-- The final choice should be justified by US-702 or US-703 implementation.
+- Manual fetch state requires disciplined stale-response and error handling in
+  each live component.
+- Cross-page invalidation is intentionally not solved yet because the MVP shell
+  remains dashboard-centered.
+- A data-fetching library can still be reconsidered if later UI stories create
+  broader cache coordination needs.
 
 ## Follow-Up
 
-- US-702 should choose the concrete strategy and update this decision to
-  Accepted or Superseded.
 - US-706 should verify post-confirm and post-delete refresh behavior.
-
+- US-705 should reuse the dashboard refresh revision after soft deletion where
+  the delete UI affects dashboard panels.

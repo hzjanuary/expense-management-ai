@@ -8,13 +8,16 @@ The frontend currently provides:
 
 - App Router layout.
 - Dashboard route.
-- Static summary cards.
+- Live dashboard summary cards backed by the dashboard summary proxy.
+- Live monthly budget remaining status backed by the budget remaining proxy.
+- Selected-month control and explicit dashboard refresh.
 - Chat-to-Ledger UI that sends messages to the AI parse proxy, reviews drafts,
-  confirms through the AI confirmation proxy, and refreshes recent transactions.
+  confirms through the AI confirmation proxy, and refreshes recent transactions,
+  dashboard summary, and budget remaining data.
 - Recent transactions UI backed by the existing backend list endpoint.
 - Budget settings placeholder.
 - Shared VND money formatting helper.
-- Typed access to `NEXT_PUBLIC_API_BASE_URL`.
+- Typed access to safe frontend API clients and runtime configuration.
 
 The chat UI only mutates the ledger through the existing backend AI confirmation
 endpoint. It does not call the manual transaction creation endpoint directly.
@@ -36,10 +39,13 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8010
 ```
 
 Browser-facing requests continue to call same-origin frontend routes such as
-`/api/transactions`, `/api/ai/parse`, and `/api/ai/confirm`.
+`/api/transactions`, `/api/dashboard/summary`,
+`/api/budgets/monthly/{year}/{month}/remaining`, `/api/ai/parse`, and
+`/api/ai/confirm`.
 
 The dashboard renders without a running backend. Recent transactions and
 Chat-to-Ledger actions show safe error states until the backend is available.
+Live financial responses are fetched without static caching.
 
 ## Setup
 
@@ -64,10 +70,11 @@ docker compose up --build frontend
 ## Validate
 
 ```bash
+npm test
 npm run lint
 npm run typecheck
 npm run build
 ```
 
-No frontend test runner is configured in US-102. Validation proof is lint,
-typecheck, and production build.
+Vitest and React Testing Library cover the live dashboard data path and
+same-origin proxy behavior. Production proof remains lint, typecheck, and build.
