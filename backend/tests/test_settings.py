@@ -14,6 +14,7 @@ def test_settings_defaults() -> None:
     assert settings.ollama_timeout_seconds == 10
     assert settings.ollama_enabled is False
     assert settings.ai_draft_ttl_seconds == 900
+    assert settings.export_max_rows == 10_000
 
 
 def test_settings_load_from_environment(monkeypatch) -> None:  # type: ignore[no-untyped-def]
@@ -30,6 +31,7 @@ def test_settings_load_from_environment(monkeypatch) -> None:  # type: ignore[no
     monkeypatch.setenv("POCKET_LEDGER_OLLAMA_TIMEOUT_SECONDS", "3.5")
     monkeypatch.setenv("POCKET_LEDGER_OLLAMA_ENABLED", "true")
     monkeypatch.setenv("POCKET_LEDGER_AI_DRAFT_TTL_SECONDS", "60")
+    monkeypatch.setenv("POCKET_LEDGER_EXPORT_MAX_ROWS", "25")
 
     settings = Settings()
 
@@ -43,6 +45,7 @@ def test_settings_load_from_environment(monkeypatch) -> None:  # type: ignore[no
     assert settings.ollama_timeout_seconds == 3.5
     assert settings.ollama_enabled is True
     assert settings.ai_draft_ttl_seconds == 60
+    assert settings.export_max_rows == 25
 
 
 def test_get_settings_is_cached() -> None:

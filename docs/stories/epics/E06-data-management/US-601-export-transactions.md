@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -28,28 +28,37 @@ Allow explicit user-triggered export of local transaction data as CSV and JSON.
 
 ## Design Notes
 
-- Commands: export transactions.
+- Commands: none; export is read-only.
 - Queries: filtered transaction export query.
-- API: export endpoint to be defined.
-- Tables: transaction, category, account.
-- Domain rules: export uses explicit user action and filter scope.
-- UI surfaces: export action.
+- API: `GET /api/v1/transactions/export`.
+- Formats: `csv` and `json`.
+- Tables: reads transaction rows; no schema changes.
+- Domain rules: export uses explicit user action, filter scope, soft-delete exclusion, row limit, and field allowlist.
+- UI surfaces: not implemented in this backend story.
+- CSV safety: spreadsheet formula prefixes are single-quote escaped for string cells.
+- Privacy: excludes internal/deleted/AI metadata fields.
 
 ## Validation
 
 | Layer | Expected proof |
 | --- | --- |
-| Unit | CSV/JSON serialization tests. |
-| Integration | Export endpoint respects filters and fields. |
-| E2E | User-triggered export flow when UI exists. |
-| Platform | File download behavior if browser-specific. |
+| Unit | CSV/JSON serialization and row-limit behavior tests. |
+| Integration | Export endpoint respects filters, fields, soft deletes, headers, and no-mutation guarantees. |
+| E2E | Not required until frontend export UI exists. |
+| Platform | Download headers covered at API level; browser-specific proof deferred. |
 | Release | Privacy review of exported fields. |
 
 ## Harness Delta
 
-TBD.
+- Added backend CSV/JSON export endpoint.
+- Added typed `POCKET_LEDGER_EXPORT_MAX_ROWS`.
+- Updated API and privacy contracts with field allowlist and safety rules.
+- No migration, frontend, delete, auth, or cloud storage behavior added.
 
 ## Evidence
 
-TBD.
-
+- `cd backend && .venv/bin/pytest tests/test_transaction_export_api.py` passed: 8 passed.
+- `cd backend && .venv/bin/pytest` passed: 224 passed, 1 skipped.
+- `cd backend && .venv/bin/ruff check .` passed.
+- `cd backend && .venv/bin/black --check .` passed.
+- `cd backend && .venv/bin/mypy app` passed.

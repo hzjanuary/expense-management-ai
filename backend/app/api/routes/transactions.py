@@ -1,6 +1,7 @@
+from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.transactions import (
@@ -9,6 +10,11 @@ from app.api.schemas.transactions import (
     TransactionListResponse,
     TransactionResponse,
 )
+from app.application.exports import (
+    ExportTransactionsQuery,
+    TransactionExportValidationError,
+    export_transactions,
+)
 from app.application.transactions import (
     CreateManualTransactionCommand,
     ListTransactionsQuery,
@@ -16,9 +22,56 @@ from app.application.transactions import (
     create_manual_transaction,
     list_filtered_transactions,
 )
+from app.core.config import get_settings
 from app.db.session import get_db_session
 
 router = APIRouter(prefix="/api/v1/transactions", tags=["transactions"])
+
+
+def get_export_time() -> datetime:
+    return datetime.now(UTC)
+
+
+def get_export_max_rows() -> int:
+    return get_settings().export_max_rows
+
+
+@router.get("/export")
+async def export_transaction_history(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    exported_at: Annotated[datetime, Depends(get_export_time)],
+    max_rows: Annotated[int, Depends(get_export_max_rows)],
+    format: Annotated[str, Query()] = "csv",
+    month: Annotated[str | None, Query()] = None,
+    category: Annotated[str | None, Query()] = None,
+    type: Annotated[str | None, Query()] = None,
+    q: Annotated[str | None, Query()] = None,
+) -> Response:
+    try:
+        result = await export_transactions(
+            session,
+            ExportTransactionsQuery(
+                format=format,
+                month=month,
+                category=category,
+                type=type,
+                q=q,
+            ),
+            exported_at=exported_at,
+            max_rows=max_rows,
+        )
+    except TransactionExportValidationError as error:
+        status_code = 413 if "exceeding limit" in str(error) else 422
+        raise HTTPException(status_code=status_code, detail=str(error)) from error
+
+    return Response(
+        content=result.content,
+        media_type=result.media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{result.filename}"',
+            "X-Export-Row-Count": str(result.row_count),
+        },
+    )
 
 
 @router.get("", response_model=TransactionListResponse)

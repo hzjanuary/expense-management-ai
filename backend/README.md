@@ -27,6 +27,7 @@ Implemented:
 - AI query spending breakdown API
 - monthly budget setup API
 - monthly budget remaining API
+- transaction CSV/JSON export API
 - account and transaction persistence tables
 - AI transaction draft persistence table
 - budget setup persistence tables
@@ -100,6 +101,7 @@ Settings are loaded from environment variables with the `POCKET_LEDGER_` prefix.
 | Ollama model | `POCKET_LEDGER_OLLAMA_MODEL` | `qwen2.5:3b` |
 | Ollama timeout seconds | `POCKET_LEDGER_OLLAMA_TIMEOUT_SECONDS` | `10` |
 | AI draft TTL seconds | `POCKET_LEDGER_AI_DRAFT_TTL_SECONDS` | `900` |
+| export max rows | `POCKET_LEDGER_EXPORT_MAX_ROWS` | `10000` |
 
 ## Manual Transaction API
 
@@ -127,6 +129,16 @@ curl -i 'http://127.0.0.1:8000/api/v1/transactions?month=2026-07&limit=20&offset
 ```
 
 Supported list filters: `month`, `category`, `type`, `q`, `limit`, and `offset`.
+
+Export transactions:
+
+```bash
+curl -i 'http://127.0.0.1:8000/api/v1/transactions/export?format=csv&month=2026-07'
+curl -i 'http://127.0.0.1:8000/api/v1/transactions/export?format=json&month=2026-07'
+```
+
+Export supports `format`, `month`, `category`, `type`, and `q` filters. CSV
+and JSON use an explicit field allowlist and exclude soft-deleted transactions.
 
 Dashboard summary:
 

@@ -46,6 +46,15 @@ Source input: `docs/product/expense-ai/SPEC.md`
 - Export transactions as CSV.
 - Export transactions as JSON.
 - Filter exports by the same supported transaction filters where practical.
+- Export uses an explicit user-facing field allowlist: `id`, `type`,
+  `amount_minor`, `currency`, `category_slug`, `description`, `merchant`,
+  `occurred_at`, `source`, and `created_at`.
+- Export must not include `deleted_at`, AI raw text, parser confidence,
+  provider/model metadata, request IDs, or application logs.
+- CSV export must mitigate spreadsheet formula injection for string cells that
+  begin with `=`, `+`, `-`, or `@`.
+- Exported files are generated on demand and are not persisted or uploaded by
+  the backend in MVP.
 - Clear AI history independently from ledger history.
 
 ## Security Non-Goals For MVP

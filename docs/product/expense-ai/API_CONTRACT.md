@@ -115,6 +115,92 @@ Rules:
 - Unknown category slugs are rejected.
 - Valid category/type combinations with no matching rows return an empty list.
 
+## Export Transactions
+
+```http
+GET /api/v1/transactions/export?format=csv&month=2026-07&category=food&type=expense&q=trua
+```
+
+Supported query parameters:
+
+- `format`: `csv` or `json`; defaults to `csv`.
+- `month`: `YYYY-MM`.
+- `category`: a valid category slug.
+- `type`: `expense` or `income`.
+- `q`: text search over description and merchant.
+
+CSV response headers:
+
+```text
+Content-Type: text/csv; charset=utf-8
+Content-Disposition: attachment; filename="pocket-ledger-transactions-<scope>.csv"
+```
+
+JSON response headers:
+
+```text
+Content-Type: application/json
+Content-Disposition: attachment; filename="pocket-ledger-transactions-<scope>.json"
+```
+
+JSON response:
+
+```json
+{
+  "exported_at": "2026-07-17T08:00:00+07:00",
+  "filters": {
+    "month": "2026-07",
+    "category": "food",
+    "type": "expense",
+    "q": null
+  },
+  "count": 1,
+  "transactions": [
+    {
+      "id": "uuid",
+      "type": "expense",
+      "amount_minor": 35000,
+      "currency": "VND",
+      "category_slug": "food",
+      "description": "ăn trưa",
+      "merchant": null,
+      "occurred_at": "2026-07-11T12:00:00+07:00",
+      "source": "manual",
+      "created_at": "2026-07-11T12:01:00+07:00"
+    }
+  ]
+}
+```
+
+Exported field allowlist:
+
+- `id`
+- `type`
+- `amount_minor`
+- `currency`
+- `category_slug`
+- `description`
+- `merchant`
+- `occurred_at`
+- `source`
+- `created_at`
+
+Rules:
+
+- Export is user-triggered only.
+- Export reuses transaction list filter validation and text search behavior.
+- Export returns all matching rows up to `POCKET_LEDGER_EXPORT_MAX_ROWS`.
+- If matches exceed `POCKET_LEDGER_EXPORT_MAX_ROWS`, the API returns `413` and does not silently truncate.
+- Export order matches transaction listing order: `occurred_at DESC`, `created_at DESC`, `id DESC`.
+- Soft-deleted transactions are excluded.
+- CSV includes a header row and uses UTF-8 without BOM.
+- CSV values are RFC 4180 escaped through the CSV writer.
+- CSV string cells beginning with `=`, `+`, `-`, or `@` are prefixed with a single quote to mitigate spreadsheet formula injection.
+- JSON exports use the same field allowlist as CSV.
+- Export does not include `deleted_at`, `raw_user_text`, `parser_confidence`, provider/model metadata, request IDs, or logs.
+- Export does not create, update, or delete transactions, accounts, budgets, or AI draft rows.
+- Export contents are not persisted or uploaded externally.
+
 ## Parse Chat Message
 
 ```http

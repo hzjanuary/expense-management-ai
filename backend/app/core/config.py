@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     ollama_timeout_seconds: float = Field(default=10, gt=0)
     ollama_enabled: bool = False
     ai_draft_ttl_seconds: int = Field(default=900, gt=0)
+    export_max_rows: int = Field(default=10_000, gt=0)
 
     model_config = SettingsConfigDict(
         env_prefix="POCKET_LEDGER_",
