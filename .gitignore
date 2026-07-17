@@ -3,6 +3,11 @@ harness.db
 harness.db-wal
 harness.db-shm
 
+# Local environment files.
+.env
+.env.*
+!.env.example
+
 # Local application database files.
 data/
 *.db

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { appConfig } from "@/lib/config";
+import { getBackendApiBaseUrl } from "@/lib/config";
 import {
   parseTransactionListResponse,
   TransactionApiError,
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const limit = searchParams.get("limit") ?? "10";
   const offset = searchParams.get("offset") ?? "0";
-  const url = new URL("/api/v1/transactions", appConfig.apiBaseUrl);
+  const url = new URL("/api/v1/transactions", getBackendApiBaseUrl());
   url.searchParams.set("limit", limit);
   url.searchParams.set("offset", offset);
 

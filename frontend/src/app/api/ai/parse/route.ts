@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { appConfig } from "@/lib/config";
+import { getBackendApiBaseUrl } from "@/lib/config";
 import {
   AiApiError,
   getAiErrorMessageForStatus,
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const url = new URL("/api/v1/ai/parse", appConfig.apiBaseUrl);
+  const url = new URL("/api/v1/ai/parse", getBackendApiBaseUrl());
 
   try {
     const response = await fetch(url, {

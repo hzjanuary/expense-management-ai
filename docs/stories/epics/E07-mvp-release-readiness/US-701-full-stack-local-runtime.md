@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+in_progress
 
 ## Lane
 
@@ -76,10 +76,28 @@ consistently, and keeps Ollama optional.
 
 ## Harness Delta
 
-May add local runtime commands to release documentation and durable story
-verification once implementation exists.
+- Added Docker Compose as the selected local runtime architecture.
+- Added container build definitions, environment example, and smoke script.
+- Decision `0008-local-runtime-orchestration` is accepted because the
+  implementation selected Docker Compose.
+- Runtime/platform proof is not complete in this workspace because the current
+  user cannot access `/var/run/docker.sock`.
 
 ## Evidence
 
-TBD.
-
+- `cd backend && .venv/bin/pytest` - passed, 238 passed, 1 skipped.
+- `cd backend && .venv/bin/ruff check .` - passed.
+- `cd backend && .venv/bin/black --check .` - passed.
+- `cd backend && .venv/bin/mypy app` - passed.
+- `cd frontend && npm ci` - passed; reported two moderate audit findings for
+  later triage, no forced remediation applied.
+- `cd frontend && npm run lint` - passed.
+- `cd frontend && npm run typecheck` - passed.
+- `cd frontend && npm run build` - passed.
+- `docker compose config` - passed.
+- `docker compose build` - blocked in this workspace:
+  `permission denied while trying to connect to the docker API at
+  unix:///var/run/docker.sock`.
+  The current user is not in the `docker` group.
+- Runtime smoke, container health, Alembic current inside the container, and
+  SQLite persistence proof remain pending Docker daemon access.

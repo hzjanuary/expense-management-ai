@@ -27,6 +27,17 @@ Create `.env.local` if you need to override the backend URL:
 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8010
 ```
 
+For Docker Compose, server-side route handlers use `BACKEND_INTERNAL_URL` to
+reach the backend over the Compose network:
+
+```bash
+BACKEND_INTERNAL_URL=http://backend:8010
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8010
+```
+
+Browser-facing requests continue to call same-origin frontend routes such as
+`/api/transactions`, `/api/ai/parse`, and `/api/ai/confirm`.
+
 The dashboard renders without a running backend. Recent transactions and
 Chat-to-Ledger actions show safe error states until the backend is available.
 
@@ -43,6 +54,12 @@ npm run dev
 ```
 
 Open `http://127.0.0.1:3000`.
+
+Docker Compose starts the production Next.js server on port `3000`:
+
+```bash
+docker compose up --build frontend
+```
 
 ## Validate
 

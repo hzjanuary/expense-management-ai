@@ -1,0 +1,70 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      POCKET_LEDGER_ENVIRONMENT: ${POCKET_LEDGER_ENVIRONMENT:-development}
+      POCKET_LEDGER_LOG_LEVEL: ${POCKET_LEDGER_LOG_LEVEL:-INFO}
+      POCKET_LEDGER_DEFAULT_CURRENCY: ${POCKET_LEDGER_DEFAULT_CURRENCY:-VND}
+      POCKET_LEDGER_DATABASE_URL: ${POCKET_LEDGER_DATABASE_URL:-sqlite+aiosqlite:////app/data/pocket_ledger.db}
+      POCKET_LEDGER_DEFAULT_ACCOUNT_NAME: ${POCKET_LEDGER_DEFAULT_ACCOUNT_NAME:-Cash Wallet}
+      POCKET_LEDGER_DEFAULT_ACCOUNT_OPENING_BALANCE_MINOR: ${POCKET_LEDGER_DEFAULT_ACCOUNT_OPENING_BALANCE_MINOR:-1000000}
+      POCKET_LEDGER_OLLAMA_ENABLED: ${POCKET_LEDGER_OLLAMA_ENABLED:-false}
+      POCKET_LEDGER_OLLAMA_BASE_URL: ${POCKET_LEDGER_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      POCKET_LEDGER_OLLAMA_MODEL: ${POCKET_LEDGER_OLLAMA_MODEL:-qwen2.5:3b}
+      POCKET_LEDGER_OLLAMA_TIMEOUT_SECONDS: ${POCKET_LEDGER_OLLAMA_TIMEOUT_SECONDS:-10}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    ports:
+      - "8010:8010"
+    volumes:
+      - pocket-ledger-data:/app/data
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8010}
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_INTERNAL_URL: ${BACKEND_INTERNAL_URL:-http://backend:8010}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8010}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/dashboard').then((r)=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+    ports:
+      - "3000:3000"
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles:
+      - ollama
+    volumes:
+      - ollama-data:/root/.ollama
+
+volumes:
+  pocket-ledger-data:
+  ollama-data:

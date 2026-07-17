@@ -69,6 +69,17 @@ python3 -m venv .venv
 .venv/bin/uvicorn app.main:app --reload
 ```
 
+The Docker Compose runtime runs migrations before starting Uvicorn:
+
+```bash
+docker compose up --build backend
+docker compose exec backend alembic current
+```
+
+In Compose, the backend listens on `0.0.0.0:8010` in the container and is
+published to `http://127.0.0.1:8010` on the host. SQLite is stored at
+`/app/data/pocket_ledger.db` in the `pocket-ledger-data` Docker volume.
+
 Health check:
 
 ```bash
@@ -102,6 +113,9 @@ Settings are loaded from environment variables with the `POCKET_LEDGER_` prefix.
 | Ollama timeout seconds | `POCKET_LEDGER_OLLAMA_TIMEOUT_SECONDS` | `10` |
 | AI draft TTL seconds | `POCKET_LEDGER_AI_DRAFT_TTL_SECONDS` | `900` |
 | export max rows | `POCKET_LEDGER_EXPORT_MAX_ROWS` | `10000` |
+
+Compose-specific environment values are documented in the root `.env.example`.
+The default Compose startup keeps `POCKET_LEDGER_OLLAMA_ENABLED=false`.
 
 ## Manual Transaction API
 

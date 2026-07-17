@@ -11,3 +11,9 @@ function normalizeApiBaseUrl(value: string | undefined): string {
 export const appConfig = {
   apiBaseUrl: normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL),
 } as const;
+
+export function getBackendApiBaseUrl(): string {
+  return normalizeApiBaseUrl(
+    process.env.BACKEND_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL,
+  );
+}

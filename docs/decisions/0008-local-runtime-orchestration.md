@@ -4,7 +4,7 @@ Date: 2026-07-17
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -16,9 +16,8 @@ data path without introducing cloud deployment.
 
 ## Decision
 
-Propose a local-only orchestration workflow for US-701. The implementation
-story should choose between Docker Compose and a script-based equivalent, but
-the workflow must:
+Use Docker Compose as the primary local-only orchestration workflow for US-701.
+The workflow:
 
 - start backend and frontend together,
 - run Alembic migrations before readiness,
@@ -26,6 +25,15 @@ the workflow must:
 - keep Ollama optional and disabled by default,
 - expose health/readiness proof,
 - avoid cloud deployment or production container commitments.
+
+The selected implementation uses:
+
+- `compose.yaml` at the repository root,
+- a FastAPI backend image with an entrypoint that runs `alembic upgrade head`
+  before starting Uvicorn,
+- a Next.js frontend image using server-side proxy routes,
+- a persistent Docker named volume for `/app/data`,
+- optional Ollama through a Compose profile and host-Ollama documentation.
 
 ## Alternatives Considered
 
@@ -45,12 +53,13 @@ Positive:
 Tradeoffs:
 
 - Docker Compose adds one more local prerequisite if selected.
-- Script-only workflow may be less isolated across machines.
-- The final choice needs platform documentation for supported local environments.
+- Docker daemon access is required for runtime validation.
+- Script-only direct host startup remains useful for development but is not the
+  primary release-readiness workflow.
+- US-707 still needs platform documentation for supported local environments.
 
 ## Follow-Up
 
-- US-701 should make the final orchestration choice and update this decision to
-  Accepted or Superseded.
+- US-701 runtime proof must run on a machine where the user can access the
+  Docker daemon.
 - US-707 should validate the chosen workflow on supported local environments.
-

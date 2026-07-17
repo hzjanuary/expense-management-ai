@@ -18,6 +18,69 @@ surfaces under:
 - `backend/` — FastAPI backend.
 - `frontend/` — Next.js frontend shell.
 
+Full-stack Docker Compose runtime:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Expected local URLs:
+
+- Backend: `http://127.0.0.1:8010`
+- Frontend: `http://127.0.0.1:3000`
+- Dashboard: `http://127.0.0.1:3000/dashboard`
+
+Stop without deleting local SQLite data:
+
+```bash
+docker compose down
+```
+
+Reset local Docker volume data explicitly:
+
+```bash
+docker compose down -v
+```
+
+Inspect services and logs:
+
+```bash
+docker compose ps
+docker compose logs backend
+docker compose logs frontend
+```
+
+Inspect the migration state inside the backend container:
+
+```bash
+docker compose exec backend alembic current
+```
+
+Run the runtime smoke and persistence proof:
+
+```bash
+scripts/runtime-smoke.sh
+```
+
+The smoke script validates Compose configuration, builds and starts the stack,
+checks backend health, checks the dashboard, checks the frontend transaction
+proxy, verifies Alembic state, verifies the SQLite file exists, creates one
+controlled manual transaction, restarts services, and verifies the transaction
+survives the restart.
+
+Ollama is optional and disabled by default. To connect the backend container to
+a host Ollama instance, keep `POCKET_LEDGER_OLLAMA_BASE_URL` pointed at
+`http://host.docker.internal:11434` and set
+`POCKET_LEDGER_OLLAMA_ENABLED=true` in `.env`. To start the optional Ollama
+container without downloading a model automatically:
+
+```bash
+POCKET_LEDGER_OLLAMA_ENABLED=true \
+POCKET_LEDGER_OLLAMA_BASE_URL=http://ollama:11434 \
+docker compose --profile ollama up --build
+```
+
 Frontend setup and validation:
 
 ```bash
