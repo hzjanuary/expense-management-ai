@@ -44,3 +44,10 @@ class TransactionListResponse(BaseModel):
     limit: int
     offset: int
     total: int
+
+
+class DeleteTransactionResponse(BaseModel):
+    id: str
+    deleted: bool
+    deleted_at: datetime
+    account_balance_minor: int

@@ -74,6 +74,29 @@ async def create_transaction(
     return transaction
 
 
+async def get_transaction_for_soft_delete(
+    session: AsyncSession,
+    transaction_id: str,
+) -> TransactionModel | None:
+    result = await session.execute(
+        select(TransactionModel)
+        .options(selectinload(TransactionModel.account))
+        .where(TransactionModel.id == transaction_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def mark_transaction_deleted(
+    session: AsyncSession,
+    transaction: TransactionModel,
+    *,
+    deleted_at: datetime,
+) -> None:
+    transaction.deleted_at = deleted_at
+    transaction.updated_at = deleted_at
+    await session.flush()
+
+
 async def create_ai_transaction_draft(
     session: AsyncSession,
     *,

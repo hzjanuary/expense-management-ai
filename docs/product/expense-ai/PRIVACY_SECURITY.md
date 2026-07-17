@@ -36,8 +36,15 @@ Source input: `docs/product/expense-ai/SPEC.md`
 ## Soft Delete Behavior
 
 - Transaction deletion is soft delete only in MVP.
+- Soft-deleted transaction rows remain stored locally.
 - Deleted transactions are excluded from default transaction lists.
 - Deleted transactions are excluded from dashboard totals.
+- Deleted transactions are excluded from budget remaining views, AI insight
+  totals, and exports.
+- Soft delete reverses the transaction effect on stored account balance.
+- US-602 does not expose an `include_deleted` user-facing query parameter.
+- US-602 does not implement restore, hard delete, bulk delete, or audit-log
+  product records.
 - Deleted transactions may be available through an explicit admin/debug query if implemented.
 - Balance and dashboard values must recalculate correctly after soft delete.
 

@@ -201,6 +201,39 @@ Rules:
 - Export does not create, update, or delete transactions, accounts, budgets, or AI draft rows.
 - Export contents are not persisted or uploaded externally.
 
+## Soft Delete Transaction
+
+```http
+DELETE /api/v1/transactions/{transaction_id}
+```
+
+Response:
+
+```json
+{
+  "id": "uuid",
+  "deleted": true,
+  "deleted_at": "2026-07-17T08:30:00Z",
+  "account_balance_minor": 1000000
+}
+```
+
+Rules:
+
+- `transaction_id` must be a UUID.
+- Missing transactions return `404`.
+- Already-deleted transactions return `409`.
+- Deletion is soft delete only; the row remains stored and `deleted_at` is set.
+- Deleting an expense increases the account balance by the transaction amount.
+- Deleting an income decreases the account balance by the transaction amount.
+- Balance reversal and `deleted_at` update happen in one database transaction.
+- Repeated deletion must not reverse balance more than once.
+- Manual and `ai_chat` transactions use the same deterministic deletion rules.
+- AI draft rows referencing a deleted transaction remain intact.
+- Soft-deleted transactions are excluded from default lists, dashboard totals, budget remaining, AI insight totals, and exports.
+- The endpoint does not call an LLM provider.
+- The endpoint does not implement restore, hard delete, bulk delete, or an `include_deleted` read option.
+
 ## Parse Chat Message
 
 ```http

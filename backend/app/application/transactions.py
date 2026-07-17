@@ -10,7 +10,9 @@ from app.db.repositories import (
     create_default_account,
     create_transaction,
     get_default_account,
+    get_transaction_for_soft_delete,
     list_transactions,
+    mark_transaction_deleted,
 )
 from app.domain.categories import (
     CategoryValidationError,
@@ -23,6 +25,14 @@ from app.domain.money import Money, MoneyValidationError
 
 class TransactionValidationError(ValueError):
     """Raised when a transaction command violates deterministic ledger rules."""
+
+
+class TransactionNotFoundError(ValueError):
+    """Raised when a requested transaction does not exist."""
+
+
+class TransactionAlreadyDeletedError(ValueError):
+    """Raised when a requested transaction was already soft-deleted."""
 
 
 _MONTH_PATTERN = re.compile(r"^(?P<year>\d{4})-(?P<month>\d{2})$")
@@ -64,6 +74,19 @@ class ListTransactionsResult:
     limit: int
     offset: int
     total: int
+
+
+@dataclass(frozen=True, slots=True)
+class SoftDeleteTransactionCommand:
+    transaction_id: str
+    deleted_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class SoftDeleteTransactionResult:
+    transaction_id: str
+    deleted_at: datetime
+    account_balance_minor: int
 
 
 async def create_manual_transaction(
@@ -134,6 +157,39 @@ async def create_validated_transaction_in_session(
         transaction=transaction,
         account_balance_minor=account.current_balance_minor,
     )
+
+
+async def soft_delete_transaction(
+    session: AsyncSession,
+    command: SoftDeleteTransactionCommand,
+) -> SoftDeleteTransactionResult:
+    async with session.begin():
+        transaction = await get_transaction_for_soft_delete(
+            session,
+            command.transaction_id,
+        )
+        if transaction is None:
+            raise TransactionNotFoundError("transaction not found")
+        if transaction.deleted_at is not None:
+            raise TransactionAlreadyDeletedError("transaction is already deleted")
+
+        transaction_type = _parse_transaction_type(transaction.type)
+        account = transaction.account
+        account.current_balance_minor -= _balance_delta(
+            transaction_type,
+            transaction.amount_minor,
+        )
+        await mark_transaction_deleted(
+            session,
+            transaction,
+            deleted_at=command.deleted_at,
+        )
+
+        return SoftDeleteTransactionResult(
+            transaction_id=transaction.id,
+            deleted_at=command.deleted_at,
+            account_balance_minor=account.current_balance_minor,
+        )
 
 
 async def list_filtered_transactions(

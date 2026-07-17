@@ -134,6 +134,7 @@ async def seed_transaction(
     occurred_at: datetime,
     created_at: datetime | None = None,
     merchant: str | None = None,
+    source: str = "manual",
     deleted_at: datetime | None = None,
 ) -> None:
     created = created_at or datetime.now(UTC)
@@ -164,7 +165,7 @@ async def seed_transaction(
                     description=description,
                     merchant=merchant,
                     occurred_at=occurred_at,
-                    source="manual",
+                    source=source,
                     created_at=created,
                     updated_at=created,
                     deleted_at=deleted_at,

@@ -1,11 +1,13 @@
 from datetime import UTC, datetime
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas.transactions import (
     CreateTransactionRequest,
+    DeleteTransactionResponse,
     TransactionListItemResponse,
     TransactionListResponse,
     TransactionResponse,
@@ -18,9 +20,13 @@ from app.application.exports import (
 from app.application.transactions import (
     CreateManualTransactionCommand,
     ListTransactionsQuery,
+    SoftDeleteTransactionCommand,
+    TransactionAlreadyDeletedError,
+    TransactionNotFoundError,
     TransactionValidationError,
     create_manual_transaction,
     list_filtered_transactions,
+    soft_delete_transaction,
 )
 from app.core.config import get_settings
 from app.db.session import get_db_session
@@ -34,6 +40,10 @@ def get_export_time() -> datetime:
 
 def get_export_max_rows() -> int:
     return get_settings().export_max_rows
+
+
+def get_delete_time() -> datetime:
+    return datetime.now(UTC)
 
 
 @router.get("/export")
@@ -71,6 +81,35 @@ async def export_transaction_history(
             "Content-Disposition": f'attachment; filename="{result.filename}"',
             "X-Export-Row-Count": str(result.row_count),
         },
+    )
+
+
+@router.delete("/{transaction_id}", response_model=DeleteTransactionResponse)
+async def delete_transaction(
+    transaction_id: UUID,
+    deleted_at: Annotated[datetime, Depends(get_delete_time)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> DeleteTransactionResponse:
+    try:
+        result = await soft_delete_transaction(
+            session,
+            SoftDeleteTransactionCommand(
+                transaction_id=str(transaction_id),
+                deleted_at=deleted_at,
+            ),
+        )
+    except TransactionNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except TransactionAlreadyDeletedError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except TransactionValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    return DeleteTransactionResponse(
+        id=result.transaction_id,
+        deleted=True,
+        deleted_at=result.deleted_at,
+        account_balance_minor=result.account_balance_minor,
     )
 
 

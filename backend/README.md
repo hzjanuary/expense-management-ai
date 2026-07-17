@@ -140,6 +140,16 @@ curl -i 'http://127.0.0.1:8000/api/v1/transactions/export?format=json&month=2026
 Export supports `format`, `month`, `category`, `type`, and `q` filters. CSV
 and JSON use an explicit field allowlist and exclude soft-deleted transactions.
 
+Soft-delete a transaction:
+
+```bash
+curl -i -X DELETE http://127.0.0.1:8000/api/v1/transactions/<transaction_id>
+```
+
+Soft delete keeps the transaction row, sets `deleted_at`, reverses the stored
+account balance effect, and excludes the row from default lists, summaries,
+budget remaining views, insights, and exports.
+
 Dashboard summary:
 
 ```bash

@@ -10,6 +10,8 @@ Source input: `docs/product/expense-ai/SPEC.md`
 - Transaction amounts must be positive.
 - Expense decreases account balance.
 - Income increases account balance.
+- Soft-deleting an expense increases account balance by the original amount.
+- Soft-deleting an income decreases account balance by the original amount.
 - Transfer moves money between accounts without changing net worth.
 - Deleted transactions are soft-deleted with `deleted_at`.
 - Budget spent and remaining values should be computed from transactions in MVP to avoid drift.
@@ -108,6 +110,9 @@ Validation:
 - `category_id` must match the transaction type.
 - `occurred_at` must be a valid timestamp.
 - `source` must identify the mutation origin.
+- `deleted_at` is set only by the soft-delete command.
+- Soft delete must not change original amount, category, description, source, or occurrence timestamp.
+- Soft delete reverses the stored account balance effect atomically with setting `deleted_at`.
 
 ## BudgetPeriod
 
