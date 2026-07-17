@@ -81,6 +81,12 @@ POCKET_LEDGER_OLLAMA_BASE_URL=http://ollama:11434 \
 docker compose --profile ollama up --build
 ```
 
+The Compose workflow defaults `POCKET_LEDGER_ENVIRONMENT=production` so
+Ollama-disabled AI parse requests return the documented provider-unavailable
+response instead of using the deterministic fake provider. Use the fake provider
+only for local backend development or tests by overriding the environment
+explicitly.
+
 Frontend setup and validation:
 
 ```bash

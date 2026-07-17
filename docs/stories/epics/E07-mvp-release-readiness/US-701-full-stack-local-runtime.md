@@ -2,7 +2,7 @@
 
 ## Status
 
-in_progress
+implemented
 
 ## Lane
 
@@ -80,11 +80,47 @@ consistently, and keeps Ollama optional.
 - Added container build definitions, environment example, and smoke script.
 - Decision `0008-local-runtime-orchestration` is accepted because the
   implementation selected Docker Compose.
-- Runtime/platform proof is not complete in this workspace because the current
-  user cannot access `/var/run/docker.sock`.
+- Docker runtime validation is complete on openSUSE with Docker daemon access
+  available to the current user without `sudo`.
+- Compose defaults to a production-like `POCKET_LEDGER_ENVIRONMENT=production`
+  runtime so Ollama-disabled AI parse requests return provider unavailable
+  instead of using the deterministic fake provider.
 
 ## Evidence
 
+- `docker version` - passed; client/server `29.4.0-ce`, daemon accessible
+  without `sudo`.
+- `docker compose version` - passed; Docker Compose `5.3.1`.
+- `docker info` - passed on openSUSE Tumbleweed; Docker root
+  `/var/lib/docker`.
+- `docker compose down --remove-orphans` - passed; no volume deletion used.
+- `docker compose config` - passed.
+- `docker compose --profile ollama config` - passed; optional Ollama profile is
+  valid and not part of default startup.
+- `docker compose build --no-cache` - passed; backend and frontend images built
+  successfully, and no Ollama model download occurred.
+- `docker compose up -d` - passed; backend and frontend containers reached
+  healthy status.
+- `curl -i http://127.0.0.1:8010/health` - passed with `HTTP 200` and
+  `{"status":"ok"}`.
+- `curl -I http://127.0.0.1:3000/dashboard` - passed with `HTTP 200`.
+- `curl -i http://127.0.0.1:3000/api/transactions` - passed with `HTTP 200`
+  and a valid transaction-list envelope.
+- `docker compose exec -T backend alembic current` - passed; reported
+  `0004 (head)`.
+- `POST /api/v1/ai/parse` with Ollama disabled and production-like Compose
+  defaults - passed with `HTTP 503` and
+  `{"detail":"LLM provider is unavailable"}` while `/health` remained healthy.
+- SQLite persistence proof - passed. Created transaction
+  `75b041a2-9278-450b-8fc2-7ad3979860a3` with description
+  `US-701 persistence proof`, restarted with `docker compose down` then
+  `docker compose up -d`, and verified the same transaction remained queryable.
+- `docker compose exec -T backend sh -lc 'ls -la /app/data && test -f /app/data/pocket_ledger.db'`
+  - passed; SQLite file exists in the persistent container data path.
+- `scripts/runtime-smoke.sh` - passed. The script validates Compose config,
+  builds and starts the stack, checks backend health, dashboard reachability,
+  frontend transaction proxy reachability, Alembic head state, SQLite file
+  presence, controlled transaction creation, service restart, and persistence.
 - `cd backend && .venv/bin/pytest` - passed, 238 passed, 1 skipped.
 - `cd backend && .venv/bin/ruff check .` - passed.
 - `cd backend && .venv/bin/black --check .` - passed.
@@ -94,10 +130,4 @@ consistently, and keeps Ollama optional.
 - `cd frontend && npm run lint` - passed.
 - `cd frontend && npm run typecheck` - passed.
 - `cd frontend && npm run build` - passed.
-- `docker compose config` - passed.
-- `docker compose build` - blocked in this workspace:
-  `permission denied while trying to connect to the docker API at
-  unix:///var/run/docker.sock`.
-  The current user is not in the `docker` group.
-- Runtime smoke, container health, Alembic current inside the container, and
-  SQLite persistence proof remain pending Docker daemon access.
+- `docker compose down` - passed after evidence capture; named volume preserved.

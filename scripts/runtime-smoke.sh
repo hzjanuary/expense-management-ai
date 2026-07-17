@@ -9,6 +9,12 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
+PYTHON_BIN="$(command -v python3 || command -v python || true)"
+if [ -z "$PYTHON_BIN" ]; then
+  echo "python3 or python is required for JSON validation" >&2
+  exit 1
+fi
+
 docker compose config >/dev/null
 docker compose build
 docker compose up -d
@@ -48,8 +54,8 @@ transaction_id="$(
       "description": "runtime smoke",
       "occurred_at": "2026-07-17T08:00:00+07:00",
       "source": "manual"
-    }' \
-  | python -c 'import json,sys; print(json.load(sys.stdin)["id"])'
+	    }' \
+	  | "$PYTHON_BIN" -c 'import json,sys; print(json.load(sys.stdin)["id"])'
 )"
 
 docker compose restart backend frontend
@@ -60,7 +66,7 @@ transactions_payload="$(
   curl -fsS "http://127.0.0.1:8010/api/v1/transactions?limit=100&offset=0"
 )"
 
-TRANSACTION_ID="$transaction_id" TRANSACTIONS_PAYLOAD="$transactions_payload" python - <<'PY'
+TRANSACTION_ID="$transaction_id" TRANSACTIONS_PAYLOAD="$transactions_payload" "$PYTHON_BIN" - <<'PY'
 import json
 import os
 
