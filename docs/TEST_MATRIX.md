@@ -45,6 +45,13 @@ implemented until tests or validation evidence exist.
 | US-601 | Export transactions as user-triggered CSV/JSON | yes | yes | no | no | implemented | `pytest tests/test_transaction_export_api.py`; `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-602 | Soft delete excludes transactions from lists and totals | yes | yes | no | no | implemented | `pytest tests/test_soft_delete_transaction_api.py`; `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-603 | Clear AI history removes AI records without deleting transactions | yes | yes | no | no | implemented | `pytest tests/test_clear_ai_history_api.py`; `pytest`; `ruff check .`; `black --check .`; `mypy app` |
+| US-701 | Full-stack local runtime starts backend/frontend with migrations and optional Ollama | no | yes | no | yes | planned | none |
+| US-702 | Dashboard shows live backend totals and budget remaining state | yes | yes | yes | no | planned | none |
+| US-703 | Budget setup and progress UI uses existing budget APIs | yes | yes | yes | no | planned | none |
+| US-704 | Insight chat UI shows DB-grounded spending and budget answers | yes | yes | yes | no | planned | none |
+| US-705 | Data management UI supports export, soft delete, and clear AI history | yes | yes | yes | no | planned | none |
+| US-706 | Full E2E MVP demo proves the deterministic release flow | no | yes | yes | yes | planned | none |
+| US-707 | Release hardening validates quality gates and documentation | no | yes | yes | yes | planned | none |
 
 ## Evidence Rules
 
