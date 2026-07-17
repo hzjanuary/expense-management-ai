@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { BudgetProgress } from "@/components/budget-progress";
+import { BudgetSetupForm } from "@/components/budget-setup-form";
 import { ChatToLedger } from "@/components/chat-to-ledger";
 import { DashboardSummary } from "@/components/dashboard-summary";
 import { MonthSelector } from "@/components/month-selector";
@@ -14,6 +15,7 @@ export function DashboardClient() {
     getCurrentMonthValue(),
   );
   const [refreshRevision, setRefreshRevision] = useState(0);
+  const [isBudgetSetupOpen, setIsBudgetSetupOpen] = useState(false);
 
   function refreshDashboardData() {
     setRefreshRevision((currentRevision) => currentRevision + 1);
@@ -43,6 +45,16 @@ export function DashboardClient() {
             >
               Refresh dashboard
             </button>
+            <button
+              aria-expanded={isBudgetSetupOpen}
+              className="h-11 rounded-md bg-ledger-accent px-4 text-sm font-semibold text-white transition hover:bg-ledger-accent-strong"
+              onClick={() =>
+                setIsBudgetSetupOpen((currentValue) => !currentValue)
+              }
+              type="button"
+            >
+              {isBudgetSetupOpen ? "Hide budget setup" : "Set up budget"}
+            </button>
           </div>
         </div>
       </section>
@@ -57,7 +69,19 @@ export function DashboardClient() {
           <ChatToLedger onTransactionConfirmed={refreshDashboardData} />
           <RecentTransactions refreshSignal={refreshRevision} />
         </div>
-        <BudgetProgress month={selectedMonth} refreshSignal={refreshRevision} />
+        <div className="grid gap-6">
+          {isBudgetSetupOpen ? (
+            <BudgetSetupForm
+              month={selectedMonth}
+              onSaved={refreshDashboardData}
+            />
+          ) : null}
+          <BudgetProgress
+            month={selectedMonth}
+            onSetupRequested={() => setIsBudgetSetupOpen(true)}
+            refreshSignal={refreshRevision}
+          />
+        </div>
       </div>
     </div>
   );

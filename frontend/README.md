@@ -10,12 +10,12 @@ The frontend currently provides:
 - Dashboard route.
 - Live dashboard summary cards backed by the dashboard summary proxy.
 - Live monthly budget remaining status backed by the budget remaining proxy.
+- Budget setup/edit form backed by the monthly budget setup proxy.
 - Selected-month control and explicit dashboard refresh.
 - Chat-to-Ledger UI that sends messages to the AI parse proxy, reviews drafts,
   confirms through the AI confirmation proxy, and refreshes recent transactions,
   dashboard summary, and budget remaining data.
 - Recent transactions UI backed by the existing backend list endpoint.
-- Budget settings placeholder.
 - Shared VND money formatting helper.
 - Typed access to safe frontend API clients and runtime configuration.
 
@@ -40,6 +40,7 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8010
 
 Browser-facing requests continue to call same-origin frontend routes such as
 `/api/transactions`, `/api/dashboard/summary`,
+`/api/budgets/monthly/{year}/{month}`,
 `/api/budgets/monthly/{year}/{month}/remaining`, `/api/ai/parse`, and
 `/api/ai/confirm`.
 
@@ -76,5 +77,6 @@ npm run typecheck
 npm run build
 ```
 
-Vitest and React Testing Library cover the live dashboard data path and
-same-origin proxy behavior. Production proof remains lint, typecheck, and build.
+Vitest and React Testing Library cover the live dashboard data path, budget
+setup form validation, and same-origin proxy behavior. Production proof remains
+lint, typecheck, and build.

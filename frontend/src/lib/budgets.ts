@@ -1,5 +1,24 @@
 import { splitMonthValue } from "@/lib/dashboard";
 
+export type CategoryBudgetConfig = {
+  category_slug: string;
+  budget_minor: number;
+};
+
+export type MonthlyBudgetResponse = {
+  year: number;
+  month: number;
+  currency: string;
+  total_budget_minor: number;
+  category_budgets: CategoryBudgetConfig[];
+};
+
+export type UpsertMonthlyBudgetRequest = {
+  currency: string;
+  total_budget_minor: number;
+  category_budgets: CategoryBudgetConfig[];
+};
+
 export type CategoryBudgetRemaining = {
   category_slug: string;
   budget_minor: number;
@@ -60,6 +79,92 @@ export async function fetchBudgetRemaining(
   return parseBudgetRemainingResponse(payload);
 }
 
+export async function fetchMonthlyBudget(
+  monthValue: string,
+  currency = "VND",
+  signal?: AbortSignal,
+): Promise<MonthlyBudgetResponse> {
+  const { year, month } = splitMonthValue(monthValue);
+  const response = await fetch(
+    `/api/budgets/monthly/${year}/${month}?currency=${encodeURIComponent(
+      currency,
+    )}`,
+    {
+      cache: "no-store",
+      signal,
+    },
+  );
+
+  if (response.status === 404) {
+    throw new BudgetNotConfiguredError();
+  }
+
+  if (!response.ok) {
+    throw new BudgetApiError(await readSafeError(response));
+  }
+
+  const payload: unknown = await response.json();
+  return parseMonthlyBudgetResponse(payload);
+}
+
+export async function upsertMonthlyBudget(
+  monthValue: string,
+  request: UpsertMonthlyBudgetRequest,
+  signal?: AbortSignal,
+): Promise<MonthlyBudgetResponse> {
+  const { year, month } = splitMonthValue(monthValue);
+  const response = await fetch(`/api/budgets/monthly/${year}/${month}`, {
+    body: JSON.stringify(request),
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "PUT",
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new BudgetApiError(await readSafeError(response));
+  }
+
+  const payload: unknown = await response.json();
+  return parseMonthlyBudgetResponse(payload);
+}
+
+export function parseMonthlyBudgetResponse(
+  payload: unknown,
+): MonthlyBudgetResponse {
+  if (!isRecord(payload)) {
+    throw new BudgetApiError("Invalid budget setup response");
+  }
+
+  const {
+    year,
+    month,
+    currency,
+    total_budget_minor: totalBudgetMinor,
+    category_budgets: categoryBudgets,
+  } = payload;
+
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    typeof currency !== "string" ||
+    !Number.isInteger(totalBudgetMinor) ||
+    !Array.isArray(categoryBudgets)
+  ) {
+    throw new BudgetApiError("Invalid budget setup response");
+  }
+
+  return {
+    year: year as number,
+    month: month as number,
+    currency,
+    total_budget_minor: totalBudgetMinor as number,
+    category_budgets: categoryBudgets.map(parseCategoryBudgetConfig),
+  };
+}
+
 export function parseBudgetRemainingResponse(
   payload: unknown,
 ): BudgetRemainingResponse {
@@ -97,6 +202,26 @@ export function parseBudgetRemainingResponse(
     total_expense_minor: totalExpenseMinor as number,
     total_remaining_minor: totalRemainingMinor as number,
     categories: categories.map(parseCategoryBudgetRemaining),
+  };
+}
+
+function parseCategoryBudgetConfig(payload: unknown): CategoryBudgetConfig {
+  if (!isRecord(payload)) {
+    throw new BudgetApiError("Invalid category budget response");
+  }
+
+  const {
+    category_slug: categorySlug,
+    budget_minor: budgetMinor,
+  } = payload;
+
+  if (typeof categorySlug !== "string" || !Number.isInteger(budgetMinor)) {
+    throw new BudgetApiError("Invalid category budget response");
+  }
+
+  return {
+    category_slug: categorySlug,
+    budget_minor: budgetMinor as number,
   };
 }
 
