@@ -22,8 +22,11 @@ from app.api.schemas.ai import (
     AiQueryBudgetRemainingRequest,
     AiQueryBudgetRemainingResponse,
     AiQueryDateRangeResponse,
+    AiQuerySpendingBreakdownRequest,
+    AiQuerySpendingBreakdownResponse,
     AiQuerySpendingRequest,
     AiQuerySpendingResponse,
+    AiSpendingBreakdownEntryResponse,
     AiTransactionDraftResponse,
 )
 from app.application.ai_parse import (
@@ -37,9 +40,11 @@ from app.application.ai_parse import (
 )
 from app.application.ai_query import (
     QueryBudgetRemainingCommand,
+    QuerySpendingBreakdownCommand,
     QuerySpendingCommand,
     SpendingQueryValidationError,
     answer_budget_remaining_query,
+    answer_spending_breakdown_query,
     answer_spending_query,
 )
 from app.db.session import get_db_session
@@ -296,6 +301,98 @@ async def query_budget_remaining(
         remaining_minor=result.remaining_minor,
         is_over_budget=result.is_over_budget,
         transaction_count=result.transaction_count,
+        answer=result.answer,
+        needs_clarification=result.needs_clarification,
+        clarification=clarification,
+    )
+
+
+@router.post(
+    "/query-spending-breakdown",
+    response_model=AiQuerySpendingBreakdownResponse,
+)
+async def query_spending_breakdown(
+    request: AiQuerySpendingBreakdownRequest,
+    provider_dependency: Annotated[object, Depends(get_llm_provider)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    now: Annotated[datetime, Depends(get_current_time)],
+) -> AiQuerySpendingBreakdownResponse:
+    provider = cast(LlmProvider, provider_dependency)
+    try:
+        result = await answer_spending_breakdown_query(
+            session,
+            provider,
+            QuerySpendingBreakdownCommand(
+                message=request.message,
+                locale=request.locale,
+                currency=request.currency,
+                timezone=request.timezone,
+            ),
+            now=now,
+        )
+    except LlmProviderUnavailableError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="LLM provider is unavailable",
+        ) from error
+    except LlmProviderTimeoutError as error:
+        raise HTTPException(
+            status_code=504,
+            detail="LLM provider timed out",
+        ) from error
+    except LlmProviderInvalidResponseError as error:
+        raise HTTPException(
+            status_code=502,
+            detail="LLM provider returned invalid structured output",
+        ) from error
+    except LlmProviderError as error:
+        raise HTTPException(
+            status_code=502,
+            detail="LLM provider error",
+        ) from error
+    except SpendingQueryValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    date_range = None
+    if result.date_range is not None:
+        date_range = AiQueryDateRangeResponse(
+            start=result.date_range.start,
+            end=result.date_range.end,
+            label=result.date_range.label,
+        )
+
+    top_category = None
+    if result.top_category is not None:
+        top_category = AiSpendingBreakdownEntryResponse(
+            category_slug=result.top_category.category_slug,
+            amount_minor=result.top_category.amount_minor,
+            transaction_count=result.top_category.transaction_count,
+            percentage=result.top_category.percentage,
+        )
+
+    clarification = None
+    if result.clarification is not None:
+        clarification = AiClarificationResponse(
+            message=result.clarification.message,
+            fields=result.clarification.fields,
+        )
+
+    return AiQuerySpendingBreakdownResponse(
+        intent=result.intent,
+        currency=result.currency,
+        date_range=date_range,
+        total_expense_minor=result.total_expense_minor,
+        transaction_count=result.transaction_count,
+        top_category=top_category,
+        breakdown=[
+            AiSpendingBreakdownEntryResponse(
+                category_slug=item.category_slug,
+                amount_minor=item.amount_minor,
+                transaction_count=item.transaction_count,
+                percentage=item.percentage,
+            )
+            for item in result.breakdown
+        ],
         answer=result.answer,
         needs_clarification=result.needs_clarification,
         clarification=clarification,

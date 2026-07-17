@@ -9,6 +9,7 @@ class SupportedIntent(StrEnum):
     CREATE_TRANSACTION = "create_transaction"
     QUERY_SPENDING = "query_spending"
     BUDGET_REMAINING = "budget_remaining"
+    SPENDING_BREAKDOWN = "spending_breakdown"
     SET_BUDGET = "set_budget"
     UNKNOWN = "unknown"
 

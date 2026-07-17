@@ -29,8 +29,11 @@ mutations, create transactions, update balances, or persist records. For
 spending questions, classify intent as query_spending and extract category_slug,
 currency, and date_range_label only. For budget remaining questions, classify
 intent as budget_remaining and extract category_slug, currency, and
-date_range_label only. Supported query date range is this_month. Do not answer
-totals yourself."""
+date_range_label only. For top category or spending breakdown questions,
+classify intent as spending_breakdown and extract currency and date_range_label
+only. Supported query date ranges are this_month for category spending and
+budget remaining, and this_week for spending breakdown. Do not answer totals or
+choose top categories yourself."""
 
 
 @dataclass(slots=True)

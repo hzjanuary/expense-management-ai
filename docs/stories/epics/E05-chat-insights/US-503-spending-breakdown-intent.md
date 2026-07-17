@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -30,25 +30,34 @@ Answer top-spending-category questions with deterministic category totals and ex
 
 - Commands: none.
 - Queries: grouped spending by category/date range.
-- API: chat insight endpoint to be defined.
-- Tables: transaction, category.
-- Domain rules: excludes soft-deleted transactions and uses deterministic tie behavior.
-- UI surfaces: chat insight answer.
+- API: `POST /api/v1/ai/query-spending-breakdown`.
+- Tables: reads existing transaction, account, budget, and AI draft tables only for proof; no schema changes.
+- Domain rules: excludes income, out-of-range, soft-deleted, and non-matching-currency transactions.
+- Ordering: amount descending, transaction count descending, category slug ascending.
+- Date range: `this_week` uses request timezone with Monday inclusive to next Monday exclusive.
+- UI surfaces: not implemented in this backend story.
 
 ## Validation
 
 | Layer | Expected proof |
 | --- | --- |
-| Unit | Grouped spending and tie behavior tests. |
-| Integration | Insight response from seeded ledger records. |
-| E2E | Chat answer displays top category and range. |
+| Unit | Grouped spending, percentage, empty result, and tie behavior tests. |
+| Integration | Insight response from seeded ledger records and provider error mapping. |
+| E2E | Not required for backend-only US-503. |
 | Platform | Not required. |
 | Release | Date-range fixture. |
 
 ## Harness Delta
 
-TBD.
+- Added `spending_breakdown` provider intent classification.
+- Added read-only backend endpoint for current-week spending breakdown.
+- Added deterministic aggregation proof and no-mutation regression proof.
+- No migration or frontend change.
 
 ## Evidence
 
-TBD.
+- `cd backend && .venv/bin/pytest tests/test_ai_spending_breakdown_api.py` passed: 18 passed.
+- `cd backend && .venv/bin/pytest` passed: 216 passed, 1 skipped.
+- `cd backend && .venv/bin/ruff check .` passed.
+- `cd backend && .venv/bin/black --check .` passed.
+- `cd backend && .venv/bin/mypy app` passed.

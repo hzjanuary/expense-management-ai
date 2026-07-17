@@ -83,6 +83,33 @@ class FakeLlmProvider:
                 missing_fields=["category_slug"],
             )
 
+        if _is_spending_breakdown_query_sample(request.message):
+            return TransactionParseResult(
+                intent=SupportedIntent.SPENDING_BREAKDOWN,
+                transaction_type=None,
+                amount_minor=None,
+                currency=request.default_currency,
+                category_slug=None,
+                description=None,
+                merchant=None,
+                occurred_at_text=None,
+                occurred_at_iso=None,
+                date_range_label="this_week",
+                needs_confirmation=False,
+                confidence=Confidence.HIGH,
+                missing_fields=[],
+            )
+
+        if _is_missing_spending_breakdown_date_range_sample(request.message):
+            return TransactionParseResult(
+                intent=SupportedIntent.SPENDING_BREAKDOWN,
+                currency=request.default_currency,
+                date_range_label=None,
+                needs_confirmation=True,
+                confidence=Confidence.LOW,
+                missing_fields=["date_range"],
+            )
+
         if _is_food_budget_remaining_query_sample(request.message):
             return TransactionParseResult(
                 intent=SupportedIntent.BUDGET_REMAINING,
@@ -204,6 +231,24 @@ def _is_food_spending_query_sample(message: str) -> bool:
 def _is_missing_query_category_sample(message: str) -> bool:
     normalized = message.casefold()
     return "tháng này" in normalized and "bao nhiêu" in normalized
+
+
+def _is_spending_breakdown_query_sample(message: str) -> bool:
+    normalized = message.casefold()
+    return "tuần này" in normalized and (
+        "tiêu nhiều nhất" in normalized
+        or "chi nhiều nhất" in normalized
+        or "top chi tiêu" in normalized
+    )
+
+
+def _is_missing_spending_breakdown_date_range_sample(message: str) -> bool:
+    normalized = message.casefold()
+    return "tuần này" not in normalized and (
+        "tiêu nhiều nhất" in normalized
+        or "chi nhiều nhất" in normalized
+        or "top chi tiêu" in normalized
+    )
 
 
 def _is_food_budget_remaining_query_sample(message: str) -> bool:

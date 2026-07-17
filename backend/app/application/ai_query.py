@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.providers import LlmProvider
 from app.ai.schemas import SupportedIntent, TransactionParseRequest
 from app.application.ai_parse import Clarification
-from app.db.repositories import get_budget_period, get_expense_total_for_category
+from app.db.repositories import (
+    get_budget_period,
+    get_expense_breakdown_by_category,
+    get_expense_total_for_category,
+)
 from app.domain.categories import CategoryValidationError, get_category_for_transaction
 from app.domain.enums import TransactionType
 from app.domain.money import MoneyValidationError, normalize_currency
@@ -64,6 +68,36 @@ class QueryBudgetRemainingResult:
     remaining_minor: int | None
     is_over_budget: bool | None
     transaction_count: int
+    answer: str | None
+    needs_clarification: bool
+    clarification: Clarification | None
+
+
+@dataclass(frozen=True, slots=True)
+class QuerySpendingBreakdownCommand:
+    message: str
+    locale: str = "vi-VN"
+    currency: str = "VND"
+    timezone: str = "Asia/Ho_Chi_Minh"
+
+
+@dataclass(frozen=True, slots=True)
+class SpendingBreakdownEntry:
+    category_slug: str
+    amount_minor: int
+    transaction_count: int
+    percentage: float
+
+
+@dataclass(frozen=True, slots=True)
+class QuerySpendingBreakdownResult:
+    intent: str
+    currency: str
+    date_range: DateRange | None
+    total_expense_minor: int | None
+    transaction_count: int
+    top_category: SpendingBreakdownEntry | None
+    breakdown: list[SpendingBreakdownEntry]
     answer: str | None
     needs_clarification: bool
     clarification: Clarification | None
@@ -266,6 +300,93 @@ async def answer_budget_remaining_query(
     )
 
 
+async def answer_spending_breakdown_query(
+    session: AsyncSession,
+    provider: LlmProvider,
+    command: QuerySpendingBreakdownCommand,
+    *,
+    now: datetime | None = None,
+) -> QuerySpendingBreakdownResult:
+    currency = _normalize_query_currency(command.currency)
+    request = TransactionParseRequest(
+        message=command.message,
+        locale=command.locale,
+        default_currency=currency,
+        timezone=command.timezone,
+    )
+    provider_result = await provider.parse_transaction_text(request)
+
+    if provider_result.intent is not SupportedIntent.SPENDING_BREAKDOWN:
+        return _breakdown_clarification_result(
+            intent=provider_result.intent.value,
+            currency=currency,
+            fields=["intent"],
+            message=(
+                "Mình chưa hiểu câu hỏi phân tích chi tiêu này. "
+                "Bạn có thể hỏi rõ khoảng thời gian hơn không?"
+            ),
+        )
+
+    if provider_result.date_range_label != "this_week":
+        return _breakdown_clarification_result(
+            intent=SupportedIntent.SPENDING_BREAKDOWN.value,
+            currency=currency,
+            fields=["date_range"],
+            message="Bạn muốn xem nhóm chi tiêu trong khoảng thời gian nào?",
+        )
+
+    date_range = _this_week_range(command.timezone, now=now)
+    rows = await get_expense_breakdown_by_category(
+        session,
+        currency=currency,
+        range_start=date_range.start,
+        range_end=date_range.end,
+    )
+    rows.sort(key=lambda row: (-row[1], -row[2], row[0]))
+
+    total_expense_minor = sum(amount_minor for _, amount_minor, _ in rows)
+    transaction_count = sum(count for _, _, count in rows)
+    if total_expense_minor == 0:
+        return QuerySpendingBreakdownResult(
+            intent=SupportedIntent.SPENDING_BREAKDOWN.value,
+            currency=currency,
+            date_range=date_range,
+            total_expense_minor=0,
+            transaction_count=0,
+            top_category=None,
+            breakdown=[],
+            answer="Bạn chưa có khoản chi nào trong tuần này.",
+            needs_clarification=False,
+            clarification=None,
+        )
+
+    breakdown = [
+        SpendingBreakdownEntry(
+            category_slug=category_slug,
+            amount_minor=amount_minor,
+            transaction_count=count,
+            percentage=round((amount_minor / total_expense_minor) * 100, 2),
+        )
+        for category_slug, amount_minor, count in rows
+    ]
+    top_category = breakdown[0]
+    return QuerySpendingBreakdownResult(
+        intent=SupportedIntent.SPENDING_BREAKDOWN.value,
+        currency=currency,
+        date_range=date_range,
+        total_expense_minor=total_expense_minor,
+        transaction_count=transaction_count,
+        top_category=top_category,
+        breakdown=breakdown,
+        answer=(
+            "Tuần này bạn chi nhiều nhất cho "
+            f"{top_category.category_slug}: {_format_vnd(top_category.amount_minor)}."
+        ),
+        needs_clarification=False,
+        clarification=None,
+    )
+
+
 def _normalize_query_currency(value: str) -> str:
     try:
         return normalize_currency(value)
@@ -292,6 +413,25 @@ def _this_month_range(timezone: str, *, now: datetime | None) -> DateRange:
         end = start.replace(month=start.month + 1)
 
     return DateRange(start=start, end=end, label="this_month")
+
+
+def _this_week_range(timezone: str, *, now: datetime | None) -> DateRange:
+    try:
+        zone = ZoneInfo(timezone)
+    except ZoneInfoNotFoundError as error:
+        raise SpendingQueryValidationError("timezone is invalid") from error
+
+    current = now or datetime.now(zone)
+    current = (
+        current.astimezone(zone)
+        if current.tzinfo is not None
+        else current.replace(tzinfo=zone)
+    )
+    week_start_date = current.date() - timedelta(days=current.weekday())
+    start = datetime.combine(week_start_date, time.min, tzinfo=zone)
+    end = start + timedelta(days=7)
+
+    return DateRange(start=start, end=end, label="this_week")
 
 
 def _clarification_result(
@@ -331,6 +471,27 @@ def _budget_clarification_result(
         remaining_minor=None,
         is_over_budget=None,
         transaction_count=0,
+        answer=None,
+        needs_clarification=True,
+        clarification=Clarification(message=message, fields=fields),
+    )
+
+
+def _breakdown_clarification_result(
+    *,
+    intent: str,
+    currency: str,
+    fields: list[str],
+    message: str,
+) -> QuerySpendingBreakdownResult:
+    return QuerySpendingBreakdownResult(
+        intent=intent,
+        currency=currency,
+        date_range=None,
+        total_expense_minor=None,
+        transaction_count=0,
+        top_category=None,
+        breakdown=[],
         answer=None,
         needs_clarification=True,
         clarification=Clarification(message=message, fields=fields),

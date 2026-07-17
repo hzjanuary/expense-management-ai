@@ -24,6 +24,7 @@ User text
 - `create_transaction`
 - `query_spending`
 - `budget_remaining`
+- `spending_breakdown`
 - `set_budget`
 - `unknown`
 
@@ -59,7 +60,7 @@ Transaction parse output:
 
 Expected enum values:
 
-- `intent`: `create_transaction`, `query_spending`, `budget_remaining`, `set_budget`, `unknown`
+- `intent`: `create_transaction`, `query_spending`, `budget_remaining`, `spending_breakdown`, `set_budget`, `unknown`
 - `transaction_type`: `expense`, `income`, `transfer`
 - `confidence`: `high`, `medium`, `low`
 
@@ -228,3 +229,15 @@ LLM output may extract the phrase, but final normalization must be deterministic
 - Unsupported date ranges should produce clarification.
 - Missing budget setup should return an explicit no-budget answer rather than fabricated values.
 - The backend computes `spent_minor`, `remaining_minor`, `is_over_budget`, and `transaction_count` from configured budgets and non-deleted expense transactions only.
+
+## Spending Breakdown Query Rules
+
+- The LLM may classify a spending breakdown or top-category intent and extract date range.
+- The answer must be computed from local ledger records.
+- The answer must not rely on provider-generated category totals or provider-selected top category.
+- For US-503, query classification uses `intent = "spending_breakdown"`, `currency`, and `date_range_label = "this_week"`.
+- `this_week` uses the request timezone with Monday as the inclusive week start and the next Monday as the exclusive end.
+- Missing or unsupported date ranges should produce clarification rather than a fabricated breakdown.
+- The backend groups non-deleted expense transactions by category, computes category totals and percentages, and chooses the top category deterministically.
+- Top category ordering is amount descending, transaction count descending, then category slug ascending.
+- Income transactions, out-of-range transactions, soft-deleted transactions, and other currencies do not count.

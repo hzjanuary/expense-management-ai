@@ -564,6 +564,101 @@ Rules:
 - Income transactions, other categories, out-of-range transactions, and soft-deleted transactions do not count.
 - The endpoint must not mutate transactions, accounts, budgets, or AI draft rows.
 
+## Query Spending Breakdown
+
+```http
+POST /api/v1/ai/query-spending-breakdown
+```
+
+Request:
+
+```json
+{
+  "message": "Tuần này tôi tiêu nhiều nhất vào mục nào?",
+  "locale": "vi-VN",
+  "currency": "VND",
+  "timezone": "Asia/Ho_Chi_Minh"
+}
+```
+
+Response:
+
+```json
+{
+  "intent": "spending_breakdown",
+  "currency": "VND",
+  "date_range": {
+    "start": "2026-07-13T00:00:00+07:00",
+    "end": "2026-07-20T00:00:00+07:00",
+    "label": "this_week"
+  },
+  "total_expense_minor": 285000,
+  "transaction_count": 5,
+  "top_category": {
+    "category_slug": "food",
+    "amount_minor": 180000,
+    "transaction_count": 3,
+    "percentage": 63.16
+  },
+  "breakdown": [
+    {
+      "category_slug": "food",
+      "amount_minor": 180000,
+      "transaction_count": 3,
+      "percentage": 63.16
+    },
+    {
+      "category_slug": "transport",
+      "amount_minor": 105000,
+      "transaction_count": 2,
+      "percentage": 36.84
+    }
+  ],
+  "answer": "Tuần này bạn chi nhiều nhất cho food: 180.000₫.",
+  "needs_clarification": false,
+  "clarification": null
+}
+```
+
+No-expense response:
+
+```json
+{
+  "intent": "spending_breakdown",
+  "currency": "VND",
+  "date_range": {
+    "start": "2026-07-13T00:00:00+07:00",
+    "end": "2026-07-20T00:00:00+07:00",
+    "label": "this_week"
+  },
+  "total_expense_minor": 0,
+  "transaction_count": 0,
+  "top_category": null,
+  "breakdown": [],
+  "answer": "Bạn chưa có khoản chi nào trong tuần này.",
+  "needs_clarification": false,
+  "clarification": null
+}
+```
+
+Rules:
+
+- The provider may classify intent, currency, and date range.
+- The provider must not answer, invent category totals, or choose the top category.
+- The API computes `total_expense_minor`, `transaction_count`, `top_category`, and `breakdown` from persisted ledger records.
+- US-503 supports `date_range.label = "this_week"`.
+- `this_week` uses the request timezone with Monday as the inclusive start and the next Monday as the exclusive end.
+- The endpoint groups only non-deleted expense transactions matching currency and date range.
+- Income transactions, out-of-range transactions, soft-deleted transactions, and other currencies do not count.
+- Breakdown entries are ordered by amount descending, transaction count descending, then category slug ascending.
+- Percentages are rounded to two decimal places.
+- Unknown intent and unsupported or missing date ranges return a safe clarification response.
+- Empty messages and invalid currency/timezone values are rejected with `422`.
+- Provider unavailable returns `503`.
+- Provider timeout returns `504`.
+- Invalid provider structured output returns `502`.
+- The endpoint must not mutate transactions, accounts, budgets, or AI draft rows.
+
 ## Provider Status
 
 ```http
