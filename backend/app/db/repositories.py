@@ -154,6 +154,25 @@ async def get_ai_transaction_draft(
     return result.scalar_one_or_none()
 
 
+async def count_ai_transaction_drafts(session: AsyncSession) -> int:
+    result = await session.execute(select(func.count(AiTransactionDraftModel.id)))
+    return int(result.scalar_one())
+
+
+async def count_ai_draft_created_transactions(session: AsyncSession) -> int:
+    result = await session.execute(
+        select(
+            func.count(func.distinct(AiTransactionDraftModel.created_transaction_id))
+        ).where(AiTransactionDraftModel.created_transaction_id.is_not(None))
+    )
+    return int(result.scalar_one())
+
+
+async def delete_ai_transaction_drafts(session: AsyncSession) -> None:
+    await session.execute(delete(AiTransactionDraftModel))
+    await session.flush()
+
+
 async def get_budget_period(
     session: AsyncSession,
     *,

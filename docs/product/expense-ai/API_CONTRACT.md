@@ -234,6 +234,43 @@ Rules:
 - The endpoint does not call an LLM provider.
 - The endpoint does not implement restore, hard delete, bulk delete, or an `include_deleted` read option.
 
+## Clear AI History
+
+```http
+DELETE /api/v1/ai/history
+```
+
+Response:
+
+```json
+{
+  "deleted_draft_count": 4,
+  "preserved_transaction_count": 2,
+  "cleared": true
+}
+```
+
+Rules:
+
+- The endpoint is user-triggered and local-only.
+- The endpoint deletes rows from `ai_transaction_drafts`, including pending,
+  expired, cancelled if present, and confirmed draft rows.
+- Deleting AI draft/history rows removes stored raw user text, parsed draft
+  fields, provider/model metadata, draft status, and confirmation timestamps
+  stored in those rows.
+- `preserved_transaction_count` is the count of distinct ledger transaction IDs
+  that were referenced by deleted draft rows.
+- Ledger transactions referenced by `created_transaction_id` remain stored.
+- Manual transactions, AI-confirmed transactions, soft-deleted transactions,
+  account balances, budgets, dashboard totals, insights, and exports remain
+  intact.
+- Empty or repeated clear requests return success with
+  `deleted_draft_count = 0`.
+- The operation is atomic; failed clearing must not partially delete draft rows.
+- The endpoint does not call an LLM provider or external service.
+- The endpoint does not clear application logs, Harness traces, provider
+  configuration, Ollama models, or ledger transactions.
+
 ## Parse Chat Message
 
 ```http

@@ -14,6 +14,7 @@ from app.ai.factory import get_llm_provider
 from app.ai.providers import LlmProvider
 from app.api.schemas.ai import (
     AiClarificationResponse,
+    AiClearHistoryResponse,
     AiConfirmedTransactionResponse,
     AiConfirmRequest,
     AiConfirmResponse,
@@ -29,6 +30,7 @@ from app.api.schemas.ai import (
     AiSpendingBreakdownEntryResponse,
     AiTransactionDraftResponse,
 )
+from app.application.ai_history import clear_ai_history
 from app.application.ai_parse import (
     AiDraftConfirmationError,
     AiDraftNotFoundError,
@@ -54,6 +56,18 @@ router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 
 def get_current_time() -> datetime:
     return datetime.now(UTC)
+
+
+@router.delete("/history", response_model=AiClearHistoryResponse)
+async def clear_ai_history_endpoint(
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+) -> AiClearHistoryResponse:
+    result = await clear_ai_history(session)
+    return AiClearHistoryResponse(
+        deleted_draft_count=result.deleted_draft_count,
+        preserved_transaction_count=result.preserved_transaction_count,
+        cleared=result.cleared,
+    )
 
 
 @router.post("/parse", response_model=AiParseResponse)

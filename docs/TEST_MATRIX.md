@@ -44,7 +44,7 @@ implemented until tests or validation evidence exist.
 | US-503 | Spending breakdown questions compute top category deterministically | yes | yes | no | no | implemented | `pytest tests/test_ai_spending_breakdown_api.py`; `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-601 | Export transactions as user-triggered CSV/JSON | yes | yes | no | no | implemented | `pytest tests/test_transaction_export_api.py`; `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 | US-602 | Soft delete excludes transactions from lists and totals | yes | yes | no | no | implemented | `pytest tests/test_soft_delete_transaction_api.py`; `pytest`; `ruff check .`; `black --check .`; `mypy app` |
-| US-603 | Clear AI history removes AI records without deleting transactions | yes | yes | yes | no | planned | none |
+| US-603 | Clear AI history removes AI records without deleting transactions | yes | yes | no | no | implemented | `pytest tests/test_clear_ai_history_api.py`; `pytest`; `ruff check .`; `black --check .`; `mypy app` |
 
 ## Evidence Rules
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -20,19 +20,27 @@ Let privacy-conscious users clear AI chat/parse history without deleting ledger 
 
 ## Acceptance Criteria
 
-- User can clear raw AI chat/parse attempts.
-- Clearing AI history does not delete transactions.
-- UI explains what is deleted.
+- User can clear stored AI draft/history records through
+  `DELETE /api/v1/ai/history`.
+- Clearing AI history removes raw user text, provider/model metadata, and
+  draft lifecycle rows from `ai_transaction_drafts`.
+- Clearing AI history does not delete or modify ledger transactions.
+- Account balances, budgets, exports, dashboard totals, and insight totals are
+  preserved.
+- Empty and repeated clear operations are safe and idempotent.
 - Tests verify only AI history is removed.
 
 ## Design Notes
 
 - Commands: clear AI history.
-- Queries: AI history count/status if needed.
-- API: clear AI history endpoint to be defined.
-- Tables: chat message, AI parse attempt.
+- Queries: count AI draft rows and distinct linked transactions before delete.
+- API: `DELETE /api/v1/ai/history`.
+- Tables: `ai_transaction_drafts`.
 - Domain rules: ledger transactions remain intact.
-- UI surfaces: data management/privacy action.
+- UI surfaces: data management/privacy action remains future scope.
+- MVP clearing strategy is physical deletion of AI draft/history rows, not
+  anonymization, because the ledger transaction is the financial source of
+  truth after confirmation.
 
 ## Validation
 
@@ -40,15 +48,21 @@ Let privacy-conscious users clear AI chat/parse history without deleting ledger 
 | --- | --- |
 | Unit | Clear-history command preserves transactions. |
 | Integration | API removes AI records only. |
-| E2E | UI privacy action when implemented. |
+| E2E | Not required; no frontend privacy action in US-603. |
 | Platform | Not required. |
 | Release | Privacy regression test. |
 
 ## Harness Delta
 
-TBD.
+- Adds backend-only clear AI history endpoint.
+- Does not add frontend, auth, scheduled cleanup, cloud deletion, or full chat
+  history persistence.
+- No migration required; existing `ai_transaction_drafts` table is reused.
 
 ## Evidence
 
-TBD.
-
+- `cd backend && .venv/bin/pytest tests/test_clear_ai_history_api.py`
+- `cd backend && .venv/bin/pytest`
+- `cd backend && .venv/bin/ruff check .`
+- `cd backend && .venv/bin/black --check .`
+- `cd backend && .venv/bin/mypy app`

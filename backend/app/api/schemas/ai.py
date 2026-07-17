@@ -205,3 +205,9 @@ class AiQuerySpendingBreakdownResponse(BaseModel):
     answer: str | None
     needs_clarification: bool = False
     clarification: AiClarificationResponse | None = None
+
+
+class AiClearHistoryResponse(BaseModel):
+    deleted_draft_count: int
+    preserved_transaction_count: int
+    cleared: bool

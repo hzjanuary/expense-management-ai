@@ -29,7 +29,15 @@ Source input: `docs/product/expense-ai/SPEC.md`
 - Users must be able to clear AI chat and parse history.
 - Clearing AI history removes raw user text and parse attempts.
 - Clearing AI history must not delete ledger transactions.
-- If a parse attempt created a transaction, the ledger transaction remains and the historical parse metadata may be removed or anonymized according to the implementation story.
+- US-603 clears AI transaction draft/history records by physically deleting
+  `ai_transaction_drafts` rows.
+- If a parse attempt created a transaction, the ledger transaction remains and
+  the historical parse metadata is removed with the draft/history row.
+- Confirmed transactions keep their ledger fields, including `source =
+  "ai_chat"`.
+- Clearing AI history must not change account balances, manual transactions,
+  AI-created transactions, soft-deleted transaction state, budget setup,
+  dashboard totals, insight totals, or exports.
 - AI transaction drafts store validated draft fields and raw user text locally for confirmation lifecycle.
 - AI drafts are local SQLite records and are not sent to cloud providers in MVP.
 
@@ -63,6 +71,7 @@ Source input: `docs/product/expense-ai/SPEC.md`
 - Exported files are generated on demand and are not persisted or uploaded by
   the backend in MVP.
 - Clear AI history independently from ledger history.
+- AI history clearing is explicit, idempotent, atomic, and returns counts only.
 
 ## Security Non-Goals For MVP
 

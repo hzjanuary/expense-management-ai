@@ -191,3 +191,10 @@ Rules:
 - A parse attempt may create a draft, not a transaction.
 - `created_transaction_id` is set only after a confirmed draft creates a ledger transaction.
 - Raw text may be stored for debugging, but clearing AI history must remove it.
+- In the current backend, persisted parse/draft history is represented by
+  `ai_transaction_drafts`.
+- Clearing AI history physically deletes AI draft/history rows and therefore
+  removes raw text, provider/model metadata, parsed draft fields, lifecycle
+  status, and confirmation timestamps stored there.
+- Clearing AI history must not delete or modify the ledger transaction
+  referenced by `created_transaction_id`.

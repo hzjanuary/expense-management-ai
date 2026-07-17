@@ -28,6 +28,7 @@ Implemented:
 - monthly budget setup API
 - monthly budget remaining API
 - transaction CSV/JSON export API
+- AI history clearing API
 - account and transaction persistence tables
 - AI transaction draft persistence table
 - budget setup persistence tables
@@ -35,7 +36,6 @@ Implemented:
 Not implemented yet:
 
 - budget dashboard progress UI
-- AI history clearing
 - frontend
 
 ## Database
@@ -241,6 +241,16 @@ curl -i -X POST http://127.0.0.1:8000/api/v1/ai/query-spending-breakdown \
   -H 'Content-Type: application/json' \
   -d '{"message": "Tuần này tôi tiêu nhiều nhất vào mục nào?"}'
 ```
+
+Clear local AI draft/history rows without deleting ledger transactions:
+
+```bash
+curl -i -X DELETE http://127.0.0.1:8000/api/v1/ai/history
+```
+
+AI history clearing deletes rows from `ai_transaction_drafts`, including raw
+user text and provider/model metadata stored there. Confirmed ledger
+transactions and account balances remain unchanged.
 
 Normal tests use mocked HTTP behavior for Ollama. To opt into the real local
 Ollama smoke test:
