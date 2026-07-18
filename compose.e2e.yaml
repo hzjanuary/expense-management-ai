@@ -1,0 +1,35 @@
+services:
+  backend:
+    environment:
+      POCKET_LEDGER_ENVIRONMENT: test
+      POCKET_LEDGER_DATABASE_URL: sqlite+aiosqlite:////app/data/pocket_ledger_e2e.db
+      POCKET_LEDGER_DEFAULT_ACCOUNT_OPENING_BALANCE_MINOR: 1000000
+      POCKET_LEDGER_OLLAMA_ENABLED: "false"
+    volumes:
+      - pocket-ledger-e2e-data:/app/data
+
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8011}
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:8010
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8011}
+
+  e2e:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.e2e
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    environment:
+      PLAYWRIGHT_BASE_URL: http://frontend:3000
+    user: root
+    profiles:
+      - e2e
+
+volumes:
+  pocket-ledger-e2e-data:

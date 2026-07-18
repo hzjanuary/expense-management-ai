@@ -4,7 +4,7 @@ Date: 2026-07-17
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -15,9 +15,9 @@ Ollama-enabled integration proof.
 
 ## Decision
 
-Propose that the normal E2E suite use deterministic fake/local provider
-behavior. Real Ollama E2E proof may exist only as an optional, explicitly gated
-validation path.
+The normal E2E suite uses deterministic fake/local provider behavior. Real
+Ollama E2E proof may exist only as an optional, explicitly gated validation
+path.
 
 Normal E2E must prove:
 
@@ -28,6 +28,18 @@ Normal E2E must prove:
 
 Optional Ollama E2E must be skipped by default and enabled only with an
 environment variable.
+
+US-706 implements this through the isolated E2E Compose overlay and runner:
+
+- `compose.e2e.yaml` sets `POCKET_LEDGER_ENVIRONMENT=test`,
+  `POCKET_LEDGER_OLLAMA_ENABLED=false`, and an E2E-specific SQLite database
+  path.
+- `scripts/e2e-mvp.sh` runs the isolated stack under Compose project
+  `pocket-ledger-e2e`, seeds deterministic local data, and executes Playwright
+  without requiring Ollama.
+- The default production-like Compose runtime remains unchanged:
+  `POCKET_LEDGER_ENVIRONMENT=production` with Ollama disabled returns the safe
+  provider-unavailable response for AI parse requests.
 
 ## Alternatives Considered
 
@@ -50,9 +62,10 @@ Tradeoffs:
 - Fake provider E2E does not prove model quality.
 - Optional Ollama smoke must be documented separately.
 - UI copy must clearly handle Ollama-disabled/unavailable states.
+- The E2E seed/reset path must remain guarded to test/E2E environments and must
+  not become a public API.
 
 ## Follow-Up
 
-- US-706 should implement normal E2E with fake/local provider behavior.
+- US-706 implemented normal E2E with fake/local provider behavior.
 - US-707 should document optional Ollama validation.
-

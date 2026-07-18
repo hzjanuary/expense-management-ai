@@ -69,6 +69,20 @@ proxy, verifies Alembic state, verifies the SQLite file exists, creates one
 controlled manual transaction, restarts services, and verifies the transaction
 survives the restart.
 
+Run the isolated browser E2E MVP demo:
+
+```bash
+scripts/e2e-mvp.sh
+```
+
+The E2E runner uses Compose project `pocket-ledger-e2e`, host ports `8011` and
+`3001`, an isolated SQLite volume, and deterministic fake-provider behavior.
+It seeds a clean ledger with a `1,000,000 VND` opening balance, drives the full
+dashboard/budget/chat/insight/export/delete/history-clear flow in Chromium, and
+removes only the isolated E2E volume on completion. It does not require Ollama
+and does not delete the normal `pocket-ledger-data` development volume. Failure
+artifacts are copied under `frontend/e2e-artifacts/`.
+
 Ollama is optional and disabled by default. To connect the backend container to
 a host Ollama instance, keep `POCKET_LEDGER_OLLAMA_BASE_URL` pointed at
 `http://host.docker.internal:11434` and set

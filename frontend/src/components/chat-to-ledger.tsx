@@ -51,6 +51,7 @@ type ChatEntry =
     };
 
 const MAX_CHAT_ENTRIES = 12;
+const DEFAULT_INSIGHT_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 export function ChatToLedger({
   onTransactionConfirmed,
@@ -387,7 +388,7 @@ async function runInsightQuery(
     currency: "VND",
     locale: "vi-VN",
     message,
-    timezone: getBrowserTimezone(),
+    timezone: DEFAULT_INSIGHT_TIMEZONE,
   };
 
   if (intent === "query_spending") {
@@ -517,16 +518,6 @@ function getSafeErrorMessage(error: unknown, fallback: string): string {
   }
 
   return fallback;
-}
-
-function getBrowserTimezone(): string {
-  try {
-    return (
-      Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Ho_Chi_Minh"
-    );
-  } catch {
-    return "Asia/Ho_Chi_Minh";
-  }
 }
 
 function isAbortError(error: unknown): boolean {

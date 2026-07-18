@@ -80,6 +80,19 @@ In Compose, the backend listens on `0.0.0.0:8010` in the container and is
 published to `http://127.0.0.1:8010` on the host. SQLite is stored at
 `/app/data/pocket_ledger.db` in the `pocket-ledger-data` Docker volume.
 
+The E2E demo uses a guarded reset/seed command inside the isolated E2E backend
+container:
+
+```bash
+python -m app.cli.e2e_seed
+```
+
+The command refuses to run unless `POCKET_LEDGER_ENVIRONMENT=test` and the
+SQLite database path is clearly E2E-specific. It resets AI drafts, budgets,
+transactions, and accounts while preserving Alembic metadata, then seeds one
+default account with a `1,000,000 VND` stored balance. It is not exposed as an
+HTTP endpoint and prints counts/status only.
+
 Health check:
 
 ```bash

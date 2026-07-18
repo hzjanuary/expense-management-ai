@@ -39,6 +39,9 @@ __pycache__/
 .next/
 desktop-dist/
 test-results/
+frontend/playwright-report/
+frontend/test-results/
+frontend/e2e-artifacts/
 tsconfig.tsbuildinfo
 
 # Downloaded Harness CLI binary for installed project instances.

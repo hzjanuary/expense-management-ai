@@ -34,6 +34,9 @@
 ## E2E Gates
 
 - Playwright or equivalent E2E runner is configured.
+- `scripts/e2e-mvp.sh` passes from a clean isolated E2E database.
+- For release signoff, run `scripts/e2e-mvp.sh` twice consecutively from a
+  clean isolated state to check for state leakage.
 - Normal E2E uses deterministic fake/local provider behavior and does not
   require real Ollama.
 - E2E proves the complete flow in `DEMO_SCRIPT.md`.
@@ -80,4 +83,3 @@
 - README and troubleshooting docs explain local setup, reset, seed, validation,
   and Ollama optionality.
 - An MVP release validation report is produced by US-707.
-

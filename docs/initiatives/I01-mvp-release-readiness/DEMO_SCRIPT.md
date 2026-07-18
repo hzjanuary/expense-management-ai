@@ -118,3 +118,16 @@ Exports no longer include the deleted transaction
 The demo passes only when every expected state is visible in the UI or proven by
 the E2E assertions without relying on a real Ollama installation.
 
+## Automated Proof
+
+US-706 implements the browser-level proof with:
+
+```bash
+scripts/e2e-mvp.sh
+```
+
+The command starts an isolated Compose project named `pocket-ledger-e2e`, seeds
+the deterministic opening state, runs the full browser demo in Playwright
+Chromium, and removes only the isolated E2E volume. It uses the deterministic
+fake provider and does not require a real Ollama installation or model
+download.

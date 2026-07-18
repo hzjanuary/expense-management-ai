@@ -5,8 +5,9 @@
 Turn the completed 26-story MVP backlog into a coherent, locally runnable,
 demonstrable, and release-ready Pocket Ledger AI MVP.
 
-This initiative is planning-only. It defines the release hardening backlog and
-objective gates before implementation starts.
+The initiative defines and implements the release-readiness path needed before
+final hardening. US-701 through US-706 are implemented; US-707 remains planned
+for final release validation and documentation.
 
 ## Current Implemented Baseline
 
@@ -30,8 +31,17 @@ Implemented frontend behavior:
 
 - Next.js App Router shell.
 - Dashboard route.
+- Full-stack Docker Compose runtime.
+- Live dashboard summary and budget progress.
+- Budget setup/edit UI.
 - Recent Transactions UI backed by the transaction list API.
 - Chat-to-Ledger UI backed by AI parse and confirm APIs.
+- Insight chat UI for DB-grounded spending, budget remaining, and top-category
+  queries.
+- Data-management UI for CSV/JSON export, transaction soft delete, and clear AI
+  history.
+- Playwright E2E MVP demo covering the complete local release scenario with an
+  isolated E2E database and deterministic fake provider.
 
 ## Included Stories
 
@@ -75,4 +85,3 @@ installation.
 Optional Ollama-enabled proof may be added behind an explicit environment gate,
 but the normal release path must work with local fake/deterministic provider
 behavior.
-
