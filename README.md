@@ -14,8 +14,10 @@ or multi-user banking platform.
 - AI transaction parsing with typed drafts.
 - Explicit draft confirmation before any AI-created transaction reaches the
   ledger.
-- Live dashboard for account balance, monthly income, monthly expense, and
-  budget progress.
+- Multi-page frontend with overview, transactions, budgets, assistant, and
+  settings pages.
+- Live dashboard overview for account balance, monthly income, monthly expense,
+  budget progress, recent transaction preview, and quick actions.
 - Monthly total budgets and expense-category budgets.
 - Spending query, budget remaining, and spending breakdown insight UI.
 - CSV and JSON transaction export.
@@ -146,16 +148,23 @@ The example environment uses:
 
 ```text
 POCKET_LEDGER_OLLAMA_BASE_URL=http://host.docker.internal:11434
-POCKET_LEDGER_OLLAMA_MODEL=qwen2.5:3b
+POCKET_LEDGER_OLLAMA_MODEL=qwen3:4b-instruct
 POCKET_LEDGER_OLLAMA_TIMEOUT_SECONDS=10
 ```
 
 To connect the backend container to a host Ollama instance, install and run
 Ollama on the host, make sure the configured model is available, then set:
 
+```bash
+ollama pull qwen3:4b-instruct
+ollama list
+ollama serve
+```
+
 ```text
 POCKET_LEDGER_OLLAMA_ENABLED=true
 POCKET_LEDGER_OLLAMA_BASE_URL=http://host.docker.internal:11434
+POCKET_LEDGER_OLLAMA_MODEL=qwen3:4b-instruct
 ```
 
 Linux hosts may need Docker's host-gateway support, which is already configured
@@ -194,7 +203,7 @@ curl -X POST "http://127.0.0.1:8010/api/v1/transactions" \
 
 ### Add A Transaction With AI
 
-Open the dashboard chat and enter:
+Open `http://127.0.0.1:3000/assistant` and enter:
 
 ```text
 Hôm nay tôi tiêu 35k vào ăn trưa
@@ -205,7 +214,7 @@ explicitly confirm the draft.
 
 ### Configure A Budget
 
-From the dashboard budget section, select the month and configure:
+Open `http://127.0.0.1:3000/budgets`, select the month, and configure:
 
 ```text
 Total monthly budget: 5,000,000 VND
@@ -217,7 +226,7 @@ save completes.
 
 ### Ask Financial Questions
 
-The chat surface supports these deterministic MVP insight examples:
+The assistant page supports these deterministic MVP insight examples:
 
 ```text
 Tháng này tôi ăn uống hết bao nhiêu?
@@ -230,23 +239,24 @@ budget, percentages, and top categories come from backend database queries.
 
 ### Export Data
 
-Use the dashboard data-management section to download transaction exports as CSV
-or JSON. Export filters include format, month, category, type, and text search.
-Exports use an explicit field allowlist and do not include AI provider metadata,
-deleted timestamps, parser confidence, request IDs, or logs.
+Open `http://127.0.0.1:3000/transactions` to download transaction exports as
+CSV or JSON. Export filters include format, month, category, type, and text
+search. Exports use an explicit field allowlist and do not include AI provider
+metadata, deleted timestamps, parser confidence, request IDs, or logs.
 
 ### Remove An Incorrect Transaction
 
-Use the transaction delete action in Recent Transactions. The confirmation
-explains that this is a soft delete: the row is retained locally, active ledger
-views hide it, and the backend reverses its account-balance effect. Repeated
-delete attempts are handled without reversing the balance twice.
+Open `http://127.0.0.1:3000/transactions` and use the transaction delete action
+in Recent Transactions. The confirmation explains that this is a soft delete:
+the row is retained locally, active ledger views hide it, and the backend
+reverses its account-balance effect. Repeated delete attempts are handled
+without reversing the balance twice.
 
 ### Clear AI History
 
-Use the privacy action on the dashboard to clear locally stored AI draft/history
-records. Confirmed transactions, account balances, budgets, exports, and active
-ledger views remain intact.
+Open `http://127.0.0.1:3000/settings` and use the privacy action to clear
+locally stored AI draft/history records. Confirmed transactions, account
+balances, budgets, exports, and active ledger views remain intact.
 
 ## Development Without Docker
 
@@ -410,6 +420,8 @@ Important MVP limits:
 - No automatic backups.
 - No transaction restore or hard-delete UI.
 - No persistent conversational chat history.
+- No general-purpose economics chat; the assistant routes only supported
+  transaction and insight intents.
 - SQLite has expected local concurrency limits.
 - Validated platform coverage is limited to the documented Linux Docker
   environment.

@@ -11,6 +11,8 @@
   delete UI, or bulk delete UI.
 - Chat interactions are session-only in the frontend. Persistent multi-turn
   chat history is not implemented.
+- The assistant is not a general-purpose economics chatbot; it supports the
+  implemented transaction-draft and financial-insight intents only.
 - The deterministic fake provider is for tests and E2E only. Default
   production-like Compose startup uses safe provider-unavailable behavior when
   Ollama is disabled.

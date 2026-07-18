@@ -1,4 +1,5 @@
 import { formatVnd } from "@/lib/money";
+import { Button } from "@/components/ui";
 import type { TransactionListItem } from "@/lib/transactions";
 
 type TransactionRowProps = {
@@ -41,14 +42,15 @@ export function TransactionRow({
           {formatVnd(transaction.amount_minor)}
         </p>
         {onDeleteRequested ? (
-          <button
+          <Button
             aria-label={`Delete transaction ${transaction.description}`}
-            className="h-9 rounded-md border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition hover:border-rose-700"
             onClick={() => onDeleteRequested(transaction)}
+            size="small"
             type="button"
+            variant="danger"
           >
             Delete
-          </button>
+          </Button>
         ) : null}
       </div>
     </li>

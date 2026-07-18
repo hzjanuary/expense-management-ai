@@ -21,6 +21,15 @@ export type TransactionListResponse = {
   total: number;
 };
 
+export type TransactionListFilters = {
+  category?: string;
+  limit?: number;
+  month?: string;
+  offset?: number;
+  q?: string;
+  type?: TransactionType | "";
+};
+
 export class TransactionApiError extends Error {
   constructor(message = "Unable to load recent transactions") {
     super(message);
@@ -28,8 +37,18 @@ export class TransactionApiError extends Error {
   }
 }
 
-export async function fetchRecentTransactions(): Promise<TransactionListResponse> {
-  const response = await fetch("/api/transactions?limit=10&offset=0", {
+export async function fetchRecentTransactions(
+  filters: TransactionListFilters = {},
+): Promise<TransactionListResponse> {
+  const params = new URLSearchParams();
+  params.set("limit", String(filters.limit ?? 10));
+  params.set("offset", String(filters.offset ?? 0));
+  appendOptionalParam(params, "month", filters.month);
+  appendOptionalParam(params, "category", filters.category);
+  appendOptionalParam(params, "type", filters.type);
+  appendOptionalParam(params, "q", filters.q);
+
+  const response = await fetch(`/api/transactions?${params.toString()}`, {
     cache: "no-store",
   });
 
@@ -39,6 +58,17 @@ export async function fetchRecentTransactions(): Promise<TransactionListResponse
 
   const payload: unknown = await response.json();
   return parseTransactionListResponse(payload);
+}
+
+function appendOptionalParam(
+  params: URLSearchParams,
+  key: string,
+  value: string | undefined,
+) {
+  const trimmed = value?.trim();
+  if (trimmed) {
+    params.set(key, trimmed);
+  }
 }
 
 export function parseTransactionListResponse(

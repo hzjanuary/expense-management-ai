@@ -11,22 +11,22 @@ export type ChatQuickAction = {
 export const CHAT_QUICK_ACTIONS: ChatQuickAction[] = [
   {
     intent: "create_transaction",
-    label: "Add expense",
+    label: "Thêm chi tiêu",
     example: "Hôm nay tôi tiêu 35k vào ăn trưa",
   },
   {
     intent: "query_spending",
-    label: "Spending this month",
+    label: "Chi tiêu tháng này",
     example: "Tháng này tôi ăn uống hết bao nhiêu?",
   },
   {
     intent: "budget_remaining",
-    label: "Budget remaining",
+    label: "Ngân sách còn lại",
     example: "Còn bao nhiêu tiền ăn tháng này?",
   },
   {
     intent: "spending_breakdown",
-    label: "Top spending this week",
+    label: "Chi nhiều nhất tuần này",
     example: "Tuần này tôi tiêu nhiều nhất vào mục nào?",
   },
 ];
@@ -88,17 +88,17 @@ export function routeChatIntent(
 export function formatIntentLabel(intent: RoutedChatIntent | SupportedChatIntent): string {
   switch (intent) {
     case "create_transaction":
-      return "Create transaction";
+      return "Tạo giao dịch";
     case "query_spending":
-      return "Query spending";
+      return "Hỏi chi tiêu";
     case "budget_remaining":
-      return "Budget remaining";
+      return "Ngân sách còn lại";
     case "spending_breakdown":
-      return "Spending breakdown";
+      return "Phân tích chi tiêu";
     case "auto":
-      return "Auto route";
+      return "Tự chọn";
     case "unknown":
-      return "Needs clarification";
+      return "Cần làm rõ";
     default:
       return intent;
   }

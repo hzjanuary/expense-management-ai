@@ -13,6 +13,12 @@ export async function GET(request: NextRequest) {
   const url = new URL("/api/v1/transactions", getBackendApiBaseUrl());
   url.searchParams.set("limit", limit);
   url.searchParams.set("offset", offset);
+  for (const key of ["month", "category", "type", "q"]) {
+    const value = searchParams.get(key)?.trim();
+    if (value) {
+      url.searchParams.set(key, value);
+    }
+  }
 
   try {
     const response = await fetch(url, {

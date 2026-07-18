@@ -3,22 +3,30 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { TransactionDeleteDialog } from "@/components/transaction-delete-dialog";
+import { Button, panelClassName } from "@/components/ui";
 import {
   DataManagementApiError,
   deleteTransaction,
 } from "@/lib/data-management";
 import { fetchRecentTransactions } from "@/lib/transactions";
-import type { TransactionListItem } from "@/lib/transactions";
+import type {
+  TransactionListFilters,
+  TransactionListItem,
+} from "@/lib/transactions";
 import { TransactionRow } from "@/components/transaction-row";
 
 type LoadState = "idle" | "loading" | "loaded" | "error";
 
 type RecentTransactionsProps = {
+  filters?: TransactionListFilters;
+  hideDeleteActions?: boolean;
   onTransactionDeleted?: () => void;
   refreshSignal?: number;
 };
 
 export function RecentTransactions({
+  filters,
+  hideDeleteActions = false,
   onTransactionDeleted,
   refreshSignal = 0,
 }: RecentTransactionsProps) {
@@ -35,14 +43,14 @@ export function RecentTransactions({
   const loadTransactions = useCallback(async () => {
     setState((current) => (current === "loaded" ? current : "loading"));
     try {
-      const result = await fetchRecentTransactions();
+      const result = await fetchRecentTransactions(filters);
       setTransactions(result.items);
       setTotal(result.total);
       setState("loaded");
     } catch {
       setState("error");
     }
-  }, []);
+  }, [filters]);
 
   useEffect(() => {
     void loadTransactions();
@@ -92,7 +100,7 @@ export function RecentTransactions({
   const isRefreshing = state === "loaded";
 
   return (
-    <section className="rounded-lg border border-ledger-line bg-ledger-panel p-5 shadow-soft">
+    <section className={panelClassName}>
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-lg font-semibold text-ledger-ink">
@@ -102,14 +110,14 @@ export function RecentTransactions({
             Latest records from the local ledger API.
           </p>
         </div>
-        <button
-          className="h-10 rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent disabled:cursor-not-allowed disabled:opacity-60"
+        <Button
           disabled={isLoading}
           onClick={() => void loadTransactions()}
           type="button"
+          variant="outline"
         >
           {isLoading ? "Loading" : isRefreshing ? "Refresh" : "Try again"}
-        </button>
+        </Button>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-md border border-ledger-line">
@@ -122,11 +130,15 @@ export function RecentTransactions({
               {transactions.map((transaction) => (
                 <TransactionRow
                   key={transaction.id}
-                  onDeleteRequested={(selectedTransaction) => {
-                    setDeleteNotice(null);
-                    setDeleteError(null);
-                    setTransactionToDelete(selectedTransaction);
-                  }}
+                  onDeleteRequested={
+                    hideDeleteActions
+                      ? undefined
+                      : (selectedTransaction) => {
+                          setDeleteNotice(null);
+                          setDeleteError(null);
+                          setTransactionToDelete(selectedTransaction);
+                        }
+                  }
                   transaction={transaction}
                 />
               ))}

@@ -7,6 +7,7 @@ import {
   DataManagementApiError,
   type ClearAiHistoryResponse,
 } from "@/lib/data-management";
+import { Button, panelClassName } from "@/components/ui";
 
 export function ClearAiHistory() {
   const abortRef = useRef<AbortController | null>(null);
@@ -52,7 +53,7 @@ export function ClearAiHistory() {
   }
 
   return (
-    <section className="rounded-lg border border-ledger-line bg-ledger-panel p-5 shadow-soft">
+    <section className={panelClassName}>
       <div>
         <h2 className="text-lg font-semibold text-ledger-ink">
           AI History Privacy
@@ -98,36 +99,37 @@ export function ClearAiHistory() {
             </p>
           ) : null}
           <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button
-              className="h-10 rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent disabled:cursor-not-allowed disabled:opacity-60"
+            <Button
               disabled={isClearing}
               onClick={() => setIsConfirming(false)}
               type="button"
+              variant="outline"
             >
               Cancel
-            </button>
-            <button
-              className="h-10 rounded-md bg-rose-700 px-4 text-sm font-semibold text-white transition hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
+            </Button>
+            <Button
               disabled={isClearing}
               onClick={() => void handleConfirm()}
               type="button"
+              variant="danger"
             >
               {isClearing ? "Clearing" : "Clear AI history"}
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
-        <button
-          className="mt-4 h-10 rounded-md border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700 transition hover:border-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+        <Button
+          className="mt-4"
           disabled={isClearing}
           onClick={() => {
             setError(null);
             setIsConfirming(true);
           }}
           type="button"
+          variant="danger"
         >
           Clear AI history
-        </button>
+        </Button>
       )}
     </section>
   );

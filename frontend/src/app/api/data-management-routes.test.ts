@@ -147,6 +147,36 @@ describe("data management proxy routes", () => {
   });
 });
 
+describe("transaction list proxy filters", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete process.env.BACKEND_INTERNAL_URL;
+  });
+
+  it("forwards accepted list filters and omits unexpected fields", async () => {
+    const { GET } = await import("@/app/api/transactions/route");
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8010";
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({
+        items: [],
+        limit: 10,
+        offset: 0,
+        total: 0,
+      }),
+    );
+
+    await GET(
+      new NextRequest(
+        "http://frontend.test/api/transactions?limit=10&offset=0&month=2026-07&category=food&type=expense&q=lunch&deleted_at=hidden",
+      ),
+    );
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "http://backend:8010/api/v1/transactions?limit=10&offset=0&month=2026-07&category=food&type=expense&q=lunch",
+    );
+  });
+});
+
 async function expectDeleteStatus(status: number, message: string) {
   const response = await deleteTransactionRoute(
     new NextRequest("http://frontend.test/api/transactions/tx-1", {

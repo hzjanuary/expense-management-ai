@@ -140,20 +140,28 @@ describe("live dashboard data", () => {
     );
   });
 
-  it("refreshes summary, budget, and recent transactions after AI confirmation", async () => {
+  it("keeps the dashboard as an overview with quick navigation and no full workspace controls", async () => {
     const fetchMock = mockDashboardFetch();
 
     render(<DashboardClient />);
 
     await findExactText("965.000\u00a0₫");
-    await userEvent.type(
-      screen.getByLabelText("Chat to ledger message"),
-      "Hôm nay tôi tiêu 35k vào ăn trưa",
+    expect(screen.getByRole("link", { name: "Thêm giao dịch" })).toHaveAttribute(
+      "href",
+      "/assistant",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText("Review AI Draft")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    expect(await screen.findByText(/Transaction created:/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Thiết lập ngân sách" }),
+    ).toHaveAttribute("href", "/budgets");
+    expect(screen.getByRole("link", { name: "Xem giao dịch" })).toHaveAttribute(
+      "href",
+      "/transactions",
+    );
+    expect(screen.queryByLabelText("Chat to ledger message")).not.toBeInTheDocument();
+    expect(screen.queryByText("Export Transactions")).not.toBeInTheDocument();
+    expect(screen.queryByText("AI History Privacy")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Làm mới" }));
 
     await waitFor(() => {
       expect(countCalls(fetchMock, "/api/dashboard/summary")).toBeGreaterThan(1);

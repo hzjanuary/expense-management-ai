@@ -1,15 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { BudgetProgress } from "@/components/budget-progress";
-import { BudgetSetupForm } from "@/components/budget-setup-form";
-import { ChatToLedger } from "@/components/chat-to-ledger";
-import { ClearAiHistory } from "@/components/clear-ai-history";
+import { Button, panelClassName } from "@/components/ui";
 import { DashboardSummary } from "@/components/dashboard-summary";
 import { MonthSelector } from "@/components/month-selector";
 import { RecentTransactions } from "@/components/recent-transactions";
-import { TransactionExport } from "@/components/transaction-export";
 import { getCurrentMonthValue } from "@/lib/dashboard";
 
 export function DashboardClient() {
@@ -17,46 +15,34 @@ export function DashboardClient() {
     getCurrentMonthValue(),
   );
   const [refreshRevision, setRefreshRevision] = useState(0);
-  const [isBudgetSetupOpen, setIsBudgetSetupOpen] = useState(false);
 
   function refreshDashboardData() {
     setRefreshRevision((currentRevision) => currentRevision + 1);
   }
 
   return (
-    <div className="grid gap-6">
-      <section className="rounded-lg border border-ledger-line bg-ledger-panel p-5 shadow-soft">
+    <div className="grid gap-5">
+      <section className={panelClassName}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-ledger-ink">
-              Dashboard
+              Tổng quan tháng
             </h2>
-            <p className="mt-1 text-sm text-ledger-muted">
-              Live local ledger data for the selected month.
+            <p className="mt-1 text-sm leading-6 text-ledger-muted">
+              Xem nhanh số dư, thu chi và ngân sách. Các thao tác chi tiết nằm
+              ở từng trang riêng.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <MonthSelector
-              onChange={setSelectedMonth}
-              value={selectedMonth}
-            />
-            <button
-              className="h-11 rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent"
+            <MonthSelector onChange={setSelectedMonth} value={selectedMonth} />
+            <Button
               onClick={refreshDashboardData}
+              size="large"
               type="button"
+              variant="outline"
             >
-              Refresh dashboard
-            </button>
-            <button
-              aria-expanded={isBudgetSetupOpen}
-              className="h-11 rounded-md bg-ledger-accent px-4 text-sm font-semibold text-white transition hover:bg-ledger-accent-strong"
-              onClick={() =>
-                setIsBudgetSetupOpen((currentValue) => !currentValue)
-              }
-              type="button"
-            >
-              {isBudgetSetupOpen ? "Hide budget setup" : "Set up budget"}
-            </button>
+              Làm mới
+            </Button>
           </div>
         </div>
       </section>
@@ -66,33 +52,46 @@ export function DashboardClient() {
         refreshSignal={refreshRevision}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <div className="grid gap-6">
-          <ChatToLedger
-            onTransactionConfirmed={refreshDashboardData}
-            refreshSignal={refreshRevision}
-          />
-          <RecentTransactions
-            onTransactionDeleted={refreshDashboardData}
-            refreshSignal={refreshRevision}
-          />
+      <section className={panelClassName}>
+        <h2 className="text-lg font-semibold text-ledger-ink">Thao tác nhanh</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <QuickAction href="/assistant" label="Thêm giao dịch" />
+          <QuickAction href="/budgets" label="Thiết lập ngân sách" />
+          <QuickAction href="/assistant" label="Hỏi trợ lý" />
+          <QuickAction href="/transactions" label="Xem giao dịch" />
         </div>
-        <div className="grid gap-6">
-          {isBudgetSetupOpen ? (
-            <BudgetSetupForm
-              month={selectedMonth}
-              onSaved={refreshDashboardData}
-            />
-          ) : null}
-          <BudgetProgress
-            month={selectedMonth}
-            onSetupRequested={() => setIsBudgetSetupOpen(true)}
-            refreshSignal={refreshRevision}
-          />
-          <TransactionExport month={selectedMonth} />
-          <ClearAiHistory />
-        </div>
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
+        <BudgetProgress
+          month={selectedMonth}
+          onSetupRequested={() => undefined}
+          refreshSignal={refreshRevision}
+          setupHref="/budgets"
+        />
+        <RecentTransactions
+          hideDeleteActions
+          onTransactionDeleted={refreshDashboardData}
+          refreshSignal={refreshRevision}
+        />
       </div>
     </div>
+  );
+}
+
+function QuickAction({
+  href,
+  label,
+}: {
+  href: "/assistant" | "/budgets" | "/transactions";
+  label: string;
+}) {
+  return (
+    <Link
+      className="inline-flex min-h-11 items-center justify-center rounded-md border border-ledger-line bg-ledger-wash px-4 text-center text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+      href={href}
+    >
+      {label}
+    </Link>
   );
 }

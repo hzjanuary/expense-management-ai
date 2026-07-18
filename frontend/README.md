@@ -6,15 +6,21 @@ Next.js frontend shell for Pocket Ledger AI.
 
 The frontend currently provides:
 
-- App Router layout.
-- Dashboard route.
+- App Router layout with a multi-page app shell.
+- User-facing routes for `/dashboard`, `/transactions`, `/budgets`,
+  `/assistant`, and `/settings`.
 - Live dashboard summary cards backed by the dashboard summary proxy.
 - Live monthly budget remaining status backed by the budget remaining proxy.
-- Budget setup/edit form backed by the monthly budget setup proxy.
-- Selected-month control and explicit dashboard refresh.
-- Chat-to-Ledger UI that sends messages to the AI parse proxy, reviews drafts,
-  confirms through the AI confirmation proxy, and refreshes recent transactions,
-  dashboard summary, and budget remaining data.
+- Dashboard overview with compact summary, budget preview, recent transaction
+  preview, and quick navigation actions.
+- Transactions page with transaction list, filters, soft delete, and CSV/JSON
+  export.
+- Budgets page with selected-month budget progress and setup/edit form backed by
+  the monthly budget setup proxy.
+- Dedicated assistant page that sends messages to the AI parse proxy, reviews
+  drafts, confirms through the AI confirmation proxy, and renders structured
+  spending insights.
+- Settings page with local Ollama guidance and the AI history privacy action.
 - Insight chat actions for spending this month, remaining food budget, and top
   spending this week. These call same-origin proxies for the existing backend
   insight endpoints and render only structured backend response fields.
@@ -55,6 +61,24 @@ Chat-to-Ledger actions show safe error states until the backend is available.
 Live financial responses are fetched without static caching. With Ollama
 disabled or unavailable, AI parse and insight requests show a provider
 unavailable state instead of sample or fabricated financial answers.
+
+The tracked default model name is `qwen3:4b-instruct`, while the repository
+default keeps `POCKET_LEDGER_OLLAMA_ENABLED=false`. To use a host Ollama runtime,
+pull the model manually and enable it in the ignored local `.env` file:
+
+```bash
+ollama pull qwen3:4b-instruct
+ollama list
+```
+
+```bash
+POCKET_LEDGER_OLLAMA_ENABLED=true
+POCKET_LEDGER_OLLAMA_BASE_URL=http://host.docker.internal:11434
+POCKET_LEDGER_OLLAMA_MODEL=qwen3:4b-instruct
+```
+
+No model is downloaded by Docker build, Compose startup, tests, E2E, or release
+validation.
 
 ## Setup
 

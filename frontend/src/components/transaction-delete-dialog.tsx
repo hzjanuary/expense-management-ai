@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 import { formatCategoryLabel } from "@/lib/categories";
 import { formatVnd } from "@/lib/money";
+import { Button } from "@/components/ui";
 import type { TransactionListItem } from "@/lib/transactions";
 
 type TransactionDeleteDialogProps = {
@@ -101,23 +102,23 @@ export function TransactionDeleteDialog({
         ) : null}
 
         <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button
-            className="h-10 rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent disabled:cursor-not-allowed disabled:opacity-60"
+          <Button
             disabled={isDeleting}
             onClick={onCancel}
             ref={cancelButtonRef}
             type="button"
+            variant="outline"
           >
             Cancel
-          </button>
-          <button
-            className="h-10 rounded-md bg-rose-700 px-4 text-sm font-semibold text-white transition hover:bg-rose-800 disabled:cursor-not-allowed disabled:opacity-60"
+          </Button>
+          <Button
             disabled={isDeleting}
             onClick={onConfirm}
             type="button"
+            variant="danger"
           >
             {isDeleting ? "Deleting" : "Delete transaction"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

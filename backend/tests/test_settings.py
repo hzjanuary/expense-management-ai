@@ -10,7 +10,7 @@ def test_settings_defaults() -> None:
     assert settings.default_currency == "VND"
     assert settings.database_url == "sqlite+aiosqlite:///./data/pocket_ledger.db"
     assert settings.ollama_base_url == "http://127.0.0.1:11434"
-    assert settings.ollama_model == "qwen2.5:3b"
+    assert settings.ollama_model == "qwen3:4b-instruct"
     assert settings.ollama_timeout_seconds == 10
     assert settings.ollama_enabled is False
     assert settings.ai_draft_ttl_seconds == 900

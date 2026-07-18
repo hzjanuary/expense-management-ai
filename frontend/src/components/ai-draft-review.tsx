@@ -1,5 +1,6 @@
 import type { AiTransactionDraft } from "@/lib/ai";
 import { formatVnd } from "@/lib/money";
+import { Button } from "@/components/ui";
 
 type AiDraftReviewProps = {
   confidence: string;
@@ -57,22 +58,21 @@ export function AiDraftReview({
       </dl>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <button
-          className="h-10 rounded-md bg-ledger-accent px-4 text-sm font-semibold text-white transition hover:bg-ledger-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+        <Button
           disabled={isConfirming}
           onClick={onConfirm}
           type="button"
         >
           {isConfirming ? "Confirming" : "Confirm"}
-        </button>
-        <button
-          className="h-10 rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent disabled:cursor-not-allowed disabled:opacity-60"
+        </Button>
+        <Button
           disabled={isConfirming}
           onClick={onCancel}
           type="button"
+          variant="outline"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import {
   readDataManagementError,
   type TransactionExportFormat,
 } from "@/lib/data-management";
+import { Button, inputClassName, panelClassName, selectClassName } from "@/components/ui";
 import type { TransactionType } from "@/lib/transactions";
 
 type TransactionExportProps = {
@@ -95,7 +96,7 @@ export function TransactionExport({ month }: TransactionExportProps) {
   }
 
   return (
-    <section className="rounded-lg border border-ledger-line bg-ledger-panel p-5 shadow-soft">
+    <section className={panelClassName}>
       <div>
         <h2 className="text-lg font-semibold text-ledger-ink">
           Export Transactions
@@ -110,7 +111,7 @@ export function TransactionExport({ month }: TransactionExportProps) {
           <label className="grid gap-1 text-sm font-medium text-ledger-ink">
             Format
             <select
-              className="h-10 rounded-md border border-ledger-line bg-white px-3 text-sm"
+              className={selectClassName}
               onChange={(event) =>
                 setFormat(event.target.value as TransactionExportFormat)
               }
@@ -124,7 +125,7 @@ export function TransactionExport({ month }: TransactionExportProps) {
           <label className="grid gap-1 text-sm font-medium text-ledger-ink">
             Month
             <input
-              className="h-10 rounded-md border border-ledger-line bg-white px-3 text-sm"
+              className={inputClassName}
               onChange={(event) => setExportMonth(event.target.value)}
               type="month"
               value={exportMonth}
@@ -136,7 +137,7 @@ export function TransactionExport({ month }: TransactionExportProps) {
           <label className="grid gap-1 text-sm font-medium text-ledger-ink">
             Category
             <select
-              className="h-10 rounded-md border border-ledger-line bg-white px-3 text-sm"
+              className={selectClassName}
               onChange={(event) => setCategory(event.target.value)}
               value={category}
             >
@@ -152,7 +153,7 @@ export function TransactionExport({ month }: TransactionExportProps) {
           <label className="grid gap-1 text-sm font-medium text-ledger-ink">
             Type
             <select
-              className="h-10 rounded-md border border-ledger-line bg-white px-3 text-sm"
+              className={selectClassName}
               onChange={(event) => setType(event.target.value as TransactionType | "")}
               value={type}
             >
@@ -166,7 +167,7 @@ export function TransactionExport({ month }: TransactionExportProps) {
         <label className="grid gap-1 text-sm font-medium text-ledger-ink">
           Search text
           <input
-            className="h-10 rounded-md border border-ledger-line bg-white px-3 text-sm"
+            className={inputClassName}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Description or merchant"
             type="search"
@@ -185,13 +186,12 @@ export function TransactionExport({ month }: TransactionExportProps) {
           </p>
         ) : null}
 
-        <button
-          className="h-10 rounded-md bg-ledger-accent px-4 text-sm font-semibold text-white transition hover:bg-ledger-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+        <Button
           disabled={isDownloading}
           type="submit"
         >
           {isDownloading ? "Preparing download" : "Download export"}
-        </button>
+        </Button>
       </form>
     </section>
   );

@@ -29,7 +29,7 @@ describe("insight chat UI", () => {
       screen.getByLabelText("Chat to ledger message"),
       "Hôm nay tôi tiêu 35k vào ăn trưa",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
 
     expect(await screen.findByText("Review AI Draft")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
@@ -86,11 +86,26 @@ describe("insight chat UI", () => {
 
     render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Budget remaining" }));
-    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    await userEvent.click(screen.getByRole("button", { name: "Ngân sách còn lại" }));
+    await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
 
     expect(await screen.findByText("Budget Insight")).toBeInTheDocument();
     expect(countCalls(fetchMock, "/api/ai/query-budget-remaining")).toBe(1);
+  });
+
+  it("sends on Enter and keeps newlines with Shift Enter", async () => {
+    const fetchMock = mockInsightFetch();
+
+    render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+    const input = screen.getByLabelText("Chat to ledger message");
+    await userEvent.type(input, "Tháng này tôi ăn uống hết bao nhiêu?");
+    await userEvent.keyboard("{Shift>}{Enter}{/Shift}");
+    expect(input).toHaveValue("Tháng này tôi ăn uống hết bao nhiêu?\n");
+
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByText("Spending Insight")).toBeInTheDocument();
+    expect(countCalls(fetchMock, "/api/ai/query-spending")).toBe(1);
   });
 
   it("renders zero spending, missing budget, and empty breakdown safely", async () => {
@@ -171,8 +186,8 @@ describe("insight chat UI", () => {
       screen.getByLabelText("Chat to ledger message"),
       "Tháng này tôi ăn uống hết bao nhiêu?",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Send" }));
-    expect(screen.getByRole("button", { name: "Sending" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
+    expect(screen.getByRole("button", { name: "Đang gửi" })).toBeDisabled();
     expect(countCalls(fetchMock, "/api/ai/query-spending")).toBe(1);
 
     await userEvent.clear(screen.getByLabelText("Chat to ledger message"));
@@ -180,7 +195,7 @@ describe("insight chat UI", () => {
       screen.getByLabelText("Chat to ledger message"),
       "Còn bao nhiêu tiền ăn tháng này?",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+    await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
 
     expect(await screen.findByText("Budget Insight")).toBeInTheDocument();
     first.resolve(jsonResponse(spendingResponse));
@@ -214,7 +229,7 @@ async function submitMessage(message: string) {
   const input = screen.getByLabelText("Chat to ledger message");
   await userEvent.clear(input);
   await userEvent.type(input, message);
-  await userEvent.click(screen.getByRole("button", { name: "Send" }));
+  await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
 }
 
 function mockInsightFetch() {
