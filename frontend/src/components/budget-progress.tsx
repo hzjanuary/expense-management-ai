@@ -77,10 +77,10 @@ export function BudgetProgress({
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <h2 className="text-lg font-semibold text-ledger-ink">
-            Budget status
+            Tình trạng ngân sách
           </h2>
           <p className="mt-1 text-sm text-ledger-muted">
-            Backend-computed budget remaining for {month}.
+            Số đã chi và còn lại trong {month}.
           </p>
         </div>
         <Button
@@ -89,7 +89,7 @@ export function BudgetProgress({
           type="button"
           variant="outline"
         >
-          {state === "loading" || state === "idle" ? "Loading" : "Retry budget"}
+          {state === "loading" || state === "idle" ? "Đang tải" : "Thử lại"}
         </Button>
       </div>
 
@@ -129,17 +129,17 @@ function BudgetLoaded({
     <div className="mt-5 grid gap-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <BudgetMetric
-          label="Total budget"
+          label="Ngân sách tháng"
           value={formatVnd(budget.total_budget_minor)}
         />
         <BudgetMetric
-          label="Spent"
+          label="Đã chi"
           tone="expense"
           value={formatVnd(budget.total_expense_minor)}
         />
         <BudgetMetric
-          label="Remaining"
-          note={isTotalOverBudget ? "Over budget" : "Available"}
+          label="Còn lại"
+          note={isTotalOverBudget ? "Đã vượt ngân sách" : "Còn trong ngân sách"}
           tone={isTotalOverBudget ? "expense" : "income"}
           value={formatVnd(budget.total_remaining_minor)}
         />
@@ -148,10 +148,10 @@ function BudgetLoaded({
       {budget.categories.length === 0 ? (
         <div className="rounded-md border border-ledger-line bg-white p-4">
           <p className="text-sm font-medium text-ledger-ink">
-            No category budgets configured.
+            Chưa có ngân sách danh mục
           </p>
           <p className="mt-1 text-sm text-ledger-muted">
-            Add category budgets to track specific spending areas.
+            Thêm ngân sách cho từng nhóm chi tiêu để theo dõi dễ hơn.
           </p>
           <BudgetAction
             className="mt-3"
@@ -181,20 +181,20 @@ function BudgetLoaded({
                         : "rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700"
                     }
                   >
-                    {category.is_over_budget ? "Over budget" : "Within budget"}
+                    {category.is_over_budget ? "Đã vượt ngân sách" : "Còn trong ngân sách"}
                   </span>
                 </div>
                 <dl className="grid gap-2 text-xs text-ledger-muted sm:grid-cols-3">
                   <CategoryMetric
-                    label="Budget"
+                    label="Ngân sách"
                     value={formatVnd(category.budget_minor)}
                   />
                   <CategoryMetric
-                    label="Spent"
+                    label="Đã chi"
                     value={formatVnd(category.spent_minor)}
                   />
                   <CategoryMetric
-                    label="Remaining"
+                    label="Còn lại"
                     value={formatVnd(category.remaining_minor)}
                   />
                 </dl>
@@ -227,7 +227,7 @@ function BudgetAction({
           .join(" ")}
         href={href}
       >
-        Edit budget
+        Sửa ngân sách
       </Link>
     );
   }
@@ -239,7 +239,7 @@ function BudgetAction({
       type="button"
       variant="outline"
     >
-      Edit budget
+      Sửa ngân sách
     </Button>
   );
 }
@@ -284,7 +284,7 @@ function BudgetLoading() {
   return (
     <div className="mt-5 grid gap-3" role="status">
       <p className="text-sm font-medium text-ledger-ink">
-        Loading budget status...
+        Đang tải ngân sách...
       </p>
       <div className="h-20 rounded-md bg-ledger-line" />
       <div className="h-16 rounded-md bg-ledger-line" />
@@ -302,17 +302,17 @@ function BudgetMissing({
   return (
     <div className="mt-5 rounded-md border border-ledger-line bg-white p-4">
       <p className="text-sm font-medium text-ledger-ink">
-        No budget configured for this month.
+        Chưa thiết lập ngân sách
       </p>
       <p className="mt-1 text-sm text-ledger-muted">
-        Create a total monthly budget and optional category budgets.
+        Hãy thiết lập ngân sách tháng để theo dõi số còn lại.
       </p>
       {setupHref ? (
         <Link
           className="mt-3 inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-ledger-line bg-white px-4 text-sm font-medium text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
           href={setupHref}
         >
-          Set up budget
+          Thiết lập ngân sách
         </Link>
       ) : (
         <Button
@@ -321,7 +321,7 @@ function BudgetMissing({
           type="button"
           variant="outline"
         >
-          Set up budget
+          Thiết lập ngân sách
         </Button>
       )}
     </div>
@@ -332,7 +332,7 @@ function BudgetError({ message }: { message: string }) {
   return (
     <div className="mt-5 rounded-md border border-rose-200 bg-rose-50 p-4">
       <p className="text-sm font-medium text-rose-800">
-        Budget status unavailable
+        Chưa tải được ngân sách
       </p>
       <p className="mt-1 text-sm text-rose-700">{message}</p>
     </div>
@@ -343,7 +343,7 @@ function getBudgetErrorMessage(error: unknown): string {
   if (error instanceof BudgetApiError) {
     return error.message;
   }
-  return "Unable to load budget status.";
+  return "Không tải được tình trạng ngân sách.";
 }
 
 function isAbortError(error: unknown): boolean {

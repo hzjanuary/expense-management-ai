@@ -29,8 +29,8 @@ export function InsightResult(props: InsightResultProps) {
     return (
       <InsightCard
         isStale={props.isStale}
-        title="Spending Insight"
-        subtitle="Database-grounded category spending"
+        title="Chi tiêu theo danh mục"
+        subtitle="Số liệu lấy từ giao dịch đang lưu"
       >
         <SpendingQueryResult result={props.result} />
       </InsightCard>
@@ -41,8 +41,8 @@ export function InsightResult(props: InsightResultProps) {
     return (
       <InsightCard
         isStale={props.isStale}
-        title="Budget Insight"
-        subtitle="Database-grounded budget remaining"
+        title="Ngân sách còn lại"
+        subtitle="Số đã chi và còn lại theo ngân sách"
       >
         <BudgetRemainingResult result={props.result} />
       </InsightCard>
@@ -52,8 +52,8 @@ export function InsightResult(props: InsightResultProps) {
   return (
     <InsightCard
       isStale={props.isStale}
-      title="Top Spending Insight"
-      subtitle="Database-grounded spending breakdown"
+      title="Chi nhiều nhất"
+      subtitle="Tổng hợp chi tiêu theo danh mục"
     >
       <SpendingBreakdownResult result={props.result} />
     </InsightCard>
@@ -74,20 +74,20 @@ function SpendingQueryResult({
       <InsightAnswer answer={result.answer} />
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <InsightField
-          label="Category"
+          label="Danh mục"
           value={formatOptionalCategory(result.category_slug)}
         />
-        <InsightField label="Period" value={formatDateRange(result.date_range)} />
+        <InsightField label="Thời gian" value={formatDateRange(result.date_range)} />
         <InsightField
-          label="Amount"
+          label="Số tiền"
           value={
             result.amount_minor === null
-              ? "Needs clarification"
+              ? "Cần làm rõ"
               : formatVnd(result.amount_minor)
           }
         />
         <InsightField
-          label="Transactions"
+          label="Số giao dịch"
           value={String(result.transaction_count)}
         />
       </dl>
@@ -112,51 +112,51 @@ function BudgetRemainingResult({
       <InsightAnswer answer={result.answer} />
       {!hasBudget ? (
         <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          No budget configured for {formatOptionalCategory(result.category_slug)}.
+          Chưa thiết lập ngân sách cho {formatOptionalCategory(result.category_slug)}.
         </p>
       ) : null}
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <InsightField
-          label="Category"
+          label="Danh mục"
           value={formatOptionalCategory(result.category_slug)}
         />
-        <InsightField label="Period" value={formatDateRange(result.date_range)} />
+        <InsightField label="Thời gian" value={formatDateRange(result.date_range)} />
         <InsightField
-          label="Budget"
+          label="Ngân sách"
           value={
             result.budget_minor === null
-              ? "No configured budget"
+              ? "Chưa thiết lập ngân sách"
               : formatVnd(result.budget_minor)
           }
         />
         <InsightField
-          label="Spent"
+          label="Đã chi"
           value={
             result.spent_minor === null
-              ? "Needs clarification"
+              ? "Cần làm rõ"
               : formatVnd(result.spent_minor)
           }
         />
         <InsightField
-          label="Remaining"
+          label="Còn lại"
           value={
             result.remaining_minor === null
-              ? "No configured budget"
+              ? "Chưa thiết lập ngân sách"
               : formatVnd(result.remaining_minor)
           }
         />
         <InsightField
-          label="Status"
+          label="Tình trạng"
           value={
             result.is_over_budget === null
-              ? "No budget configured"
+              ? "Chưa thiết lập ngân sách"
               : result.is_over_budget
-                ? "Over budget"
-                : "Within budget"
+                ? "Đã vượt ngân sách"
+                : "Còn trong ngân sách"
           }
         />
         <InsightField
-          label="Transactions"
+          label="Số giao dịch"
           value={String(result.transaction_count)}
         />
       </dl>
@@ -178,7 +178,7 @@ function SpendingBreakdownResult({
       <div className="grid gap-3">
         <InsightAnswer answer={result.answer} />
         <p className="rounded-md border border-ledger-line bg-ledger-wash px-3 py-2 text-sm text-ledger-muted">
-          No expenses found for this period.
+          Chưa có khoản chi trong khoảng thời gian này.
         </p>
       </div>
     );
@@ -188,38 +188,38 @@ function SpendingBreakdownResult({
     <div className="grid gap-3">
       <InsightAnswer answer={result.answer} />
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
-        <InsightField label="Period" value={formatDateRange(result.date_range)} />
+        <InsightField label="Thời gian" value={formatDateRange(result.date_range)} />
         <InsightField
-          label="Total expense"
+          label="Tổng chi"
           value={
             result.total_expense_minor === null
-              ? "Needs clarification"
+              ? "Cần làm rõ"
               : formatVnd(result.total_expense_minor)
           }
         />
         <InsightField
-          label="Transactions"
+          label="Số giao dịch"
           value={String(result.transaction_count)}
         />
         <InsightField
-          label="Top category"
+          label="Chi nhiều nhất"
           value={
             result.top_category
               ? `${formatCategoryLabel(
                   result.top_category.category_slug,
                 )}: ${formatVnd(result.top_category.amount_minor)}`
-              : "No top category"
+            : "Chưa có danh mục nổi bật"
           }
         />
       </dl>
       <table className="w-full border-separate border-spacing-y-2 text-left text-sm">
-        <caption className="sr-only">Spending breakdown by category</caption>
+        <caption className="sr-only">Chi tiêu theo từng danh mục</caption>
         <thead className="text-xs uppercase text-ledger-muted">
           <tr>
-            <th scope="col">Category</th>
-            <th scope="col">Amount</th>
-            <th scope="col">Count</th>
-            <th scope="col">Share</th>
+            <th scope="col">Danh mục</th>
+            <th scope="col">Số tiền</th>
+            <th scope="col">Số lần</th>
+            <th scope="col">Tỷ lệ</th>
           </tr>
         </thead>
         <tbody>
@@ -265,7 +265,7 @@ function InsightCard({
         </div>
         {isStale ? (
           <span className="w-fit rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">
-            Financial data changed. Run again to refresh.
+            Số liệu đã thay đổi. Hỏi lại để cập nhật.
           </span>
         ) : null}
       </div>
@@ -301,10 +301,10 @@ function InsightClarification({
   return (
     <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
       <p className="font-semibold">
-        {clarification?.message ?? "This insight needs clarification."}
+        {clarification?.message ?? "Cần thêm thông tin để trả lời."}
       </p>
       {clarification && clarification.fields.length > 0 ? (
-        <p className="mt-1 text-xs">Missing fields: {clarification.fields.join(", ")}</p>
+        <p className="mt-1 text-xs">Cần bổ sung: {clarification.fields.join(", ")}</p>
       ) : null}
     </div>
   );
@@ -312,26 +312,36 @@ function InsightClarification({
 
 function formatOptionalCategory(categorySlug: string | null): string {
   return categorySlug === null
-    ? "Needs clarification"
+    ? "Cần làm rõ"
     : formatCategoryLabel(categorySlug);
 }
 
 function formatDateRange(dateRange: AiInsightDateRange | null): string {
   if (dateRange === null) {
-    return "Needs clarification";
+    return "Cần làm rõ";
   }
 
-  return `${formatDate(dateRange.start)} to ${formatDate(dateRange.end)} (${dateRange.label})`;
+  return `${formatDate(dateRange.start)} đến ${formatDate(dateRange.end)} (${formatPeriodLabel(dateRange.label)})`;
 }
 
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Unknown date";
+    return "Không rõ ngày";
   }
 
   return new Intl.DateTimeFormat("vi-VN", {
     dateStyle: "medium",
   }).format(date);
+}
+
+function formatPeriodLabel(label: string): string {
+  if (label === "this_month") {
+    return "tháng này";
+  }
+  if (label === "this_week") {
+    return "tuần này";
+  }
+  return label;
 }
 import type { ReactNode } from "react";

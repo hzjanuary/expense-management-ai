@@ -46,7 +46,7 @@ export function TransactionsClient() {
               Danh sách và xuất dữ liệu
             </h2>
             <p className="mt-1 text-sm leading-6 text-ledger-muted">
-              Xóa mềm giao dịch sai và tải CSV/JSON từ dữ liệu cục bộ.
+              Lọc giao dịch, tải dữ liệu và xóa giao dịch sai khi cần.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -87,8 +87,8 @@ export function TransactionsClient() {
               value={type}
             >
               <option value="">Tất cả</option>
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
+              <option value="expense">Chi</option>
+              <option value="income">Thu</option>
             </select>
           </label>
           <label className="grid gap-1 text-sm font-medium text-ledger-ink">
@@ -96,7 +96,7 @@ export function TransactionsClient() {
             <input
               className={inputClassName}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Mô tả hoặc merchant"
+              placeholder="Ghi chú hoặc nơi giao dịch"
               type="search"
               value={query}
             />

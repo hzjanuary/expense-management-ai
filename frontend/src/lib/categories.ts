@@ -16,16 +16,16 @@ export type CategoryOption = {
 };
 
 export const EXPENSE_CATEGORY_OPTIONS: CategoryOption[] = [
-  { slug: "food", label: "Food" },
-  { slug: "coffee", label: "Coffee" },
-  { slug: "transport", label: "Transport" },
-  { slug: "shopping", label: "Shopping" },
-  { slug: "bills", label: "Bills" },
-  { slug: "rent", label: "Rent" },
-  { slug: "health", label: "Health" },
-  { slug: "education", label: "Education" },
-  { slug: "entertainment", label: "Entertainment" },
-  { slug: "other", label: "Other" },
+  { slug: "food", label: "Ăn uống" },
+  { slug: "coffee", label: "Cà phê" },
+  { slug: "transport", label: "Đi lại" },
+  { slug: "shopping", label: "Mua sắm" },
+  { slug: "bills", label: "Hóa đơn" },
+  { slug: "rent", label: "Nhà ở" },
+  { slug: "health", label: "Sức khỏe" },
+  { slug: "education", label: "Học tập" },
+  { slug: "entertainment", label: "Giải trí" },
+  { slug: "other", label: "Khác" },
 ];
 
 const EXPENSE_CATEGORY_SLUGS = new Set<string>(

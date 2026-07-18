@@ -32,9 +32,9 @@ describe("budget setup form", () => {
     render(<BudgetSetupForm month="2026-07" onSaved={vi.fn()} />);
 
     expect(
-      await screen.findByText(/No budget configured yet/i),
+      await screen.findByText(/Chưa thiết lập ngân sách/i),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText(/Total monthly budget/i)).toHaveValue("");
+    expect(screen.getByLabelText(/Ngân sách tháng/i)).toHaveValue("");
   });
 
   it("prefills an existing configured budget", async () => {
@@ -44,7 +44,7 @@ describe("budget setup form", () => {
 
     expect(await screen.findByDisplayValue("5000000")).toBeInTheDocument();
     expect(screen.getByDisplayValue("2000000")).toBeInTheDocument();
-    expect(screen.getByLabelText("Category")).toHaveValue("food");
+    expect(screen.getByLabelText("Danh mục")).toHaveValue("food");
   });
 
   it("does not let a stale previous-month prefill overwrite the current form", async () => {
@@ -87,13 +87,13 @@ describe("budget setup form", () => {
 
     render(<BudgetSetupForm month="2026-07" onSaved={vi.fn()} />);
 
-    await screen.findByText(/No budget configured yet/i);
-    await userEvent.click(screen.getByRole("button", { name: "Add category" }));
-    expect(screen.getByLabelText("Category")).toBeInTheDocument();
+    await screen.findByText(/Chưa thiết lập ngân sách/i);
+    await userEvent.click(screen.getByRole("button", { name: "Thêm danh mục" }));
+    expect(screen.getByLabelText("Danh mục")).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: /Remove category budget row 1/i }),
+      screen.getByRole("button", { name: /Xóa dòng ngân sách danh mục 1/i }),
     );
-    expect(screen.queryByLabelText("Category")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Danh mục")).not.toBeInTheDocument();
   });
 
   it("submits exact integer minor-unit payload and refreshes after save", async () => {
@@ -102,14 +102,14 @@ describe("budget setup form", () => {
 
     render(<BudgetSetupForm month="2026-07" onSaved={onSaved} />);
 
-    await screen.findByText(/No budget configured yet/i);
-    await userEvent.type(screen.getByLabelText(/Total monthly budget/i), "5000000");
-    await userEvent.click(screen.getByRole("button", { name: "Add category" }));
-    await userEvent.selectOptions(screen.getByLabelText("Category"), "food");
-    await userEvent.type(screen.getByLabelText("Budget (VND)"), "2000000");
-    await userEvent.click(screen.getByRole("button", { name: "Save budget" }));
+    await screen.findByText(/Chưa thiết lập ngân sách/i);
+    await userEvent.type(screen.getByLabelText(/Ngân sách tháng/i), "5000000");
+    await userEvent.click(screen.getByRole("button", { name: "Thêm danh mục" }));
+    await userEvent.selectOptions(screen.getByLabelText("Danh mục"), "food");
+    await userEvent.type(screen.getByLabelText("Ngân sách (VND)"), "2000000");
+    await userEvent.click(screen.getByRole("button", { name: "Lưu ngân sách" }));
 
-    await screen.findByText("Budget saved.");
+    await screen.findByText("Đã lưu ngân sách.");
     expect(onSaved).toHaveBeenCalledOnce();
     const putCall = fetchMock.mock.calls.find(
       ([input, init]) => String(input).includes("/api/budgets/monthly/2026/7") &&
@@ -135,11 +135,11 @@ describe("budget setup form", () => {
 
     render(<BudgetSetupForm month="2026-07" onSaved={vi.fn()} />);
 
-    await screen.findByText(/No budget configured yet/i);
-    await userEvent.type(screen.getByLabelText(/Total monthly budget/i), "5000000");
-    await userEvent.click(screen.getByRole("button", { name: "Save budget" }));
+    await screen.findByText(/Chưa thiết lập ngân sách/i);
+    await userEvent.type(screen.getByLabelText(/Ngân sách tháng/i), "5000000");
+    await userEvent.click(screen.getByRole("button", { name: "Lưu ngân sách" }));
 
-    expect(screen.getByRole("button", { name: "Saving" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Đang lưu" })).toBeDisabled();
   });
 
   it("preserves entered values after backend validation failure", async () => {
@@ -147,12 +147,12 @@ describe("budget setup form", () => {
 
     render(<BudgetSetupForm month="2026-07" onSaved={vi.fn()} />);
 
-    await screen.findByText(/No budget configured yet/i);
-    await userEvent.type(screen.getByLabelText(/Total monthly budget/i), "5000000");
-    await userEvent.click(screen.getByRole("button", { name: "Save budget" }));
+    await screen.findByText(/Chưa thiết lập ngân sách/i);
+    await userEvent.type(screen.getByLabelText(/Ngân sách tháng/i), "5000000");
+    await userEvent.click(screen.getByRole("button", { name: "Lưu ngân sách" }));
 
-    expect(await screen.findByText(/Budget setup failed validation/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Total monthly budget/i)).toHaveValue("5000000");
+    expect(await screen.findByText(/Thông tin ngân sách chưa hợp lệ/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Ngân sách tháng/i)).toHaveValue("5000000");
   });
 
   it("permits resubmission after a network failure", async () => {
@@ -160,13 +160,13 @@ describe("budget setup form", () => {
 
     render(<BudgetSetupForm month="2026-07" onSaved={vi.fn()} />);
 
-    await screen.findByText(/No budget configured yet/i);
-    await userEvent.type(screen.getByLabelText(/Total monthly budget/i), "5000000");
-    await userEvent.click(screen.getByRole("button", { name: "Save budget" }));
-    expect(await screen.findByText(/Unable to save budget setup/i)).toBeInTheDocument();
+    await screen.findByText(/Chưa thiết lập ngân sách/i);
+    await userEvent.type(screen.getByLabelText(/Ngân sách tháng/i), "5000000");
+    await userEvent.click(screen.getByRole("button", { name: "Lưu ngân sách" }));
+    expect(await screen.findByText(/Không lưu được ngân sách/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Save budget" }));
-    await screen.findByText("Budget saved.");
+    await userEvent.click(screen.getByRole("button", { name: "Lưu ngân sách" }));
+    await screen.findByText("Đã lưu ngân sách.");
     expect(
       fetchMock.mock.calls.filter(([, init]) => init?.method === "PUT"),
     ).toHaveLength(2);

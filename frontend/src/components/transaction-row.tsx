@@ -26,13 +26,13 @@ export function TransactionRow({
             {transaction.description}
           </p>
           <span className={`rounded-md px-2 py-1 text-xs font-semibold ${badgeTone}`}>
-            {transaction.type}
+            {transaction.type === "expense" ? "Chi" : "Thu"}
           </span>
         </div>
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ledger-muted">
           <span>{formatCategory(transaction.category_slug)}</span>
           <span>{formatDate(transaction.occurred_at)}</span>
-          <span>source: {transaction.source}</span>
+          <span>Nguồn: {transaction.source === "ai_chat" ? "Trợ lý AI" : "Thủ công"}</span>
           {transaction.merchant ? <span>{transaction.merchant}</span> : null}
         </div>
       </div>
@@ -43,13 +43,13 @@ export function TransactionRow({
         </p>
         {onDeleteRequested ? (
           <Button
-            aria-label={`Delete transaction ${transaction.description}`}
+            aria-label={`Xóa giao dịch ${transaction.description}`}
             onClick={() => onDeleteRequested(transaction)}
             size="small"
             type="button"
             variant="danger"
           >
-            Delete
+            Xóa
           </Button>
         ) : null}
       </div>
@@ -60,7 +60,7 @@ export function TransactionRow({
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Unknown date";
+    return "Không rõ ngày";
   }
 
   return new Intl.DateTimeFormat("vi-VN", {

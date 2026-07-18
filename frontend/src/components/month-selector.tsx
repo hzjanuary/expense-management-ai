@@ -8,9 +8,9 @@ type MonthSelectorProps = {
 export function MonthSelector({ value, onChange }: MonthSelectorProps) {
   return (
     <label className="grid gap-2 text-sm font-medium text-ledger-ink">
-      <span>Selected month</span>
+      <span>Tháng đang xem</span>
       <input
-        aria-label="Selected month"
+        aria-label="Tháng đang xem"
         aria-describedby="selected-month-help"
         className="h-11 rounded-md border-ledger-line bg-ledger-wash text-ledger-ink focus:border-ledger-accent focus:ring-ledger-accent"
         onChange={(event) => {
@@ -23,7 +23,7 @@ export function MonthSelector({ value, onChange }: MonthSelectorProps) {
         value={value}
       />
       <span className="sr-only" id="selected-month-help">
-        Changing the selected month refreshes dashboard summary and budget data.
+        Đổi tháng sẽ tải lại số liệu tổng quan và ngân sách.
       </span>
     </label>
   );

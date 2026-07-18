@@ -56,16 +56,16 @@ describe("data management UI", () => {
 
     render(<TransactionExport month="2026-07" />);
 
-    expect(screen.getByLabelText("Format")).toHaveValue("csv");
+    expect(screen.getByLabelText("Định dạng")).toHaveValue("csv");
     expect(fetchMock).not.toHaveBeenCalled();
 
-    await userEvent.selectOptions(screen.getByLabelText("Format"), "json");
-    await userEvent.selectOptions(screen.getByLabelText("Category"), "food");
-    await userEvent.selectOptions(screen.getByLabelText("Type"), "expense");
-    await userEvent.type(screen.getByLabelText("Search text"), "ăn trưa");
-    await userEvent.click(screen.getByRole("button", { name: "Download export" }));
+    await userEvent.selectOptions(screen.getByLabelText("Định dạng"), "json");
+    await userEvent.selectOptions(screen.getByLabelText("Danh mục"), "food");
+    await userEvent.selectOptions(screen.getByLabelText("Loại"), "expense");
+    await userEvent.type(screen.getByLabelText("Tìm kiếm"), "ăn trưa");
+    await userEvent.click(screen.getByRole("button", { name: "Tải xuống" }));
 
-    await screen.findByText("Started JSON download.");
+    await screen.findByText("Đã bắt đầu tải file JSON.");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/transactions/export?format=json&month=2026-07&category=food&type=expense&q=%C4%83n+tr%C6%B0a",
       expect.objectContaining({ cache: "no-store" }),
@@ -88,13 +88,13 @@ describe("data management UI", () => {
 
     render(<TransactionExport month="2026-07" />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Download export" }));
+    await userEvent.click(screen.getByRole("button", { name: "Tải xuống" }));
     expect(
-      await screen.findByText(/Export is too large/i),
+      await screen.findByText(/File xuất quá lớn/i),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Download export" }));
-    expect(await screen.findByText("Export filters are invalid.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Tải xuống" }));
+    expect(await screen.findByText("Bộ lọc xuất dữ liệu chưa hợp lệ.")).toBeInTheDocument();
   });
 
   it("blocks duplicate export downloads while pending", async () => {
@@ -105,11 +105,11 @@ describe("data management UI", () => {
 
     render(<TransactionExport month="2026-07" />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Download export" }));
+    await userEvent.click(screen.getByRole("button", { name: "Tải xuống" }));
     expect(
-      screen.getByRole("button", { name: "Preparing download" }),
+      screen.getByRole("button", { name: "Đang chuẩn bị" }),
     ).toBeDisabled();
-    await userEvent.click(screen.getByRole("button", { name: "Preparing download" }));
+    await userEvent.click(screen.getByRole("button", { name: "Đang chuẩn bị" }));
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -146,15 +146,15 @@ describe("data management UI", () => {
 
     expect(await screen.findByText("US-705 lunch proof")).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: /Delete transaction US-705 lunch proof/i }),
+      screen.getByRole("button", { name: /Xóa giao dịch US-705 lunch proof/i }),
     );
     expect(screen.getByRole("dialog")).toBeInTheDocument();
-    expect(screen.getByText(/not permanently erased/i)).toBeInTheDocument();
+    expect(screen.getByText(/không bị xóa vĩnh viễn/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    await userEvent.click(screen.getByRole("button", { name: "Delete transaction" }));
+    await userEvent.click(screen.getByRole("button", { name: "Xóa giao dịch" }));
 
-    await screen.findByText("Transaction deleted from active ledger views.");
+    await screen.findByText("Đã xóa giao dịch khỏi các màn hình đang dùng.");
     expect(
       fetchMock.mock.calls.filter(
         ([input, init]) =>
@@ -181,23 +181,23 @@ describe("data management UI", () => {
 
     expect(await screen.findByText("US-705 lunch proof")).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: /Delete transaction US-705 lunch proof/i }),
+      screen.getByRole("button", { name: /Xóa giao dịch US-705 lunch proof/i }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Hủy" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     await userEvent.click(
-      screen.getByRole("button", { name: /Delete transaction US-705 lunch proof/i }),
+      screen.getByRole("button", { name: /Xóa giao dịch US-705 lunch proof/i }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Delete transaction" }));
+    await userEvent.click(screen.getByRole("button", { name: "Xóa giao dịch" }));
 
-    expect(await screen.findByText("Unable to delete transaction.")).toBeInTheDocument();
+    expect(await screen.findByText("Không xóa được giao dịch. Hãy thử lại.")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: /Delete transaction US-705 lunch proof/i,
+        name: /Xóa giao dịch US-705 lunch proof/i,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Delete transaction" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Xóa giao dịch" })).toBeEnabled();
   });
 
   it("shows duplicate and missing transaction delete outcomes safely", async () => {
@@ -227,12 +227,12 @@ describe("data management UI", () => {
 
     expect(await screen.findByText("US-705 lunch proof")).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: /Delete transaction US-705 lunch proof/i }),
+      screen.getByRole("button", { name: /Xóa giao dịch US-705 lunch proof/i }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Delete transaction" }));
+    await userEvent.click(screen.getByRole("button", { name: "Xóa giao dịch" }));
 
     expect(
-      await screen.findByText(/Transaction was already deleted/i),
+      await screen.findByText(/Giao dịch này đã được xóa trước đó/i),
     ).toBeInTheDocument();
     expect(onTransactionDeleted).toHaveBeenCalledOnce();
   });
@@ -254,11 +254,11 @@ describe("data management UI", () => {
 
     expect(await screen.findByText("US-705 lunch proof")).toBeInTheDocument();
     await userEvent.click(
-      screen.getByRole("button", { name: /Delete transaction US-705 lunch proof/i }),
+      screen.getByRole("button", { name: /Xóa giao dịch US-705 lunch proof/i }),
     );
-    await userEvent.click(screen.getByRole("button", { name: "Delete transaction" }));
-    expect(screen.getByRole("button", { name: "Deleting" })).toBeDisabled();
-    await userEvent.click(screen.getByRole("button", { name: "Deleting" }));
+    await userEvent.click(screen.getByRole("button", { name: "Xóa giao dịch" }));
+    expect(screen.getByRole("button", { name: "Đang xóa" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Đang xóa" }));
 
     expect(
       fetchMock.mock.calls.filter(([, init]) => init?.method === "DELETE"),
@@ -276,20 +276,20 @@ describe("data management UI", () => {
 
     render(<ClearAiHistory />);
 
-    expect(screen.getByText(/Confirmed transactions and account balances remain unchanged/i)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Clear AI history" }));
-    expect(screen.getByText(/does not clear transaction history/i)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByText(/Giao dịch đã xác nhận và số dư vẫn được giữ nguyên/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Xóa lịch sử AI" }));
+    expect(screen.getByText(/không xóa lịch sử giao dịch/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Hủy" }));
     expect(fetchMock).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole("button", { name: "Clear AI history" }));
+    await userEvent.click(screen.getByRole("button", { name: "Xóa lịch sử AI" }));
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Clear AI history" }).at(-1) ??
-        screen.getByRole("button", { name: "Clear AI history" }),
+      screen.getAllByRole("button", { name: "Xóa lịch sử AI" }).at(-1) ??
+        screen.getByRole("button", { name: "Xóa lịch sử AI" }),
     );
 
-    expect(await screen.findByText(/Cleared 4 AI draft records/i)).toBeInTheDocument();
-    expect(screen.getByText(/Preserved 2 referenced ledger transactions/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Đã xóa 4 bản ghi lịch sử AI/i)).toBeInTheDocument();
+    expect(screen.getByText(/Đã giữ nguyên 2 giao dịch đã xác nhận/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/ai/history",
       expect.objectContaining({ method: "DELETE" }),
@@ -315,13 +315,13 @@ describe("data management UI", () => {
 
     render(<ClearAiHistory />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Clear AI history" }));
+    await userEvent.click(screen.getByRole("button", { name: "Xóa lịch sử AI" }));
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Clear AI history" }).at(-1) ??
-        screen.getByRole("button", { name: "Clear AI history" }),
+      screen.getAllByRole("button", { name: "Xóa lịch sử AI" }).at(-1) ??
+        screen.getByRole("button", { name: "Xóa lịch sử AI" }),
     );
-    expect(screen.getByRole("button", { name: "Clearing" })).toBeDisabled();
-    await userEvent.click(screen.getByRole("button", { name: "Clearing" }));
+    expect(screen.getByRole("button", { name: "Đang xóa" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "Đang xóa" }));
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     slowClear.resolve(
@@ -332,7 +332,7 @@ describe("data management UI", () => {
       }),
     );
 
-    expect(await screen.findByText(/Cleared 0 AI draft records/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Đã xóa 0 bản ghi lịch sử AI/i)).toBeInTheDocument();
   });
 
   it("shows clear-history failures safely", async () => {
@@ -342,13 +342,13 @@ describe("data management UI", () => {
 
     render(<ClearAiHistory />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Clear AI history" }));
+    await userEvent.click(screen.getByRole("button", { name: "Xóa lịch sử AI" }));
     await userEvent.click(
-      screen.getAllByRole("button", { name: "Clear AI history" }).at(-1) ??
-        screen.getByRole("button", { name: "Clear AI history" }),
+      screen.getAllByRole("button", { name: "Xóa lịch sử AI" }).at(-1) ??
+        screen.getByRole("button", { name: "Xóa lịch sử AI" }),
     );
 
-    expect(await screen.findByText("Unable to clear AI history.")).toBeInTheDocument();
+    expect(await screen.findByText("Không xóa được lịch sử AI. Hãy thử lại.")).toBeInTheDocument();
   });
 });
 

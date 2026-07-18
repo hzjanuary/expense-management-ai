@@ -65,7 +65,7 @@ describe("live dashboard data", () => {
     expect(screen.getAllByText(/35\.000/).length).toBeGreaterThan(0);
     expect(await findExactText("5.000.000\u00a0₫")).toBeInTheDocument();
     expect(await findExactText("1.965.000\u00a0₫")).toBeInTheDocument();
-    expect(screen.getByText("Within budget")).toBeInTheDocument();
+    expect(screen.getAllByText("Còn trong ngân sách").length).toBeGreaterThan(0);
   });
 
   it("does not show fake zero values while the summary is loading", () => {
@@ -73,7 +73,7 @@ describe("live dashboard data", () => {
 
     render(<DashboardSummary month="2026-07" refreshSignal={0} />);
 
-    expect(screen.getAllByText(/Loading 2026-07 summary/i)).toHaveLength(4);
+    expect(screen.getAllByText(/Đang tải số liệu 2026-07/i)).toHaveLength(4);
     expect(screen.queryByText(formatVnd(0))).not.toBeInTheDocument();
   });
 
@@ -84,7 +84,7 @@ describe("live dashboard data", () => {
 
     expect(await findExactText("965.000\u00a0₫")).toBeInTheDocument();
     expect(
-      await screen.findByText("No budget configured for this month."),
+      await screen.findByText("Chưa thiết lập ngân sách"),
     ).toBeInTheDocument();
   });
 
@@ -94,7 +94,7 @@ describe("live dashboard data", () => {
     render(<DashboardClient />);
 
     await findExactText("965.000\u00a0₫");
-    fireEvent.change(screen.getByLabelText("Selected month"), {
+    fireEvent.change(screen.getByLabelText("Tháng đang xem"), {
       target: { value: "2026-08" },
     });
 
@@ -158,10 +158,10 @@ describe("live dashboard data", () => {
       "/transactions",
     );
     expect(screen.queryByLabelText("Chat to ledger message")).not.toBeInTheDocument();
-    expect(screen.queryByText("Export Transactions")).not.toBeInTheDocument();
-    expect(screen.queryByText("AI History Privacy")).not.toBeInTheDocument();
+    expect(screen.queryByText("Xuất giao dịch")).not.toBeInTheDocument();
+    expect(screen.queryByText("Lịch sử AI")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Làm mới" }));
+    await userEvent.click(screen.getAllByRole("button", { name: "Làm mới" })[0]);
 
     await waitFor(() => {
       expect(countCalls(fetchMock, "/api/dashboard/summary")).toBeGreaterThan(1);

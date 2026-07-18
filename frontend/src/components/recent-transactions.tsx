@@ -72,14 +72,14 @@ export function RecentTransactions({
         return;
       }
       setTransactionToDelete(null);
-      setDeleteNotice("Transaction deleted from active ledger views.");
+      setDeleteNotice("Đã xóa giao dịch khỏi các màn hình đang dùng.");
       setLocalRefreshSignal((currentValue) => currentValue + 1);
       onTransactionDeleted?.();
     } catch (caughtError) {
       const message =
         caughtError instanceof DataManagementApiError
-          ? caughtError.message
-          : "Unable to delete transaction.";
+          ? getDeleteErrorMessage(caughtError)
+          : "Không xóa được giao dịch. Hãy thử lại.";
       if (
         caughtError instanceof DataManagementApiError &&
         (caughtError.status === 404 || caughtError.status === 409)
@@ -104,10 +104,10 @@ export function RecentTransactions({
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-lg font-semibold text-ledger-ink">
-            Recent Transactions
+            Giao dịch gần đây
           </h2>
           <p className="mt-1 text-sm text-ledger-muted">
-            Latest records from the local ledger API.
+            Các giao dịch mới nhất đang được lưu trên máy này.
           </p>
         </div>
         <Button
@@ -116,14 +116,16 @@ export function RecentTransactions({
           type="button"
           variant="outline"
         >
-          {isLoading ? "Loading" : isRefreshing ? "Refresh" : "Try again"}
+          {isLoading ? "Đang tải" : isRefreshing ? "Làm mới" : "Thử lại"}
         </Button>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-md border border-ledger-line">
         {isLoading ? <LoadingState /> : null}
         {state === "error" ? <ErrorState /> : null}
-        {state === "loaded" && transactions.length === 0 ? <EmptyState /> : null}
+        {state === "loaded" && transactions.length === 0 ? (
+          <EmptyState hasFilters={hasActiveFilters(filters)} />
+        ) : null}
         {state === "loaded" && transactions.length > 0 ? (
           <div>
             <ul className="divide-y divide-ledger-line">
@@ -144,7 +146,7 @@ export function RecentTransactions({
               ))}
             </ul>
             <p className="border-t border-ledger-line bg-ledger-wash px-4 py-3 text-xs text-ledger-muted">
-              Showing {transactions.length} of {total} matching transactions.
+              Đang hiển thị {transactions.length}/{total} giao dịch phù hợp.
             </p>
           </div>
         ) : null}
@@ -178,7 +180,7 @@ function LoadingState() {
   return (
     <div className="grid gap-3 bg-white p-4">
       <p className="text-sm font-medium text-ledger-ink">
-        Loading recent transactions...
+        Đang tải giao dịch gần đây...
       </p>
       <div className="h-3 w-3/4 rounded bg-ledger-line" />
       <div className="h-3 w-1/2 rounded bg-ledger-line" />
@@ -186,12 +188,16 @@ function LoadingState() {
   );
 }
 
-function EmptyState() {
+function EmptyState({ hasFilters }: { hasFilters: boolean }) {
   return (
     <div className="bg-white p-4">
-      <p className="text-sm font-medium text-ledger-ink">No transactions yet.</p>
+      <p className="text-sm font-medium text-ledger-ink">
+        {hasFilters ? "Không có giao dịch phù hợp" : "Chưa có giao dịch"}
+      </p>
       <p className="mt-1 text-sm text-ledger-muted">
-        Add your first expense from the API or the chat flow.
+        {hasFilters
+          ? "Thử đổi tháng, danh mục, loại giao dịch hoặc từ khóa tìm kiếm."
+          : "Bạn có thể thêm giao dịch bằng Trợ lý AI."}
       </p>
     </div>
   );
@@ -201,11 +207,28 @@ function ErrorState() {
   return (
     <div className="bg-white p-4">
       <p className="text-sm font-medium text-rose-700">
-        Unable to load recent transactions.
+        Chưa tải được giao dịch.
       </p>
       <p className="mt-1 text-sm text-ledger-muted">
-        Check that the local backend is running, then refresh this section.
+        Kiểm tra ứng dụng cục bộ rồi bấm Thử lại.
       </p>
     </div>
   );
+}
+
+function hasActiveFilters(filters: TransactionListFilters | undefined): boolean {
+  return Boolean(filters?.category || filters?.type || filters?.q);
+}
+
+function getDeleteErrorMessage(error: DataManagementApiError): string {
+  if (error.status === 409) {
+    return "Giao dịch này đã được xóa trước đó. Danh sách sẽ được tải lại.";
+  }
+  if (error.status === 404) {
+    return "Không tìm thấy giao dịch này. Danh sách sẽ được tải lại.";
+  }
+  if (error.status === 422) {
+    return "Mã giao dịch không hợp lệ.";
+  }
+  return error.message || "Không xóa được giao dịch. Hãy thử lại.";
 }

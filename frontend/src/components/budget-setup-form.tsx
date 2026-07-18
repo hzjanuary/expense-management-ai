@@ -23,6 +23,7 @@ import {
   isExpenseCategorySlug,
 } from "@/lib/categories";
 import { formatVnd } from "@/lib/money";
+import { Button, inputLargeClassName, selectLargeClassName } from "@/components/ui";
 
 type LoadState = "idle" | "loading" | "ready" | "missing" | "error";
 type SubmitState = "idle" | "submitting" | "success" | "error";
@@ -100,7 +101,7 @@ export function BudgetSetupForm({
         }
         if (error instanceof BudgetNotConfiguredError) {
           setLoadState("missing");
-          setMessage("No budget configured yet. Enter a monthly budget to create one.");
+          setMessage("Chưa thiết lập ngân sách. Nhập ngân sách tháng để bắt đầu.");
           return;
         }
         setLoadState("error");
@@ -174,11 +175,11 @@ export function BudgetSetupForm({
       applyBudgetResponse(savedBudget, setTotalBudgetMinor, setCategoryRows);
       setLoadState("ready");
       setSubmitState("success");
-      setMessage("Budget saved.");
+      setMessage("Đã lưu ngân sách.");
       onSaved();
     } catch (error) {
       setSubmitState("error");
-      setErrors({ form: getBudgetErrorMessage(error, "Unable to save budget setup.") });
+      setErrors({ form: getBudgetErrorMessage(error, "Không lưu được ngân sách.") });
     }
   }
 
@@ -193,30 +194,30 @@ export function BudgetSetupForm({
             className="text-lg font-semibold text-ledger-ink"
             id="budget-setup-heading"
           >
-            Budget setup
+            Thiết lập ngân sách
           </h2>
           <p className="mt-1 text-sm text-ledger-muted">
-            Configure monthly and expense-category budgets for {month}.
+            Nhập ngân sách tháng và ngân sách cho từng danh mục chi tiêu.
           </p>
           <p className="mt-1 text-xs text-ledger-muted">
-            Changing the selected month discards unsaved edits and reloads that
-            month&apos;s budget.
+            Khi đổi tháng, các chỉnh sửa chưa lưu sẽ bị bỏ và biểu mẫu sẽ tải
+            ngân sách của tháng mới.
           </p>
         </div>
-        <button
-          className="h-10 rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent disabled:cursor-not-allowed disabled:opacity-60"
+        <Button
           disabled={loadState === "loading"}
           onClick={() => void loadBudget()}
           type="button"
+          variant="outline"
         >
-          {loadState === "loading" ? "Loading" : "Reload setup"}
-        </button>
+          {loadState === "loading" ? "Đang tải" : "Tải lại"}
+        </Button>
       </div>
 
       {loadState === "loading" || loadState === "idle" ? (
         <div className="mt-5 grid gap-3" role="status">
           <p className="text-sm font-medium text-ledger-ink">
-            Loading budget setup...
+            Đang tải biểu mẫu ngân sách...
           </p>
           <div className="h-20 rounded-md bg-ledger-line" />
         </div>
@@ -224,7 +225,7 @@ export function BudgetSetupForm({
 
       {loadState === "error" ? (
         <FormMessage
-          message={errors.form ?? "Unable to load budget setup."}
+          message={errors.form ?? "Không tải được biểu mẫu ngân sách."}
           tone="error"
         />
       ) : null}
@@ -240,10 +241,10 @@ export function BudgetSetupForm({
           {errors.form ? <FormMessage message={errors.form} tone="error" /> : null}
 
           <label className="grid gap-2 text-sm font-medium text-ledger-ink">
-            <span>Total monthly budget ({currency})</span>
+            <span>Ngân sách tháng ({currency})</span>
             <input
               aria-describedby="total-budget-help total-budget-error"
-              className="h-11 rounded-md border-ledger-line bg-ledger-wash text-ledger-ink placeholder:text-ledger-muted focus:border-ledger-accent focus:ring-ledger-accent"
+              className={inputLargeClassName}
               inputMode="numeric"
               onChange={(event) => {
                 setTotalBudgetMinor(event.target.value);
@@ -253,7 +254,7 @@ export function BudgetSetupForm({
               value={totalBudgetMinor}
             />
             <span className="text-xs text-ledger-muted" id="total-budget-help">
-              Enter whole VND minor units only. Preview: {totalPreview ?? "none"}.
+              Chỉ nhập số nguyên VND. Xem trước: {totalPreview ?? "chưa có"}.
             </span>
             {errors.total_budget_minor ? (
               <span className="text-sm text-rose-700" id="total-budget-error">
@@ -266,25 +267,26 @@ export function BudgetSetupForm({
             <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
               <div>
                 <h3 className="text-sm font-semibold text-ledger-ink">
-                  Category budgets
+                  Ngân sách danh mục
                 </h3>
                 <p className="mt-1 text-xs text-ledger-muted">
-                  Optional expense-category budgets. Income categories are not
-                  accepted.
+                  Chỉ chọn danh mục chi tiêu. Tổng các dòng không được vượt
+                  ngân sách tháng.
                 </p>
               </div>
-              <button
-                className="h-10 rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent"
+              <Button
                 onClick={addCategoryRow}
                 type="button"
+                variant="outline"
               >
-                Add category
-              </button>
+                Thêm danh mục
+              </Button>
             </div>
 
             {categoryRows.length === 0 ? (
               <div className="rounded-md border border-ledger-line bg-white p-4 text-sm text-ledger-muted">
-                No category budgets configured.
+                Chưa có ngân sách danh mục. Bạn có thể lưu ngân sách tháng
+                trước rồi bổ sung sau.
               </div>
             ) : (
               <ul className="grid gap-3">
@@ -295,10 +297,10 @@ export function BudgetSetupForm({
                   >
                     <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start">
                       <label className="grid gap-2 text-sm font-medium text-ledger-ink">
-                        <span>Category</span>
+                        <span>Danh mục</span>
                         <select
                           aria-describedby={`${row.id}-error`}
-                          className="h-11 rounded-md border-ledger-line bg-ledger-wash text-ledger-ink focus:border-ledger-accent focus:ring-ledger-accent"
+                          className={selectLargeClassName}
                           onChange={(event) =>
                             updateCategoryRow(row.id, {
                               category_slug: event.target.value,
@@ -306,7 +308,7 @@ export function BudgetSetupForm({
                           }
                           value={row.category_slug}
                         >
-                          <option value="">Select category</option>
+                          <option value="">Chọn danh mục</option>
                           {EXPENSE_CATEGORY_OPTIONS.map((category) => (
                             <option
                               key={category.slug}
@@ -319,10 +321,10 @@ export function BudgetSetupForm({
                       </label>
 
                       <label className="grid gap-2 text-sm font-medium text-ledger-ink">
-                        <span>Budget ({currency})</span>
+                        <span>Ngân sách ({currency})</span>
                         <input
                           aria-describedby={`${row.id}-error`}
-                          className="h-11 rounded-md border-ledger-line bg-ledger-wash text-ledger-ink placeholder:text-ledger-muted focus:border-ledger-accent focus:ring-ledger-accent"
+                          className={inputLargeClassName}
                           inputMode="numeric"
                           onChange={(event) =>
                             updateCategoryRow(row.id, {
@@ -334,14 +336,14 @@ export function BudgetSetupForm({
                         />
                       </label>
 
-                      <button
-                        aria-label={`Remove category budget row ${index + 1}`}
-                        className="h-11 rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition hover:border-rose-300 hover:text-rose-700"
+                      <Button
+                        aria-label={`Xóa dòng ngân sách danh mục ${index + 1}`}
                         onClick={() => removeCategoryRow(row.id)}
                         type="button"
+                        variant="outline"
                       >
-                        Remove
-                      </button>
+                        Xóa dòng
+                      </Button>
                     </div>
                     {errors.categories?.[row.id] ? (
                       <p className="mt-2 text-sm text-rose-700" id={`${row.id}-error`}>
@@ -350,7 +352,7 @@ export function BudgetSetupForm({
                     ) : null}
                     {row.category_slug && parsePlainInteger(row.budget_minor) !== null ? (
                       <p className="mt-2 text-xs text-ledger-muted">
-                        {formatCategoryLabel(row.category_slug)} preview:{" "}
+                        Xem trước {formatCategoryLabel(row.category_slug)}:{" "}
                         {formatVnd(parsePlainInteger(row.budget_minor) ?? 0)}
                       </p>
                     ) : null}
@@ -361,16 +363,16 @@ export function BudgetSetupForm({
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <button
-              className="h-11 rounded-md bg-ledger-accent px-5 text-sm font-semibold text-white transition hover:bg-ledger-accent-strong disabled:cursor-not-allowed disabled:opacity-60"
+            <Button
               disabled={submitState === "submitting"}
+              size="large"
               type="submit"
             >
-              {submitState === "submitting" ? "Saving" : "Save budget"}
-            </button>
+              {submitState === "submitting" ? "Đang lưu" : "Lưu ngân sách"}
+            </Button>
             {submitState === "submitting" ? (
               <span className="text-sm text-ledger-muted" role="status">
-                Saving budget setup...
+                Đang lưu ngân sách...
               </span>
             ) : null}
           </div>
@@ -404,7 +406,7 @@ export function validateBudgetSetupDraft(
   const totalBudgetMinor = parsePlainInteger(draft.total_budget_minor);
 
   if (totalBudgetMinor === null) {
-    errors.total_budget_minor = "Enter a whole VND amount.";
+    errors.total_budget_minor = "Nhập số VND nguyên, không dùng dấu phẩy hoặc số lẻ.";
   }
 
   const seenCategories = new Set<string>();
@@ -413,19 +415,19 @@ export function validateBudgetSetupDraft(
   for (const row of draft.category_rows) {
     const budgetMinor = parsePlainInteger(row.budget_minor);
     if (!row.category_slug) {
-      categoryErrors[row.id] = "Select an expense category.";
+      categoryErrors[row.id] = "Chọn một danh mục chi tiêu.";
       continue;
     }
     if (!isExpenseCategorySlug(row.category_slug)) {
-      categoryErrors[row.id] = "Select a valid expense category.";
+      categoryErrors[row.id] = "Danh mục này không hợp lệ cho chi tiêu.";
       continue;
     }
     if (seenCategories.has(row.category_slug)) {
-      categoryErrors[row.id] = "Each category can appear only once.";
+      categoryErrors[row.id] = "Mỗi danh mục chỉ được nhập một lần.";
       continue;
     }
     if (budgetMinor === null) {
-      categoryErrors[row.id] = "Enter a whole VND amount for this category.";
+      categoryErrors[row.id] = "Nhập số VND nguyên cho danh mục này.";
       continue;
     }
 
@@ -446,7 +448,7 @@ export function validateBudgetSetupDraft(
       0,
     );
     if (categoryTotal > totalBudgetMinor) {
-      errors.form = "Category budgets cannot exceed the monthly total.";
+      errors.form = "Tổng ngân sách danh mục không được vượt ngân sách tháng.";
     }
   }
 
@@ -523,10 +525,16 @@ function FormMessage({
 
 function getBudgetErrorMessage(
   error: unknown,
-  fallback = "Unable to load budget setup.",
+  fallback = "Không tải được biểu mẫu ngân sách.",
 ): string {
   if (error instanceof BudgetApiError) {
-    return error.message;
+    if (error instanceof BudgetNotConfiguredError) {
+      return "Chưa thiết lập ngân sách cho tháng này.";
+    }
+    if (error.message.toLowerCase().includes("validation")) {
+      return "Thông tin ngân sách chưa hợp lệ. Hãy kiểm tra lại các ô nhập.";
+    }
+    return fallback;
   }
   return fallback;
 }

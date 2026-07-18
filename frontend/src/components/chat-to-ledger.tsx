@@ -119,7 +119,7 @@ export function ChatToLedger({
     const trimmedMessage = submittedMessage.trim();
 
     if (trimmedMessage.length === 0) {
-      setError("Enter a message before sending.");
+      setError("Nhập nội dung trước khi gửi.");
       setSuccess(null);
       return;
     }
@@ -194,7 +194,7 @@ export function ChatToLedger({
         return;
       }
       setError(
-        getSafeErrorMessage(caughtError, "Unable to complete chat request."),
+        getSafeErrorMessage(caughtError, "Chưa xử lý được yêu cầu này."),
       );
     } finally {
       if (requestSequenceRef.current === requestSequence) {
@@ -206,7 +206,7 @@ export function ChatToLedger({
 
   async function handleConfirm() {
     if (!activeParseResult?.draft_id) {
-      setError("Parse the message again before confirming.");
+      setError("Vui lòng gửi lại tin nhắn trước khi xác nhận.");
       return;
     }
 
@@ -219,15 +219,15 @@ export function ChatToLedger({
       const transaction = result.transaction;
       const amountPrefix = transaction.type === "expense" ? "-" : "+";
       setSuccess(
-        `Transaction created: ${amountPrefix}${formatVnd(
+        `Đã tạo giao dịch: ${amountPrefix}${formatVnd(
           transaction.amount_minor,
-        )} for ${transaction.category_slug}.`,
+        )} cho ${transaction.category_slug}.`,
       );
       setMessage("");
       setActiveParseResult(null);
       onTransactionConfirmed();
     } catch (caughtError) {
-      setError(getSafeErrorMessage(caughtError, "Unable to confirm draft."));
+      setError(getSafeErrorMessage(caughtError, "Không xác nhận được bản nháp."));
     } finally {
       setIsConfirming(false);
     }
@@ -291,7 +291,7 @@ export function ChatToLedger({
     <section className={containerClassName}>
       <div
         className={messageListClassName}
-        aria-label="Assistant conversation"
+        aria-label="Cuộc trò chuyện với trợ lý"
         aria-live="polite"
         role="log"
         tabIndex={0}
@@ -302,13 +302,13 @@ export function ChatToLedger({
               Bạn muốn ghi chi tiêu hay hỏi số liệu?
             </p>
             <p className="text-sm leading-6 text-ledger-muted">
-              Thử: Hôm nay tôi tiêu 35k vào ăn trưa; Tháng này tôi ăn uống hết
-              bao nhiêu?; Còn bao nhiêu tiền ăn tháng này?
+              Thử một ví dụ bên dưới, hoặc nhập câu hỏi ngắn gọn về chi tiêu
+              và ngân sách.
             </p>
           </div>
         ) : null}
         {isSubmitting ? (
-          <Message tone="info" text="Asking the local backend..." />
+          <Message tone="info" text="Đang hỏi trợ lý cục bộ..." />
         ) : null}
         {error ? (
           <div className="grid gap-2" role="alert">
@@ -321,7 +321,7 @@ export function ChatToLedger({
                 type="button"
                 variant="outline"
               >
-                Retry
+                Thử lại
               </Button>
             ) : null}
           </div>
@@ -335,7 +335,7 @@ export function ChatToLedger({
         !activeParseResult.clarification ? (
           <Message
             tone="info"
-            text="I could not identify a supported ledger action. Edit the message and try again."
+            text="Mình chưa hiểu bạn muốn làm gì. Hãy chọn một gợi ý hoặc sửa lại câu hỏi."
           />
         ) : null}
         {hasConfirmableDraft && activeParseResult?.draft ? (
@@ -349,7 +349,7 @@ export function ChatToLedger({
         ) : null}
 
         {entries.length > 0 ? (
-          <div className="grid gap-3" aria-label="Session chat results">
+          <div className="grid gap-3" aria-label="Kết quả trong phiên này">
             {entries.map((entry) => (
               <ChatEntryView entry={entry} key={entry.id} />
             ))}
@@ -423,7 +423,8 @@ export function ChatToLedger({
             {isDuplicatePendingSubmit ? "Đang gửi" : "Gửi"}
           </Button>
           <p className="text-xs leading-5 text-ledger-muted">
-            Transaction drafts require confirmation. Insights show backend-computed totals only.
+            Enter để gửi, Shift+Enter để xuống dòng. Giao dịch cần bạn xác nhận
+            trước khi ghi vào sổ.
           </p>
         </div>
       </form>
@@ -472,15 +473,18 @@ function ChatEntryView({ entry }: { entry: ChatEntry }) {
         <p className="text-sm font-semibold text-ledger-ink">
           {formatIntentLabel(entry.intent)}
         </p>
-        <p className="text-xs text-ledger-muted">Phản hồi từ backend cục bộ</p>
+        <p className="text-xs text-ledger-muted">Kết quả từ dữ liệu đang lưu</p>
       </div>
       {entry.intent === "unknown" ? (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           <p className="font-semibold">
-            I can help with transaction drafts and supported insight questions.
+            Mình có thể giúp ghi nháp giao dịch và trả lời các câu hỏi chi tiêu
+            đã hỗ trợ.
           </p>
           <p className="mt-1 text-xs">
-            Try: Hôm nay tôi tiêu 35k vào ăn trưa; Tháng này tôi ăn uống hết bao nhiêu?; Còn bao nhiêu tiền ăn tháng này?; Tuần này tôi tiêu nhiều nhất vào mục nào?
+            Thử: Hôm nay tôi tiêu 35k vào ăn trưa; Tháng này tôi ăn uống hết
+            bao nhiêu?; Còn bao nhiêu tiền ăn tháng này?; Tuần này tôi tiêu
+            nhiều nhất vào mục nào?
           </p>
         </div>
       ) : null}
@@ -556,11 +560,11 @@ function Clarification({ result }: { result: AiParseResponse }) {
     <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
       <p className="text-sm font-semibold text-amber-900">
         {result.clarification?.message ??
-          "This draft needs clarification before it can be confirmed."}
+          "Bản nháp này cần thêm thông tin trước khi xác nhận."}
       </p>
       {fields.length > 0 ? (
         <p className="mt-2 text-xs text-amber-800">
-          Missing fields: {fields.join(", ")}
+          Cần bổ sung: {fields.join(", ")}
         </p>
       ) : null}
     </div>
@@ -569,6 +573,21 @@ function Clarification({ result }: { result: AiParseResponse }) {
 
 function getSafeErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof AiApiError) {
+    if (error.status === 503) {
+      return "Trợ lý AI chưa sẵn sàng. Hãy kiểm tra Ollama trong phần Cài đặt.";
+    }
+    if (error.status === 504) {
+      return "Trợ lý AI phản hồi quá lâu. Hãy thử lại sau hoặc kiểm tra Ollama.";
+    }
+    if (error.status === 502) {
+      return "Trợ lý AI trả về dữ liệu chưa đọc được. Hãy thử lại.";
+    }
+    if (error.message.toLowerCase().includes("local ai")) {
+      return "Trợ lý AI chưa sẵn sàng. Hãy kiểm tra Ollama trong phần Cài đặt.";
+    }
+    if (error.message.toLowerCase().includes("provider")) {
+      return "Trợ lý AI đang gặp lỗi. Hãy thử lại hoặc kiểm tra Ollama trong phần Cài đặt.";
+    }
     return error.message;
   }
 

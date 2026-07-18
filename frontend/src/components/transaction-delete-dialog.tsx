@@ -52,38 +52,39 @@ export function TransactionDeleteDialog({
           className="text-base font-semibold text-ledger-ink"
           id="delete-transaction-title"
         >
-          Delete transaction?
+          Xóa giao dịch?
         </h3>
         <p
           className="mt-2 text-sm text-ledger-muted"
           id="delete-transaction-description"
         >
-          This removes the transaction from active ledger views and reverses its
-          account-balance effect. The stored record is not permanently erased.
+          Giao dịch sẽ biến mất khỏi các màn hình đang dùng và số dư sẽ được
+          hoàn lại đúng theo loại giao dịch. Bản ghi vẫn được giữ trong máy,
+          không bị xóa vĩnh viễn.
         </p>
 
         <dl className="mt-4 grid gap-2 rounded-md border border-ledger-line bg-ledger-wash p-3 text-sm">
           <div className="flex justify-between gap-3">
-            <dt className="text-ledger-muted">Amount</dt>
+            <dt className="text-ledger-muted">Số tiền</dt>
             <dd className="font-semibold text-ledger-ink">
               {amountPrefix}
               {formatVnd(transaction.amount_minor)}
             </dd>
           </div>
           <div className="flex justify-between gap-3">
-            <dt className="text-ledger-muted">Category</dt>
+            <dt className="text-ledger-muted">Danh mục</dt>
             <dd className="font-semibold text-ledger-ink">
               {formatCategoryLabel(transaction.category_slug)}
             </dd>
           </div>
           <div className="flex justify-between gap-3">
-            <dt className="text-ledger-muted">Date</dt>
+            <dt className="text-ledger-muted">Ngày</dt>
             <dd className="font-semibold text-ledger-ink">
               {formatDeleteDate(transaction.occurred_at)}
             </dd>
           </div>
           <div className="grid gap-1">
-            <dt className="text-ledger-muted">Description</dt>
+            <dt className="text-ledger-muted">Ghi chú</dt>
             <dd className="font-semibold text-ledger-ink">
               {transaction.description}
             </dd>
@@ -97,7 +98,7 @@ export function TransactionDeleteDialog({
         ) : null}
         {isDeleting ? (
           <p className="mt-3 text-sm text-ledger-muted" role="status">
-            Deleting transaction...
+            Đang xóa giao dịch...
           </p>
         ) : null}
 
@@ -109,7 +110,7 @@ export function TransactionDeleteDialog({
             type="button"
             variant="outline"
           >
-            Cancel
+            Hủy
           </Button>
           <Button
             disabled={isDeleting}
@@ -117,7 +118,7 @@ export function TransactionDeleteDialog({
             type="button"
             variant="danger"
           >
-            {isDeleting ? "Deleting" : "Delete transaction"}
+            {isDeleting ? "Đang xóa" : "Xóa giao dịch"}
           </Button>
         </div>
       </div>
@@ -128,7 +129,7 @@ export function TransactionDeleteDialog({
 function formatDeleteDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Unknown date";
+    return "Không rõ ngày";
   }
 
   return new Intl.DateTimeFormat("vi-VN", {

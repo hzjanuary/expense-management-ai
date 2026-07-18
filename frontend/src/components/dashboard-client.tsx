@@ -30,7 +30,7 @@ export function DashboardClient() {
             </h2>
             <p className="mt-1 text-sm leading-6 text-ledger-muted">
               Xem nhanh số dư, thu chi và ngân sách. Các thao tác chi tiết nằm
-              ở từng trang riêng.
+              ở các trang riêng để dễ dùng hơn.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">

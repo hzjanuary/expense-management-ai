@@ -7,13 +7,13 @@ export type AppRoute = {
 
 export const APP_ROUTES: AppRoute[] = [
   {
-    description: "Số dư, thu chi tháng này và các lối tắt chính.",
+    description: "Xem nhanh số dư, thu chi tháng này và các lối tắt chính.",
     href: "/dashboard",
     icon: "home",
     label: "Tổng quan",
   },
   {
-    description: "Danh sách, xuất dữ liệu và xóa mềm giao dịch.",
+    description: "Xem, lọc, tải xuống và xóa giao dịch sai.",
     href: "/transactions",
     icon: "transactions",
     label: "Giao dịch",
@@ -25,13 +25,13 @@ export const APP_ROUTES: AppRoute[] = [
     label: "Ngân sách",
   },
   {
-    description: "Nhập giao dịch bằng AI và hỏi các câu insight.",
+    description: "Nhập giao dịch bằng AI và hỏi nhanh về chi tiêu.",
     href: "/assistant",
     icon: "assistant",
     label: "Trợ lý AI",
   },
   {
-    description: "Cấu hình AI cục bộ và quyền riêng tư lịch sử AI.",
+    description: "Xem hướng dẫn AI cục bộ và xóa lịch sử AI khi cần.",
     href: "/settings",
     icon: "settings",
     label: "Cài đặt",

@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { ChatToLedger } from "@/components/chat-to-ledger";
+import { Button } from "@/components/ui";
 
 export function AssistantWorkspace() {
   const [refreshRevision, setRefreshRevision] = useState(0);
@@ -17,7 +18,7 @@ export function AssistantWorkspace() {
   }
 
   return (
-    <div className="grid h-[calc(100vh-11rem)] min-h-[680px] gap-4">
+    <div className="grid h-[calc(100vh-12rem)] min-h-[640px] gap-4 sm:h-[calc(100vh-11rem)] sm:min-h-[680px]">
       <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-ledger-line bg-ledger-panel shadow-soft">
         <div className="flex flex-col gap-3 border-b border-ledger-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -25,17 +26,17 @@ export function AssistantWorkspace() {
               Trợ lý tài chính
             </h2>
             <p className="mt-1 text-sm text-ledger-muted">
-              AI cục bộ có thể tạo bản nháp hoặc phân loại câu hỏi. Sổ chỉ thay
-              đổi khi bạn xác nhận.
+              Trợ lý có thể ghi nháp giao dịch hoặc trả lời câu hỏi chi tiêu.
+              Sổ tiền chỉ thay đổi sau khi bạn bấm xác nhận.
             </p>
           </div>
-          <button
-            className="inline-flex h-10 items-center justify-center rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+          <Button
             onClick={handleNewConversation}
             type="button"
+            variant="outline"
           >
             Cuộc trò chuyện mới
-          </button>
+          </Button>
         </div>
         <ChatToLedger
           key={conversationKey}

@@ -1,4 +1,5 @@
 import type { AiTransactionDraft } from "@/lib/ai";
+import { formatCategoryLabel } from "@/lib/categories";
 import { formatVnd } from "@/lib/money";
 import { Button } from "@/components/ui";
 
@@ -26,33 +27,36 @@ export function AiDraftReview({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-ledger-ink">
-            Review AI Draft
+            Kiểm tra bản nháp
           </p>
           <p className="mt-1 text-xs text-ledger-muted">
-            Confirming sends this stored draft to the backend confirmation flow.
+            Chỉ khi bạn xác nhận, giao dịch này mới được ghi vào sổ.
           </p>
         </div>
         <span className="w-fit rounded-md bg-ledger-wash px-2 py-1 text-xs font-semibold text-ledger-muted">
-          confidence: {confidence}
+          độ tin cậy: {confidence}
         </span>
       </div>
 
       <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-        <DraftField label="Type" value={draft.type} />
+        <DraftField label="Loại" value={draft.type === "expense" ? "Chi" : "Thu"} />
         <DraftField
-          label="Amount"
+          label="Số tiền"
           value={`${amountPrefix}${formatVnd(draft.amount_minor)} ${draft.currency}`}
           valueClassName={amountTone}
         />
-        <DraftField label="Category" value={formatCategory(draft.category_slug)} />
-        <DraftField label="Source" value={draft.source} />
-        <DraftField label="Description" value={draft.description} />
+        <DraftField label="Danh mục" value={formatCategory(draft.category_slug)} />
         <DraftField
-          label="Occurred"
+          label="Nguồn"
+          value={draft.source === "ai_chat" ? "Trợ lý AI" : "Thủ công"}
+        />
+        <DraftField label="Ghi chú" value={draft.description} />
+        <DraftField
+          label="Thời điểm"
           value={
             draft.occurred_at
               ? formatDate(draft.occurred_at)
-              : "Uses confirmation time"
+              : "Dùng thời điểm xác nhận"
           }
         />
       </dl>
@@ -63,7 +67,7 @@ export function AiDraftReview({
           onClick={onConfirm}
           type="button"
         >
-          {isConfirming ? "Confirming" : "Confirm"}
+          {isConfirming ? "Đang xác nhận" : "Xác nhận"}
         </Button>
         <Button
           disabled={isConfirming}
@@ -71,7 +75,7 @@ export function AiDraftReview({
           type="button"
           variant="outline"
         >
-          Cancel
+          Hủy
         </Button>
       </div>
     </div>
@@ -100,7 +104,7 @@ function DraftField({ label, value, valueClassName }: DraftFieldProps) {
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Unknown date";
+    return "Không rõ ngày";
   }
 
   return new Intl.DateTimeFormat("vi-VN", {
@@ -110,8 +114,5 @@ function formatDate(value: string): string {
 }
 
 function formatCategory(value: string): string {
-  return value
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  return formatCategoryLabel(value);
 }

@@ -72,10 +72,10 @@ export function DashboardSummary({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-rose-800">
-              Dashboard summary unavailable
+              Chưa tải được tổng quan
             </h2>
             <p className="mt-1 text-sm text-rose-700">
-              {error ?? "Unable to load dashboard summary."}
+              {error ?? "Không tải được số liệu tổng quan."}
             </p>
           </div>
           <button
@@ -83,7 +83,7 @@ export function DashboardSummary({
             onClick={() => void loadSummary()}
             type="button"
           >
-            Retry summary
+            Thử lại
           </button>
         </div>
       </section>
@@ -96,27 +96,27 @@ export function DashboardSummary({
 
   const items = [
     {
-      label: "Current balance",
+      label: "Số dư hiện tại",
       value: formatVnd(summary.total_balance_minor),
-      note: `Stored account balance. Currency: ${summary.currency}.`,
+      note: `Số dư đang lưu. Tiền tệ: ${summary.currency}.`,
       tone: "text-ledger-ink",
     },
     {
-      label: "Monthly income",
+      label: "Thu trong tháng",
       value: formatVnd(summary.monthly_income_minor),
-      note: `Income for ${month}.`,
+      note: `Khoản thu trong ${month}.`,
       tone: "text-emerald-700",
     },
     {
-      label: "Monthly expense",
+      label: "Chi trong tháng",
       value: formatVnd(summary.monthly_expense_minor),
-      note: `Expense for ${month}.`,
+      note: `Khoản chi trong ${month}.`,
       tone: "text-rose-700",
     },
     {
-      label: "Categories in summary",
+      label: "Danh mục có chi",
       value: String(summary.category_breakdown.length),
-      note: "Backend-provided category totals for the selected month.",
+      note: "Số danh mục có giao dịch trong tháng.",
       tone: "text-ledger-ink",
     },
   ];
@@ -152,7 +152,7 @@ function SummaryLoading({ month }: { month: string }) {
           key={item}
         >
           <p className="text-sm font-medium text-ledger-muted">
-            Loading {month} summary...
+            Đang tải số liệu {month}...
           </p>
           <div className="mt-4 h-8 w-28 rounded bg-ledger-line" />
           <div className="mt-4 h-3 w-36 rounded bg-ledger-line" />
@@ -166,7 +166,7 @@ function getSummaryErrorMessage(error: unknown): string {
   if (error instanceof DashboardApiError) {
     return error.message;
   }
-  return "Unable to load dashboard summary.";
+  return "Không tải được số liệu tổng quan.";
 }
 
 function isAbortError(error: unknown): boolean {

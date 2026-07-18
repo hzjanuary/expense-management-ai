@@ -123,9 +123,12 @@ export type AiInsightResponse =
     };
 
 export class AiApiError extends Error {
-  constructor(message = "Unable to complete AI ledger action") {
+  status: number | null;
+
+  constructor(message = "Unable to complete AI ledger action", status: number | null = null) {
     super(message);
     this.name = "AiApiError";
+    this.status = status;
   }
 }
 
@@ -144,7 +147,7 @@ export async function parseAiMessage(
   });
 
   if (!response.ok) {
-    throw new AiApiError(await readErrorMessage(response));
+    throw new AiApiError(await readErrorMessage(response), response.status);
   }
 
   const payload: unknown = await response.json();
@@ -166,7 +169,7 @@ export async function confirmAiDraft(
   });
 
   if (!response.ok) {
-    throw new AiApiError(await readErrorMessage(response));
+    throw new AiApiError(await readErrorMessage(response), response.status);
   }
 
   const payload: unknown = await response.json();
@@ -189,7 +192,7 @@ export async function querySpendingInsight(
   });
 
   if (!response.ok) {
-    throw new AiApiError(await readErrorMessage(response));
+    throw new AiApiError(await readErrorMessage(response), response.status);
   }
 
   return parseAiQuerySpendingResponse(await response.json());
@@ -211,7 +214,7 @@ export async function queryBudgetRemainingInsight(
   });
 
   if (!response.ok) {
-    throw new AiApiError(await readErrorMessage(response));
+    throw new AiApiError(await readErrorMessage(response), response.status);
   }
 
   return parseAiQueryBudgetRemainingResponse(await response.json());
@@ -233,7 +236,7 @@ export async function querySpendingBreakdownInsight(
   });
 
   if (!response.ok) {
-    throw new AiApiError(await readErrorMessage(response));
+    throw new AiApiError(await readErrorMessage(response), response.status);
   }
 
   return parseAiQuerySpendingBreakdownResponse(await response.json());

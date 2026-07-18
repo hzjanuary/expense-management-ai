@@ -31,15 +31,15 @@ describe("insight chat UI", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
 
-    expect(await screen.findByText("Review AI Draft")).toBeInTheDocument();
+    expect(await screen.findByText("Kiểm tra bản nháp")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/ai/parse",
       expect.objectContaining({ method: "POST" }),
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    await userEvent.click(screen.getByRole("button", { name: "Xác nhận" }));
 
-    await screen.findByText(/Transaction created:/);
+    await screen.findByText(/Đã tạo giao dịch:/);
     expect(countCalls(fetchMock, "/api/ai/confirm")).toBe(1);
     expect(onConfirmed).toHaveBeenCalledTimes(1);
   });
@@ -50,15 +50,15 @@ describe("insight chat UI", () => {
     render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
 
     await submitMessage("Tháng này tôi ăn uống hết bao nhiêu?");
-    expect(await screen.findByText("Spending Insight")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Chi tiêu theo danh mục" })).toBeInTheDocument();
     expect(await findTextContaining("35.000")).toBeInTheDocument();
 
     await submitMessage("Còn bao nhiêu tiền ăn tháng này?");
-    expect(await screen.findByText("Budget Insight")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ngân sách còn lại" })).toBeInTheDocument();
     expect(await findTextContaining("1.965.000")).toBeInTheDocument();
 
     await submitMessage("Tuần này tôi tiêu nhiều nhất vào mục nào?");
-    expect(await screen.findByText("Top Spending Insight")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Chi nhiều nhất" })).toBeInTheDocument();
     expect(screen.getByText("63.16%")).toBeInTheDocument();
 
     expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(1);
@@ -76,7 +76,7 @@ describe("insight chat UI", () => {
     await submitMessage("Bạn có khỏe không?");
 
     expect(
-      await screen.findByText(/I can help with transaction drafts/),
+      await screen.findByText(/Mình có thể giúp ghi nháp giao dịch/),
     ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -89,7 +89,7 @@ describe("insight chat UI", () => {
     await userEvent.click(screen.getByRole("button", { name: "Ngân sách còn lại" }));
     await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
 
-    expect(await screen.findByText("Budget Insight")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ngân sách còn lại" })).toBeInTheDocument();
     expect(countCalls(fetchMock, "/api/ai/query-budget-remaining")).toBe(1);
   });
 
@@ -104,7 +104,7 @@ describe("insight chat UI", () => {
     expect(input).toHaveValue("Tháng này tôi ăn uống hết bao nhiêu?\n");
 
     await userEvent.keyboard("{Enter}");
-    expect(await screen.findByText("Spending Insight")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Chi tiêu theo danh mục" })).toBeInTheDocument();
     expect(countCalls(fetchMock, "/api/ai/query-spending")).toBe(1);
   });
 
@@ -135,11 +135,11 @@ describe("insight chat UI", () => {
     expect(await findTextContaining("0")).toBeInTheDocument();
 
     await submitMessage("Còn bao nhiêu tiền ăn tháng này?");
-    expect((await screen.findAllByText(/No budget configured/)).length).toBeGreaterThan(0);
-    expect(screen.queryAllByText("No configured budget").length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/Chưa thiết lập ngân sách/)).length).toBeGreaterThan(0);
+    expect(screen.queryAllByText(/Chưa thiết lập ngân sách cho/).length).toBeGreaterThan(0);
 
     await submitMessage("Tuần này tôi tiêu nhiều nhất vào mục nào?");
-    expect(await screen.findByText(/No expenses found/)).toBeInTheDocument();
+    expect(await screen.findByText(/Chưa có khoản chi/)).toBeInTheDocument();
   });
 
   it("renders clarification and provider errors without fabricated totals", async () => {
@@ -162,7 +162,7 @@ describe("insight chat UI", () => {
 
     await submitMessage("Tháng này tôi ăn uống hết bao nhiêu?");
     expect(
-      await screen.findByText("Local AI is disabled or unavailable."),
+      await screen.findByText("Trợ lý AI chưa sẵn sàng. Hãy kiểm tra Ollama trong phần Cài đặt."),
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("Tháng này tôi ăn uống hết bao nhiêu?")).toBeInTheDocument();
   });
@@ -197,11 +197,11 @@ describe("insight chat UI", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
 
-    expect(await screen.findByText("Budget Insight")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ngân sách còn lại" })).toBeInTheDocument();
     first.resolve(jsonResponse(spendingResponse));
 
     await waitFor(() =>
-      expect(screen.queryByText("Spending Insight")).not.toBeInTheDocument(),
+      expect(screen.queryByRole("heading", { name: "Chi tiêu theo danh mục" })).not.toBeInTheDocument(),
     );
   });
 
@@ -214,12 +214,12 @@ describe("insight chat UI", () => {
     );
 
     await submitMessage("Còn bao nhiêu tiền ăn tháng này?");
-    expect(await screen.findByText("Budget Insight")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ngân sách còn lại" })).toBeInTheDocument();
 
     rerender(<ChatToLedger onTransactionConfirmed={vi.fn()} refreshSignal={1} />);
 
     expect(
-      await screen.findByText(/Financial data changed/),
+      await screen.findByText(/Số liệu đã thay đổi/),
     ).toBeInTheDocument();
     expect(storageSpy).not.toHaveBeenCalled();
   });

@@ -24,9 +24,9 @@ describe("separated post-MVP pages", () => {
 
     render(<TransactionsClient />);
 
-    expect(await screen.findByText("No transactions yet.")).toBeInTheDocument();
-    expect(screen.getByText("Export Transactions")).toBeInTheDocument();
-    await userEvent.selectOptions(screen.getByLabelText("Danh mục"), "food");
+    expect(await screen.findByText("Chưa có giao dịch")).toBeInTheDocument();
+    expect(screen.getByText("Xuất giao dịch")).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getAllByLabelText("Danh mục")[0], "food");
 
     await waitFor(() =>
       expect(
@@ -35,6 +35,7 @@ describe("separated post-MVP pages", () => {
         ),
       ).toBe(true),
     );
+    expect(await screen.findByText("Không có giao dịch phù hợp")).toBeInTheDocument();
   });
 
   it("renders budget setup and progress together on budgets page", async () => {
@@ -51,8 +52,8 @@ describe("separated post-MVP pages", () => {
 
     render(<BudgetsClient />);
 
-    expect(await screen.findByText("Budget setup")).toBeInTheDocument();
-    expect(await screen.findByText("Budget status")).toBeInTheDocument();
+    expect(await screen.findByText("Thiết lập ngân sách")).toBeInTheDocument();
+    expect(await screen.findByText("Tình trạng ngân sách")).toBeInTheDocument();
     expect(await screen.findByDisplayValue("5000000")).toBeInTheDocument();
   });
 
@@ -69,12 +70,12 @@ describe("separated post-MVP pages", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
 
-    expect(await screen.findByText("Spending Insight")).toBeInTheDocument();
+    expect(await screen.findByText("Chi tiêu theo danh mục")).toBeInTheDocument();
     await userEvent.click(
       screen.getByRole("button", { name: "Cuộc trò chuyện mới" }),
     );
 
-    expect(screen.queryByText("Spending Insight")).not.toBeInTheDocument();
+    expect(screen.queryByText("Chi tiêu theo danh mục")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(localStorage.length).toBe(0);
   });
@@ -84,7 +85,7 @@ describe("separated post-MVP pages", () => {
 
     expect(screen.getAllByText(/qwen3:4b-instruct/).length).toBeGreaterThan(0);
     expect(screen.getByText(/không tự tải model/i)).toBeInTheDocument();
-    expect(screen.getByText("AI History Privacy")).toBeInTheDocument();
+    expect(screen.getByText("Lịch sử AI")).toBeInTheDocument();
     expect(screen.queryByText(/host.docker.internal/)).not.toBeInTheDocument();
   });
 });

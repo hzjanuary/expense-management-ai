@@ -65,7 +65,7 @@ export function TransactionExport({ month }: TransactionExportProps) {
         throw new DataManagementApiError(
           await readDataManagementError(
             response,
-            "Unable to download transaction export.",
+            "Không tải được file xuất giao dịch.",
           ),
           response.status,
         );
@@ -77,15 +77,15 @@ export function TransactionExport({ month }: TransactionExportProps) {
         format,
       );
       downloadBlob(blob, filename);
-      setSuccess(`Started ${format.toUpperCase()} download.`);
+      setSuccess(`Đã bắt đầu tải file ${format.toUpperCase()}.`);
     } catch (caughtError) {
       if (caughtError instanceof DOMException && caughtError.name === "AbortError") {
         return;
       }
       if (caughtError instanceof DataManagementApiError) {
-        setError(caughtError.message);
+        setError(getExportErrorMessage(caughtError));
       } else {
-        setError("Unable to download transaction export.");
+        setError("Không tải được file xuất giao dịch.");
       }
     } finally {
       if (abortRef.current === controller) {
@@ -99,17 +99,17 @@ export function TransactionExport({ month }: TransactionExportProps) {
     <section className={panelClassName}>
       <div>
         <h2 className="text-lg font-semibold text-ledger-ink">
-          Export Transactions
+          Xuất giao dịch
         </h2>
         <p className="mt-1 text-sm text-ledger-muted">
-          Download a filtered ledger export from the local backend.
+          Tải CSV hoặc JSON từ giao dịch đang lưu trên máy này.
         </p>
       </div>
 
       <form className="mt-4 grid gap-4" onSubmit={handleSubmit}>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="grid gap-1 text-sm font-medium text-ledger-ink">
-            Format
+            Định dạng
             <select
               className={selectClassName}
               onChange={(event) =>
@@ -123,7 +123,7 @@ export function TransactionExport({ month }: TransactionExportProps) {
           </label>
 
           <label className="grid gap-1 text-sm font-medium text-ledger-ink">
-            Month
+            Tháng
             <input
               className={inputClassName}
               onChange={(event) => setExportMonth(event.target.value)}
@@ -135,13 +135,13 @@ export function TransactionExport({ month }: TransactionExportProps) {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="grid gap-1 text-sm font-medium text-ledger-ink">
-            Category
+            Danh mục
             <select
               className={selectClassName}
               onChange={(event) => setCategory(event.target.value)}
               value={category}
             >
-              <option value="">All categories</option>
+              <option value="">Tất cả danh mục</option>
               {EXPENSE_CATEGORY_OPTIONS.map((option) => (
                 <option key={option.slug} value={option.slug}>
                   {option.label}
@@ -151,25 +151,25 @@ export function TransactionExport({ month }: TransactionExportProps) {
           </label>
 
           <label className="grid gap-1 text-sm font-medium text-ledger-ink">
-            Type
+            Loại
             <select
               className={selectClassName}
               onChange={(event) => setType(event.target.value as TransactionType | "")}
               value={type}
             >
-              <option value="">All types</option>
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
+              <option value="">Tất cả</option>
+              <option value="expense">Chi</option>
+              <option value="income">Thu</option>
             </select>
           </label>
         </div>
 
         <label className="grid gap-1 text-sm font-medium text-ledger-ink">
-          Search text
+          Tìm kiếm
           <input
             className={inputClassName}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Description or merchant"
+            placeholder="Ghi chú hoặc nơi giao dịch"
             type="search"
             value={query}
           />
@@ -190,11 +190,21 @@ export function TransactionExport({ month }: TransactionExportProps) {
           disabled={isDownloading}
           type="submit"
         >
-          {isDownloading ? "Preparing download" : "Download export"}
+          {isDownloading ? "Đang chuẩn bị" : "Tải xuống"}
         </Button>
       </form>
     </section>
   );
+}
+
+function getExportErrorMessage(error: DataManagementApiError): string {
+  if (error.status === 413) {
+    return "File xuất quá lớn. Hãy thu hẹp bộ lọc rồi thử lại.";
+  }
+  if (error.status === 422) {
+    return "Bộ lọc xuất dữ liệu chưa hợp lệ.";
+  }
+  return error.message || "Không tải được file xuất giao dịch.";
 }
 
 function getFilenameFromDisposition(

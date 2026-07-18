@@ -40,9 +40,9 @@ export function ClearAiHistory() {
         return;
       }
       if (caughtError instanceof DataManagementApiError) {
-        setError(caughtError.message);
+        setError("Không xóa được lịch sử AI. Hãy thử lại.");
       } else {
-        setError("Unable to clear AI history.");
+        setError("Không xóa được lịch sử AI. Hãy thử lại.");
       }
     } finally {
       if (abortRef.current === controller) {
@@ -56,18 +56,18 @@ export function ClearAiHistory() {
     <section className={panelClassName}>
       <div>
         <h2 className="text-lg font-semibold text-ledger-ink">
-          AI History Privacy
+          Lịch sử AI
         </h2>
         <p className="mt-1 text-sm text-ledger-muted">
-          Clears locally stored AI draft and parsing history. Confirmed
-          transactions and account balances remain unchanged.
+          Xóa bản nháp và lịch sử phân tích AI đang lưu trên máy. Giao dịch đã
+          xác nhận và số dư vẫn được giữ nguyên.
         </p>
       </div>
 
       {result ? (
         <p className="mt-4 text-sm font-medium text-ledger-accent" role="status">
-          Cleared {result.deleted_draft_count} AI draft records. Preserved{" "}
-          {result.preserved_transaction_count} referenced ledger transactions.
+          Đã xóa {result.deleted_draft_count} bản ghi lịch sử AI. Đã giữ nguyên{" "}
+          {result.preserved_transaction_count} giao dịch đã xác nhận.
         </p>
       ) : null}
       {error ? (
@@ -86,16 +86,16 @@ export function ClearAiHistory() {
             className="text-sm font-semibold text-ledger-ink"
             id="clear-ai-history-title"
           >
-            Confirm AI history clear
+            Xác nhận xóa lịch sử AI
           </h3>
           <p className="mt-2 text-sm text-ledger-muted">
-            This removes AI draft/history rows stored locally. It does not clear
-            transaction history, exported files, application logs, provider
-            configuration, or Ollama models.
+            Thao tác này chỉ xóa bản nháp và lịch sử AI đang lưu trên máy. Nó
+            không xóa lịch sử giao dịch, file đã tải xuống, log ứng dụng, cấu
+            hình Ollama hay model Ollama.
           </p>
           {isClearing ? (
             <p className="mt-3 text-sm text-ledger-muted" role="status">
-              Clearing AI history...
+              Đang xóa lịch sử AI...
             </p>
           ) : null}
           <div className="mt-4 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -105,7 +105,7 @@ export function ClearAiHistory() {
               type="button"
               variant="outline"
             >
-              Cancel
+              Hủy
             </Button>
             <Button
               disabled={isClearing}
@@ -113,7 +113,7 @@ export function ClearAiHistory() {
               type="button"
               variant="danger"
             >
-              {isClearing ? "Clearing" : "Clear AI history"}
+              {isClearing ? "Đang xóa" : "Xóa lịch sử AI"}
             </Button>
           </div>
         </div>
@@ -128,7 +128,7 @@ export function ClearAiHistory() {
           type="button"
           variant="danger"
         >
-          Clear AI history
+          Xóa lịch sử AI
         </Button>
       )}
     </section>
