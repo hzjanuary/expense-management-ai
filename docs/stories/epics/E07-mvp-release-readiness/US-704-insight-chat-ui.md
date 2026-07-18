@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -51,6 +51,16 @@ parse/confirm behavior.
 - UI surfaces: chat input, answer cards/messages, clarification states.
 - Intent routing may be deterministic client-side menu/selector or explicit
   backend endpoint selection; implementation story should choose and document it.
+- Implemented with a narrow deterministic frontend router for the accepted
+  canonical Vietnamese examples plus explicit quick-action buttons and an
+  intent selector. Unsupported text produces a local clarification and does not
+  call a financial endpoint.
+- Insight cards render only typed backend response fields. Amounts,
+  remaining values, percentages, date ranges, ordering, and top category are not
+  calculated authoritatively in the frontend.
+- Prior insight answers are marked stale when dashboard financial data changes
+  through the shared refresh signal; insight queries are not automatically
+  rerun.
 
 ## Explicit Out Of Scope
 
@@ -72,9 +82,26 @@ parse/confirm behavior.
 
 ## Harness Delta
 
-Add insight chat UI proof to release readiness matrix when implemented.
+US-704 is marked implemented with unit, integration, and UI-flow proof. US-705
+through US-707 remain planned.
 
 ## Evidence
 
-TBD.
-
+- `cd frontend && npm ci && npm test && npm run lint && npm run typecheck && npm run build`
+  passed. Vitest reported 7 files and 34 tests passing.
+- `cd backend && .venv/bin/pytest` passed with 238 tests passing and 1 skipped.
+- `docker compose up -d --build` built backend and frontend images and started
+  both services healthy.
+- Default Ollama-disabled runtime proof:
+  - `POST /api/ai/query-spending` returned `503` with
+    `{"error":"Local AI is disabled or unavailable. Start Ollama or try again later."}`
+    and `Cache-Control: no-store`.
+  - `POST /api/ai/query-budget-remaining` returned the same safe `503`.
+  - `POST /api/ai/query-spending-breakdown` returned the same safe `503`.
+- `curl -I http://127.0.0.1:3000/dashboard` returned `HTTP 200`.
+- `curl -i http://127.0.0.1:8010/health` returned `HTTP 200` with
+  `{"status":"ok"}`.
+- `scripts/runtime-smoke.sh` passed, including backend health, frontend
+  dashboard reachability, transaction proxy reachability, Alembic current at
+  `0004 (head)`, restart checks, and persisted transaction proof.
+- `docker compose down` stopped the stack without removing persistent volumes.

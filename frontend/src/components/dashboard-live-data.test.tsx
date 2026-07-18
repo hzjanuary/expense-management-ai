@@ -150,7 +150,7 @@ describe("live dashboard data", () => {
       screen.getByLabelText("Chat to ledger message"),
       "Hôm nay tôi tiêu 35k vào ăn trưa",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Parse draft" }));
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Review AI Draft")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Confirm" }));
     expect(await screen.findByText(/Transaction created:/)).toBeInTheDocument();

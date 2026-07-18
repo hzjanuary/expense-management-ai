@@ -66,7 +66,10 @@ export function DashboardClient() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <div className="grid gap-6">
-          <ChatToLedger onTransactionConfirmed={refreshDashboardData} />
+          <ChatToLedger
+            onTransactionConfirmed={refreshDashboardData}
+            refreshSignal={refreshRevision}
+          />
           <RecentTransactions refreshSignal={refreshRevision} />
         </div>
         <div className="grid gap-6">
