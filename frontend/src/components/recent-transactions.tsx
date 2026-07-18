@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { TransactionDeleteDialog } from "@/components/transaction-delete-dialog";
+import {
+  DataManagementApiError,
+  deleteTransaction,
+} from "@/lib/data-management";
 import { fetchRecentTransactions } from "@/lib/transactions";
 import type { TransactionListItem } from "@/lib/transactions";
 import { TransactionRow } from "@/components/transaction-row";
@@ -9,13 +14,23 @@ import { TransactionRow } from "@/components/transaction-row";
 type LoadState = "idle" | "loading" | "loaded" | "error";
 
 type RecentTransactionsProps = {
+  onTransactionDeleted?: () => void;
   refreshSignal?: number;
 };
 
-export function RecentTransactions({ refreshSignal = 0 }: RecentTransactionsProps) {
+export function RecentTransactions({
+  onTransactionDeleted,
+  refreshSignal = 0,
+}: RecentTransactionsProps) {
   const [transactions, setTransactions] = useState<TransactionListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [state, setState] = useState<LoadState>("idle");
+  const [localRefreshSignal, setLocalRefreshSignal] = useState(0);
+  const [transactionToDelete, setTransactionToDelete] =
+    useState<TransactionListItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
 
   const loadTransactions = useCallback(async () => {
     setState((current) => (current === "loaded" ? current : "loading"));
@@ -31,7 +46,47 @@ export function RecentTransactions({ refreshSignal = 0 }: RecentTransactionsProp
 
   useEffect(() => {
     void loadTransactions();
-  }, [loadTransactions, refreshSignal]);
+  }, [loadTransactions, localRefreshSignal, refreshSignal]);
+
+  async function handleConfirmDelete() {
+    if (!transactionToDelete || isDeleting) {
+      return;
+    }
+
+    const deletingId = transactionToDelete.id;
+    setIsDeleting(true);
+    setDeleteError(null);
+    setDeleteNotice(null);
+
+    try {
+      await deleteTransaction(deletingId);
+      if (transactionToDelete.id !== deletingId) {
+        return;
+      }
+      setTransactionToDelete(null);
+      setDeleteNotice("Transaction deleted from active ledger views.");
+      setLocalRefreshSignal((currentValue) => currentValue + 1);
+      onTransactionDeleted?.();
+    } catch (caughtError) {
+      const message =
+        caughtError instanceof DataManagementApiError
+          ? caughtError.message
+          : "Unable to delete transaction.";
+      if (
+        caughtError instanceof DataManagementApiError &&
+        (caughtError.status === 404 || caughtError.status === 409)
+      ) {
+        setTransactionToDelete(null);
+        setDeleteNotice(message);
+        setLocalRefreshSignal((currentValue) => currentValue + 1);
+        onTransactionDeleted?.();
+      } else {
+        setDeleteError(message);
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   const isLoading = state === "idle" || state === "loading";
   const isRefreshing = state === "loaded";
@@ -67,6 +122,11 @@ export function RecentTransactions({ refreshSignal = 0 }: RecentTransactionsProp
               {transactions.map((transaction) => (
                 <TransactionRow
                   key={transaction.id}
+                  onDeleteRequested={(selectedTransaction) => {
+                    setDeleteNotice(null);
+                    setDeleteError(null);
+                    setTransactionToDelete(selectedTransaction);
+                  }}
                   transaction={transaction}
                 />
               ))}
@@ -77,6 +137,27 @@ export function RecentTransactions({ refreshSignal = 0 }: RecentTransactionsProp
           </div>
         ) : null}
       </div>
+
+      {deleteNotice ? (
+        <p className="mt-3 text-sm font-medium text-ledger-accent" role="status">
+          {deleteNotice}
+        </p>
+      ) : null}
+
+      {transactionToDelete ? (
+        <TransactionDeleteDialog
+          error={deleteError}
+          isDeleting={isDeleting}
+          onCancel={() => {
+            if (!isDeleting) {
+              setTransactionToDelete(null);
+              setDeleteError(null);
+            }
+          }}
+          onConfirm={() => void handleConfirmDelete()}
+          transaction={transactionToDelete}
+        />
+      ) : null}
     </section>
   );
 }

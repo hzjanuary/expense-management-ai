@@ -5,9 +5,11 @@ import { useState } from "react";
 import { BudgetProgress } from "@/components/budget-progress";
 import { BudgetSetupForm } from "@/components/budget-setup-form";
 import { ChatToLedger } from "@/components/chat-to-ledger";
+import { ClearAiHistory } from "@/components/clear-ai-history";
 import { DashboardSummary } from "@/components/dashboard-summary";
 import { MonthSelector } from "@/components/month-selector";
 import { RecentTransactions } from "@/components/recent-transactions";
+import { TransactionExport } from "@/components/transaction-export";
 import { getCurrentMonthValue } from "@/lib/dashboard";
 
 export function DashboardClient() {
@@ -70,7 +72,10 @@ export function DashboardClient() {
             onTransactionConfirmed={refreshDashboardData}
             refreshSignal={refreshRevision}
           />
-          <RecentTransactions refreshSignal={refreshRevision} />
+          <RecentTransactions
+            onTransactionDeleted={refreshDashboardData}
+            refreshSignal={refreshRevision}
+          />
         </div>
         <div className="grid gap-6">
           {isBudgetSetupOpen ? (
@@ -84,6 +89,8 @@ export function DashboardClient() {
             onSetupRequested={() => setIsBudgetSetupOpen(true)}
             refreshSignal={refreshRevision}
           />
+          <TransactionExport month={selectedMonth} />
+          <ClearAiHistory />
         </div>
       </div>
     </div>

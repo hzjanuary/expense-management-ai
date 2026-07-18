@@ -46,7 +46,9 @@ Browser-facing requests continue to call same-origin frontend routes such as
 `/api/budgets/monthly/{year}/{month}`,
 `/api/budgets/monthly/{year}/{month}/remaining`, `/api/ai/parse`,
 `/api/ai/confirm`, `/api/ai/query-spending`,
-`/api/ai/query-budget-remaining`, and `/api/ai/query-spending-breakdown`.
+`/api/ai/query-budget-remaining`, `/api/ai/query-spending-breakdown`,
+`/api/transactions/export`, `/api/transactions/{transactionId}`, and
+`/api/ai/history`.
 
 The dashboard renders without a running backend. Recent transactions and
 Chat-to-Ledger actions show safe error states until the backend is available.

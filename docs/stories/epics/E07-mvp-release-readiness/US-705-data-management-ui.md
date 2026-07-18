@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -74,5 +74,59 @@ Add data management UI proof to release readiness matrix when implemented.
 
 ## Evidence
 
-TBD.
-
+- Frontend implementation:
+  - Added same-origin proxies for `GET /api/transactions/export`,
+    `DELETE /api/transactions/{transactionId}`, and `DELETE /api/ai/history`.
+  - Added typed data-management client helpers for export URL construction,
+    soft-delete responses, clear-history responses, and safe API errors.
+  - Added dashboard data-management UI for CSV/JSON exports and clear AI
+    history.
+  - Added per-row Recent Transactions soft-delete action with explicit
+    confirmation and no optimistic removal.
+  - Soft-delete success triggers the existing dashboard-wide refresh callback so
+    recent transactions, dashboard summary, budget progress, and insight
+    staleness behavior refresh through the existing US-702/US-704 mechanism.
+- Component/proxy proof:
+  - `npm ci`
+  - `npm test` passed: 9 files, 49 tests.
+  - Tests cover export URL/filter behavior, Blob download and URL revocation,
+    export errors, explicit soft-delete confirmation, duplicate/missing delete
+    handling, clear-history confirmation/results, no automatic export, no AI
+    endpoint call during clear history, and proxy allowlists/no-store behavior.
+- Frontend quality gates:
+  - `npm run lint` passed.
+  - `npm run typecheck` passed.
+  - `npm run build` passed.
+- Backend regression:
+  - `cd backend && .venv/bin/pytest` passed: 238 passed, 1 skipped.
+  - No backend files were changed.
+- Runtime proof:
+  - `docker compose up -d --build` built backend and frontend images and both
+    services became healthy.
+  - CSV export through frontend proxy returned `HTTP 200`,
+    `Content-Type: text/csv; charset=utf-8`, attachment filename, and allowlisted
+    transaction rows.
+  - JSON export through frontend proxy returned `HTTP 200`,
+    `Content-Type: application/json`, attachment filename, and allowlisted JSON
+    rows.
+  - Controlled transaction `4efa1ad0-87cd-428c-a605-41d026c9c30b` was
+    soft-deleted through the frontend proxy with `HTTP 200`; repeated delete
+    returned `HTTP 409`.
+  - The deleted transaction disappeared from active list and filtered export;
+    dashboard balance changed from `925000` to `960000`, and monthly expense
+    changed from `75000` to `40000`, proving backend balance reversal and active
+    read exclusion.
+  - Budget remaining proxy after delete returned total/category expense
+    `40000`, proving backend recomputation after soft delete.
+  - Clear AI history through frontend proxy returned `HTTP 200` with
+    `deleted_draft_count=1`; repeated clear returned `HTTP 200` with
+    `deleted_draft_count=0`.
+  - `/dashboard` returned `HTTP 200`; backend `/health` returned `HTTP 200`.
+  - `scripts/runtime-smoke.sh` passed, including health, transaction proxy,
+    Alembic current, restart, and persistence proof.
+  - Rendered dashboard HTML contained `Export Transactions`,
+    `AI History Privacy`, and `Recent Transactions`.
+  - `docker compose down` was run without `-v`; persistent volume was preserved.
+- Final repository checks:
+  - `git diff --check` passed.
+  - `scripts/bin/harness-cli query matrix` passed.

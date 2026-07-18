@@ -2,10 +2,14 @@ import { formatVnd } from "@/lib/money";
 import type { TransactionListItem } from "@/lib/transactions";
 
 type TransactionRowProps = {
+  onDeleteRequested?: (transaction: TransactionListItem) => void;
   transaction: TransactionListItem;
 };
 
-export function TransactionRow({ transaction }: TransactionRowProps) {
+export function TransactionRow({
+  onDeleteRequested,
+  transaction,
+}: TransactionRowProps) {
   const isExpense = transaction.type === "expense";
   const amountPrefix = isExpense ? "-" : "+";
   const amountTone = isExpense ? "text-rose-700" : "text-ledger-accent";
@@ -31,10 +35,22 @@ export function TransactionRow({ transaction }: TransactionRowProps) {
           {transaction.merchant ? <span>{transaction.merchant}</span> : null}
         </div>
       </div>
-      <p className={`text-right text-base font-semibold ${amountTone}`}>
-        {amountPrefix}
-        {formatVnd(transaction.amount_minor)}
-      </p>
+      <div className="flex items-center justify-end gap-3">
+        <p className={`text-right text-base font-semibold ${amountTone}`}>
+          {amountPrefix}
+          {formatVnd(transaction.amount_minor)}
+        </p>
+        {onDeleteRequested ? (
+          <button
+            aria-label={`Delete transaction ${transaction.description}`}
+            className="h-9 rounded-md border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 transition hover:border-rose-700"
+            onClick={() => onDeleteRequested(transaction)}
+            type="button"
+          >
+            Delete
+          </button>
+        ) : null}
+      </div>
     </li>
   );
 }
