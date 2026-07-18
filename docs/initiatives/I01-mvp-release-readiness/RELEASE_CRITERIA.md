@@ -11,6 +11,8 @@
 
 ## Frontend Gates
 
+- `cd frontend && npm ci` passes.
+- `cd frontend && npm test` passes.
 - `cd frontend && npm run lint` passes.
 - `cd frontend && npm run typecheck` passes.
 - `cd frontend && npm run build` passes.
@@ -42,6 +44,8 @@
 - E2E proves the complete flow in `DEMO_SCRIPT.md`.
 - Optional real Ollama E2E is gated behind an explicit environment variable and
   skipped by default.
+- Accessibility smoke runs as part of the Playwright MVP demo and blocks on
+  critical or serious axe violations.
 
 ## Provider Gates
 
@@ -59,6 +63,7 @@
 - Soft-deleted transactions remain hidden from default user-facing reads.
 - Logs do not include raw financial chat text or full transaction descriptions
   by default.
+- `scripts/privacy-log-smoke.sh` passes against controlled runtime logs.
 - No cloud provider, upload, sync, or telemetry behavior is introduced.
 
 ## Accessibility Gates
@@ -74,6 +79,9 @@
 - Backend and frontend dependency audit output is reviewed.
 - Findings are triaged rather than blindly forcing upgrades.
 - Any dependency change is scoped to a release-hardening story and validated.
+- Remaining findings are documented in
+  `docs/releases/MVP_RELEASE_VALIDATION.md` and
+  `docs/KNOWN_LIMITATIONS.md`.
 
 ## Git And Documentation Gates
 
@@ -83,3 +91,4 @@
 - README and troubleshooting docs explain local setup, reset, seed, validation,
   and Ollama optionality.
 - An MVP release validation report is produced by US-707.
+- `scripts/release-validate.sh` passes before release signoff.

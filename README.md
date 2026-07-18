@@ -83,6 +83,23 @@ removes only the isolated E2E volume on completion. It does not require Ollama
 and does not delete the normal `pocket-ledger-data` development volume. Failure
 artifacts are copied under `frontend/e2e-artifacts/`.
 
+Run the full MVP release validation:
+
+```bash
+scripts/release-validate.sh
+```
+
+This coordinates backend quality gates, isolated Alembic validation, frontend
+quality gates, dependency/security review, accessibility-enabled Playwright
+E2E, default Compose runtime smoke, privacy-log smoke, and Harness checks.
+Release notes and operational guidance live in:
+
+- `docs/RELEASE.md`
+- `docs/TROUBLESHOOTING.md`
+- `docs/KNOWN_LIMITATIONS.md`
+- `docs/releases/MVP_RELEASE_VALIDATION.md`
+- `CHANGELOG.md`
+
 Ollama is optional and disabled by default. To connect the backend container to
 a host Ollama instance, keep `POCKET_LEDGER_OLLAMA_BASE_URL` pointed at
 `http://host.docker.internal:11434` and set

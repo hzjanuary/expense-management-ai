@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import fs from "node:fs/promises";
 
 const DEMO_MONTH = "2026-07";
@@ -31,9 +32,11 @@ test("complete local-first MVP demo", async ({ page }) => {
   await expect(page.getByText(/failed to load|stack trace|backend:/i)).toHaveCount(
     0,
   );
+  await expectNoCriticalOrSeriousA11yViolations(page, "initial dashboard");
 
   await page.getByRole("button", { name: "Set up budget" }).first().click();
   const budgetSetup = sectionByHeading(page, "Budget setup");
+  await expectNoCriticalOrSeriousA11yViolations(page, "budget setup form");
   await budgetSetup.getByLabel(/Total monthly budget/).fill("5000000");
   await budgetSetup.getByRole("button", { name: "Add category" }).click();
   await budgetSetup.getByRole("combobox", { name: "Category" }).first().selectOption(
@@ -56,6 +59,7 @@ test("complete local-first MVP demo", async ({ page }) => {
   await expect(chat.getByText("ai_chat").first()).toBeVisible();
   await expect(chat.getByRole("button", { name: "Confirm" })).toBeVisible();
   await expect(chat.getByRole("button", { name: "Cancel" })).toBeVisible();
+  await expectNoCriticalOrSeriousA11yViolations(page, "AI draft review");
   await expect(transactions.getByText("No transactions yet.")).toBeVisible();
   await expectMoney(dashboard, "1.000.000");
   await expectMoney(dashboard, "0");
@@ -75,6 +79,7 @@ test("complete local-first MVP demo", async ({ page }) => {
   await expectMoney(spendingInsight, "35.000");
   await expect(spendingInsight.getByText("Transactions").locator("..")).toContainText("1");
   await expect(spendingInsight.getByText(/this_month/)).toBeVisible();
+  await expectNoCriticalOrSeriousA11yViolations(page, "insight result");
 
   await submitChat(page, BUDGET_QUERY);
   const budgetInsight = insightByHeading(page, "Budget Insight");
@@ -130,6 +135,7 @@ test("complete local-first MVP demo", async ({ page }) => {
   const deleteDialog = page.getByRole("dialog", { name: "Delete transaction?" });
   await expect(deleteDialog.getByText(/active ledger views/)).toBeVisible();
   await expect(deleteDialog.getByText(/reverses its account-balance effect/)).toBeVisible();
+  await expectNoCriticalOrSeriousA11yViolations(page, "transaction delete dialog");
   await deleteDialog.getByRole("button", { name: "Cancel" }).click();
   await expect(transactions.getByText("ăn trưa")).toBeVisible();
 
@@ -154,6 +160,7 @@ test("complete local-first MVP demo", async ({ page }) => {
   await expect(
     historyPanel.getByText(/does not clear transaction history/),
   ).toBeVisible();
+  await expectNoCriticalOrSeriousA11yViolations(page, "clear AI history dialog");
   await historyPanel
     .getByRole("button", { name: "Clear AI history" })
     .last()
@@ -219,4 +226,19 @@ function moneyPattern(amountWithDots: string): RegExp {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function expectNoCriticalOrSeriousA11yViolations(
+  page: Page,
+  context: string,
+) {
+  const results = await new AxeBuilder({ page }).analyze();
+  const blockingViolations = results.violations.filter((violation) =>
+    violation.impact === "critical" || violation.impact === "serious"
+  );
+
+  expect(
+    blockingViolations,
+    `${context} has critical or serious accessibility violations`,
+  ).toEqual([]);
 }

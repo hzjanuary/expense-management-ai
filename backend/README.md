@@ -295,6 +295,14 @@ POCKET_LEDGER_RUN_OLLAMA_INTEGRATION=1 .venv/bin/pytest tests/test_ollama_provid
 .venv/bin/mypy app
 ```
 
+The root release validator also runs an isolated Alembic round trip and a
+temporary `pip-audit` dependency review without adding audit tooling to
+`pyproject.toml`:
+
+```bash
+scripts/release-validate.sh
+```
+
 ## Migrations
 
 ```bash

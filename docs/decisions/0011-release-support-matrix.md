@@ -4,7 +4,7 @@ Date: 2026-07-17
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -15,18 +15,41 @@ overpromise platform coverage.
 
 ## Decision
 
-Propose that US-707 define an MVP local support matrix covering:
+US-707 defines an MVP local support matrix covering:
 
-- supported operating systems for local development/demo,
-- required Python and Node versions,
-- supported package managers,
-- SQLite/Alembic expectations,
-- browser target for Playwright proof,
-- Ollama optionality and skip behavior,
-- unsupported production/cloud deployment surfaces.
+## Validated
 
-The support matrix should describe what was actually validated rather than
-claiming broad compatibility.
+- Linux x86_64 on openSUSE Tumbleweed.
+- Docker Engine `29.4.0-ce`.
+- Docker Compose `5.3.1`.
+- Backend local validation with Python `3.13.13`.
+- Frontend local validation with Node `24.18.0` and npm `11.16.0`.
+- Chromium browser execution through
+  `mcr.microsoft.com/playwright:v1.61.1-noble`.
+- Local single-user SQLite runtime with Alembic current revision `0004`.
+- Default Ollama-disabled behavior with safe provider-unavailable responses.
+- Deterministic fake-provider E2E behavior in isolated test runtime.
+
+## Documented But Not Validated
+
+- Docker Desktop on macOS.
+- Docker Desktop on Windows/WSL2.
+- Other Linux distributions.
+- ARM64 hosts.
+- Real Ollama-enabled full demo.
+- Optional Ollama Compose profile beyond configuration validation.
+
+## Unsupported For MVP Release
+
+- Cloud deployment.
+- Hosted database.
+- Multi-user authentication or authorization.
+- Cloud LLM providers.
+- Automatic backups or synchronization.
+- Production operations beyond local single-user runtime.
+
+The support matrix describes what was actually validated rather than claiming
+broad compatibility.
 
 ## Alternatives Considered
 
@@ -44,11 +67,12 @@ Positive:
 
 Tradeoffs:
 
-- Some platforms may remain unverified for MVP.
+- Some platforms remain unverified for MVP.
 - More setup documentation is required before release signoff.
+- Future support expansion must add platform-specific proof before changing a
+  documented-but-not-validated environment to validated.
 
 ## Follow-Up
 
-- US-707 should accept, refine, or supersede this proposal based on actual
-  validation results.
-
+- US-707 accepted this decision based on the validation recorded in
+  `docs/releases/MVP_RELEASE_VALIDATION.md`.

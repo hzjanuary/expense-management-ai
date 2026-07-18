@@ -98,13 +98,20 @@ scripts/e2e-mvp.sh
 ```
 
 It starts an isolated Compose stack, seeds a clean E2E SQLite database, and runs
-Playwright Chromium against the full frontend/backend flow. It does not require
-real Ollama. Generated Playwright reports, traces, screenshots, videos, and
-download artifacts are ignored under `playwright-report/`, `test-results/`, and
-`e2e-artifacts/`.
+Playwright Chromium against the full frontend/backend flow. The scenario also
+runs axe accessibility smoke checks and fails on critical or serious
+violations. It does not require real Ollama. Generated Playwright reports,
+traces, screenshots, videos, and download artifacts are ignored under
+`playwright-report/`, `test-results/`, and `e2e-artifacts/`.
 
 For an already-running compatible app, the frontend-local command is:
 
 ```bash
 npm run e2e
+```
+
+The root release command also runs the frontend gates:
+
+```bash
+scripts/release-validate.sh
 ```

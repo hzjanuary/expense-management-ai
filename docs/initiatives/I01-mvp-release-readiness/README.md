@@ -6,8 +6,8 @@ Turn the completed 26-story MVP backlog into a coherent, locally runnable,
 demonstrable, and release-ready Pocket Ledger AI MVP.
 
 The initiative defines and implements the release-readiness path needed before
-final hardening. US-701 through US-706 are implemented; US-707 remains planned
-for final release validation and documentation.
+final hardening. US-701 through US-707 are implemented and the initiative is
+complete.
 
 ## Current Implemented Baseline
 
@@ -42,6 +42,9 @@ Implemented frontend behavior:
   history.
 - Playwright E2E MVP demo covering the complete local release scenario with an
   isolated E2E database and deterministic fake provider.
+- Release validation command, accessibility smoke, privacy-log smoke,
+  troubleshooting docs, known limitations, support matrix, and MVP release
+  validation report.
 
 ## Included Stories
 

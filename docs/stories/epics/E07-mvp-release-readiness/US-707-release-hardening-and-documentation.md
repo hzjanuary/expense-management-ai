@@ -2,7 +2,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Lane
 
@@ -77,5 +77,51 @@ for deferred post-MVP risks.
 
 ## Evidence
 
-TBD.
+Implemented artifacts:
 
+- `scripts/release-validate.sh` coordinates release gates from the repository
+  root.
+- `scripts/privacy-log-smoke.sh` checks controlled Compose runtime logs for
+  raw AI chat text, transaction descriptions, and provider/draft payload text.
+- `frontend/e2e/mvp-demo.spec.ts` now includes axe-powered accessibility smoke
+  checks for the dashboard, budget setup form, AI draft review, insight result,
+  transaction delete dialog, and clear AI history dialog.
+- `docs/RELEASE.md` documents the local release path.
+- `docs/TROUBLESHOOTING.md` documents common runtime and validation failures.
+- `docs/KNOWN_LIMITATIONS.md` records validated scope and remaining risks.
+- `docs/releases/MVP_RELEASE_VALIDATION.md` records the factual release
+  validation report.
+- `CHANGELOG.md` records the MVP release-candidate summary.
+- Decision `0011-release-support-matrix` is accepted with the validated
+  support target.
+
+Validation completed on 2026-07-18:
+
+- `scripts/release-validate.sh`: passed.
+- Backend quality inside release validation: `pytest` passed
+  (`241 passed, 1 skipped, 1 warning`), `ruff check .` passed,
+  `black --check .` passed, and `mypy app` passed.
+- Isolated Alembic validation: `upgrade head`, `current`, `downgrade base`,
+  `upgrade head`, `current` passed with final revision `0004 (head)`.
+- Frontend quality inside release validation: `npm ci`, `npm test`
+  (`9 files`, `49 tests`), `npm run lint`, `npm run typecheck`, and
+  `npm run build` passed.
+- Dependency review completed: npm audit reported two moderate findings for
+  `next`/nested `postcss`; backend pip-audit reported local development
+  `.venv` `pip 26.0.1` findings. Findings are documented and accepted
+  temporarily in the release report and known limitations.
+- Playwright E2E passed twice from clean isolated state. Each run reported
+  `1 passed`.
+- Accessibility smoke passed with no critical or serious axe violations.
+- Default Compose runtime smoke passed through `scripts/runtime-smoke.sh`,
+  including backend/frontend health, transaction proxy, Alembic current,
+  SQLite file presence, and persistence across restart.
+- Privacy-log smoke passed through `scripts/privacy-log-smoke.sh`.
+- `git diff --check` passed.
+- `scripts/bin/harness-cli query matrix` passed.
+- `scripts/bin/harness-cli query stats` passed.
+
+Release recommendation:
+
+- Ready with documented limitations for the validated local Linux Docker MVP
+  environment.
