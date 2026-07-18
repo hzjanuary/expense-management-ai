@@ -1,110 +1,166 @@
-# repository-harness
+# Pocket Ledger AI
 
-Turn any software repo into an agent-ready workspace.
+A local-first AI-assisted personal expense manager.
 
-`repository-harness` is a repository-level operating harness for Claude Code,
-Codex, Cursor, and other coding agents. It gives agents the missing project
-context they need before they change code: where to start, what the product
-contract says, how risky the work is, what proof is required, and which
-decisions future agents should inherit.
+Pocket Ledger AI is a single-user local MVP for tracking income, expenses,
+budgets, and spending insights. It combines a Next.js frontend, FastAPI backend,
+SQLite storage, and optional local Ollama integration. The current state is a
+local MVP release candidate with documented limitations, not a production cloud
+or multi-user banking platform.
 
-The app is what users touch. The harness is what agents touch.
+## Key Features
 
-## Pocket Ledger AI Local Surfaces
+- Manual expense and income creation through the backend API.
+- AI transaction parsing with typed drafts.
+- Explicit draft confirmation before any AI-created transaction reaches the
+  ledger.
+- Live dashboard for account balance, monthly income, monthly expense, and
+  budget progress.
+- Monthly total budgets and expense-category budgets.
+- Spending query, budget remaining, and spending breakdown insight UI.
+- CSV and JSON transaction export.
+- Transaction soft deletion with deterministic account-balance reversal.
+- Local AI draft/history clearing without deleting confirmed transactions.
+- Docker Compose full-stack runtime with persistent SQLite storage.
+- Automated browser-driven MVP validation with Playwright.
 
-This repository now contains the local-first expense manager implementation
-surfaces under:
+## Safety And Privacy Model
 
-- `backend/` — FastAPI backend.
-- `frontend/` — Next.js frontend shell.
+The AI provider may create typed drafts or classify queries. Only deterministic
+backend application commands may mutate financial records.
 
-Full-stack Docker Compose runtime:
+AI-created transactions require explicit user confirmation. Spending totals,
+budget remaining values, dashboard metrics, and exports are calculated from
+persisted SQLite ledger and budget records, not from generated model text.
+Money is stored and transported as integer minor units, such as VND dong amounts,
+and the frontend does not calculate authoritative balances or budget totals.
+
+Data remains local by default. The production-like Compose runtime starts with
+Ollama disabled, so AI requests return a safe provider-unavailable response until
+a local provider is explicitly enabled. Clearing AI history removes locally
+stored AI draft/history rows, including raw prompt text and provider metadata,
+but it does not delete confirmed ledger transactions. Soft deletion keeps the
+transaction row stored locally, sets `deleted_at`, excludes it from active views,
+and reverses its account-balance effect.
+
+This MVP does not include authentication, cloud sync, multi-device consistency,
+or automatic backups.
+
+## Architecture
+
+```text
+Browser
+  -> Next.js frontend
+  -> same-origin frontend proxy routes
+  -> FastAPI backend
+  -> SQLite
+
+Optional:
+  -> local Ollama provider
+```
+
+The backend uses Alembic migrations for SQLite schema management. Tests use a
+deterministic fake provider where model behavior must be predictable; the normal
+production-like Compose runtime keeps Ollama optional and disabled by default.
+Vitest and React Testing Library cover frontend components and proxy routes.
+Playwright covers the browser-level MVP demo. Harness documents product
+contracts, story evidence, decisions, and validation expectations.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for deeper architecture notes.
+
+## Prerequisites
+
+The primary startup path requires:
+
+- Git.
+- Docker Engine.
+- Docker Compose.
+- Enough local disk space for backend, frontend, and Playwright images.
+
+Optional real AI behavior requires a local Ollama runtime and a compatible local
+model.
+
+Validated release environment:
+
+- openSUSE Tumbleweed.
+- Linux x86_64.
+- Docker Engine `29.4.0-ce`.
+- Docker Compose `5.3.1`.
+
+Other Linux distributions, Docker Desktop on macOS or Windows/WSL2, ARM64 hosts,
+and real Ollama-enabled full demos may work, but they are not validated to the
+same level for this release candidate.
+
+## Quick Start
 
 ```bash
+git clone https://github.com/hzjanuary/expense-management-ai.git
+cd expense-management-ai
 cp .env.example .env
 docker compose up --build
 ```
 
 Expected local URLs:
 
-- Backend: `http://127.0.0.1:8010`
-- Frontend: `http://127.0.0.1:3000`
 - Dashboard: `http://127.0.0.1:3000/dashboard`
+- Frontend: `http://127.0.0.1:3000`
+- Backend API: `http://127.0.0.1:8010`
+- Health check: `http://127.0.0.1:8010/health`
 
-Stop without deleting local SQLite data:
+Basic checks:
+
+```bash
+docker compose ps
+curl http://127.0.0.1:8010/health
+```
+
+Stop while preserving local SQLite data:
 
 ```bash
 docker compose down
 ```
 
-Reset local Docker volume data explicitly:
+Explicit destructive reset:
 
 ```bash
 docker compose down -v
 ```
 
-Inspect services and logs:
+`docker compose down -v` removes the local Docker volumes, including the
+SQLite ledger volume. Use it only when you intentionally want to reset local
+data.
 
-```bash
-docker compose ps
-docker compose logs backend
-docker compose logs frontend
+## Optional Ollama Setup
+
+Default startup works without Ollama:
+
+```text
+POCKET_LEDGER_OLLAMA_ENABLED=false
 ```
 
-Inspect the migration state inside the backend container:
+With Ollama disabled, AI requests fail safely with provider-unavailable behavior
+instead of fabricated financial data. `/health` remains independent from
+Ollama.
 
-```bash
-docker compose exec backend alembic current
+The example environment uses:
+
+```text
+POCKET_LEDGER_OLLAMA_BASE_URL=http://host.docker.internal:11434
+POCKET_LEDGER_OLLAMA_MODEL=qwen2.5:3b
+POCKET_LEDGER_OLLAMA_TIMEOUT_SECONDS=10
 ```
 
-Run the runtime smoke and persistence proof:
+To connect the backend container to a host Ollama instance, install and run
+Ollama on the host, make sure the configured model is available, then set:
 
-```bash
-scripts/runtime-smoke.sh
+```text
+POCKET_LEDGER_OLLAMA_ENABLED=true
+POCKET_LEDGER_OLLAMA_BASE_URL=http://host.docker.internal:11434
 ```
 
-The smoke script validates Compose configuration, builds and starts the stack,
-checks backend health, checks the dashboard, checks the frontend transaction
-proxy, verifies Alembic state, verifies the SQLite file exists, creates one
-controlled manual transaction, restarts services, and verifies the transaction
-survives the restart.
-
-Run the isolated browser E2E MVP demo:
-
-```bash
-scripts/e2e-mvp.sh
-```
-
-The E2E runner uses Compose project `pocket-ledger-e2e`, host ports `8011` and
-`3001`, an isolated SQLite volume, and deterministic fake-provider behavior.
-It seeds a clean ledger with a `1,000,000 VND` opening balance, drives the full
-dashboard/budget/chat/insight/export/delete/history-clear flow in Chromium, and
-removes only the isolated E2E volume on completion. It does not require Ollama
-and does not delete the normal `pocket-ledger-data` development volume. Failure
-artifacts are copied under `frontend/e2e-artifacts/`.
-
-Run the full MVP release validation:
-
-```bash
-scripts/release-validate.sh
-```
-
-This coordinates backend quality gates, isolated Alembic validation, frontend
-quality gates, dependency/security review, accessibility-enabled Playwright
-E2E, default Compose runtime smoke, privacy-log smoke, and Harness checks.
-Release notes and operational guidance live in:
-
-- `docs/RELEASE.md`
-- `docs/TROUBLESHOOTING.md`
-- `docs/KNOWN_LIMITATIONS.md`
-- `docs/releases/MVP_RELEASE_VALIDATION.md`
-- `CHANGELOG.md`
-
-Ollama is optional and disabled by default. To connect the backend container to
-a host Ollama instance, keep `POCKET_LEDGER_OLLAMA_BASE_URL` pointed at
-`http://host.docker.internal:11434` and set
-`POCKET_LEDGER_OLLAMA_ENABLED=true` in `.env`. To start the optional Ollama
-container without downloading a model automatically:
+Linux hosts may need Docker's host-gateway support, which is already configured
+in `compose.yaml` for the backend service. The optional Compose profile can also
+start an Ollama service:
 
 ```bash
 POCKET_LEDGER_OLLAMA_ENABLED=true \
@@ -112,263 +168,102 @@ POCKET_LEDGER_OLLAMA_BASE_URL=http://ollama:11434 \
 docker compose --profile ollama up --build
 ```
 
-The Compose workflow defaults `POCKET_LEDGER_ENVIRONMENT=production` so
-Ollama-disabled AI parse requests return the documented provider-unavailable
-response instead of using the deterministic fake provider. Use the fake provider
-only for local backend development or tests by overriding the environment
-explicitly.
+No model is downloaded automatically. Real Ollama quality depends on the local
+model and runtime.
 
-Frontend setup and validation:
+## Main User Flows
 
-```bash
-cd frontend
-npm install
-npm run lint
-npm run typecheck
-npm run build
-```
+### Add A Manual Transaction
 
-Start the frontend shell:
+Manual transaction creation is available through the backend API. With the
+Compose stack running:
 
 ```bash
-cd frontend
-npm run dev
+curl -X POST "http://127.0.0.1:8010/api/v1/transactions" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "expense",
+    "amount_minor": 35000,
+    "currency": "VND",
+    "category_slug": "food",
+    "description": "manual lunch",
+    "occurred_at": "2026-07-17T12:00:00+07:00",
+    "source": "manual"
+  }'
 ```
 
-## Why Star This Repo
+### Add A Transaction With AI
 
-Star this repo if you want practical, reusable patterns for making AI-assisted
-software development more reliable, inspectable, and easier for humans to steer.
-
-This project is exploring a simple idea:
-
-> Coding agents do not only need better prompts. They need better repositories.
-
-## The Problem
-
-Most repos are built for humans reading code in a familiar codebase. Coding
-agents usually enter with only a chat prompt and a shallow snapshot of files.
-That leads to common failure modes:
-
-- The agent edits code before understanding product intent.
-- Important constraints live only in chat history or in someone's head.
-- Validation expectations are vague or discovered too late.
-- Architecture tradeoffs are repeated instead of inherited.
-- Large requests do not get broken into reviewable story-sized work.
-
-## The Harness Approach
-
-A repository starts to have a harness when it helps an agent answer practical
-engineering questions without relying only on chat history:
-
-- What should I read first?
-- What type of work is this?
-- Which product contract does it affect?
-- How risky is the change?
-- What proof will show the work is done?
-- What decision or lesson should future agents inherit?
-
-In this repo, those answers live in:
-
-- `AGENTS.md` — the stable agent shim with local project notes and Harness
-  doc links.
-- `docs/HARNESS.md` — the human-agent collaboration model.
-- `docs/FEATURE_INTAKE.md` — tiny, normal, and high-risk work classification.
-- `docs/ARCHITECTURE.md` — architecture discovery and boundary rules.
-- `docs/TEST_MATRIX.md` — behavior-to-proof validation expectations.
-- `docs/stories/` — story packets and backlog items.
-- `docs/decisions/` — durable decisions and tradeoffs.
-- `docs/templates/` — reusable spec, story, decision, and validation templates.
-
-OpenAI describes this shift as an agent-first world where humans steer and
-agents execute:
-
-https://openai.com/index/harness-engineering/
-
-## Install Harness Into A Project
-
-From a target project directory, run:
-
-```bash
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --yes
-```
-
-On Windows PowerShell, run:
-
-```powershell
-& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.ps1"))) -Yes
-```
-
-If the target already has `AGENTS.md`, `docs/`, or `scripts/`, choose one:
-
-```bash
-# Update an existing Harness repo without moving existing files
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --merge --yes
-
-# Back up and replace AGENTS.md, docs/, and scripts/
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --override --yes
-```
-
-```powershell
-# Update an existing Harness repo without moving existing files
-& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.ps1"))) -Merge -Yes
-
-# Back up and replace AGENTS.md, docs/, and scripts/
-& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.ps1"))) -Override -Yes
-```
-
-Use `--merge` when a project already has Harness and you want to append newly
-added Harness files without moving the existing `AGENTS.md`, `docs/`, or
-`scripts/` paths into backup. Existing files stay untouched; only missing
-Harness files are created.
-
-For older Harness installs whose `AGENTS.md` still contains the full generated
-operating guide, refresh it into the small stable shim:
-
-```bash
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --merge --refresh-agent-shim --yes
-```
-
-The refresh backs up the existing file. If it detects the old
-Harness-generated guide, it replaces it with the shim. If the file appears
-custom, it appends or updates a marked Harness block instead of overwriting the
-project's local instructions.
-
-If the project is driven with Claude Code, add `--claude`. Claude Code never
-auto-loads `AGENTS.md`, so without this the installed harness is invisible to
-fresh sessions. The flag installs (or refreshes) a `CLAUDE.md` whose marked
-Harness block `@`-imports `AGENTS.md` and `docs/FEATURE_INTAKE.md` into every
-session's context. An existing `CLAUDE.md` gets the block appended after a
-backup; plain installs without the flag never touch `CLAUDE.md`:
-
-```bash
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --claude --yes
-```
-
-Or install into a specific path:
-
-```bash
-curl -fsSL "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.sh?$(date +%s)" | bash -s -- --directory /path/to/project --yes
-```
-
-```powershell
-& ([scriptblock]::Create((irm "https://raw.githubusercontent.com/hoangnb24/repository-harness/main/scripts/install-harness.ps1"))) -Directory C:\path\to\project -Yes
-```
-
-Use `--dry-run` on Bash or `-DryRun` on PowerShell to preview changes before
-writing files.
-
-The installer also downloads the prebuilt Harness CLI for the current platform,
-verifies its `.sha256` checksum, and installs it at
-`scripts/bin/harness-cli` on macOS/Linux or `scripts/bin/harness-cli.exe` on
-Windows. The Rust CLI is the main Harness tool and stable command path.
-
-Harness CLI release assets are published from tags by the
-`Harness CLI Release` GitHub Actions workflow. The installer expects each
-release to include `harness-cli-<platform>` and
-`harness-cli-<platform>.sha256` assets for macOS arm64, macOS x64, Linux x64,
-Linux arm64, and Windows x64. The Windows asset is
-`harness-cli-windows-x64.exe` plus `harness-cli-windows-x64.exe.sha256`.
-
-Merged pull requests are recorded in `CHANGELOG.md` by the
-`Post-Merge Maintenance` workflow. When a merged PR changes the Rust CLI source,
-schema, Cargo metadata, or CLI release packaging, that workflow bumps the CLI
-patch version, updates `scripts/harness-cli-release-tag`, creates a
-`harness-cli-v*` tag, and runs the Harness CLI release build for that tag.
-
-## Try The Flow
-
-The fastest way to understand the harness is to inspect the tiny demo:
-
-- `docs/demo/README.md`: shows how a simple product idea becomes product docs,
-  stories, validation expectations, and decisions before implementation starts.
-
-A typical flow looks like this:
+Open the dashboard chat and enter:
 
 ```text
-human intent or product spec
-  -> product contract
-  -> feature intake
-  -> story packet
-  -> validation expectations
-  -> implementation work
-  -> decision or lesson captured for future agents
+Hôm nay tôi tiêu 35k vào ăn trưa
 ```
 
-Implementation prompts do not go straight to code. They first pass through
-feature intake, become story-sized work when needed, and then carry both product
-validation and harness maintenance expectations.
+The app shows a typed draft for review. The ledger changes only after you
+explicitly confirm the draft.
 
-## Try Harness Symphony
+### Configure A Budget
 
-Harness Symphony is the local runner for Harness stories. It prepares an
-isolated run workspace, passes an explicit contract to an agent, collects
-`SUMMARY.md` and `RESULT.json`, and keeps durable Harness updates reviewable
-through semantic changesets.
+From the dashboard budget section, select the month and configure:
 
-Start here:
-
-- `docs/SYMPHONY_QUICKSTART.md`: first-run instructions and the daily command
-  loop.
-- `docs/SYMPHONY_SCOPE.md`: detailed design and implementation scope.
-
-The usual first commands are:
-
-```bash
-cargo build -p harness-symphony
-target/debug/harness-symphony doctor
-target/debug/harness-symphony work list
-target/debug/harness-symphony run <story-id> --prepare-only
+```text
+Total monthly budget: 5,000,000 VND
+Food budget: 2,000,000 VND
 ```
 
-## Tool Registry
+Budget progress refreshes from backend budget and transaction records after the
+save completes.
 
-The harness can use optional external tools (linters, code-graph servers,
-deploy checks) without depending on any of them. You register a tool as a
-provider of a *capability*, the harness scans whether it is actually present,
-and a workflow step uses whatever is equipped — an absent tool is a clean skip,
-never a failure.
+### Ask Financial Questions
 
-```bash
-# register a tool as a provider of a capability
-scripts/bin/harness-cli tool register --name deploy-check --kind cli \
-  --capability deploy-verification --command ./scripts/deploy-check.sh \
-  --responsibility Verification --description "Verify deploy health before release"
+The chat surface supports these deterministic MVP insight examples:
 
-# scan presence (writes present/missing/unknown)
-scripts/bin/harness-cli tool check
-
-# a step looks up what is equipped for a purpose
-scripts/bin/harness-cli query tools --capability deploy-verification --status present
+```text
+Tháng này tôi ăn uống hết bao nhiêu?
+Còn bao nhiêu tiền ăn tháng này?
+Tuần này tôi tiêu nhiều nhất vào mục nào?
 ```
 
-Kinds (`cli`, `binary`, `mcp`, `skill`, `http`) make it agent-generic: each
-agent runtime uses what it can orchestrate. See `docs/TOOL_REGISTRY.md` for the
-full model, the degrade ladder, and how to wire a tool into a flow step.
+The provider classifies supported intent details. Amounts, counts, remaining
+budget, percentages, and top categories come from backend database queries.
 
-## Current State
+### Export Data
 
-This repository is in Harness v0.
+Use the dashboard data-management section to download transaction exports as CSV
+or JSON. Export filters include format, month, category, type, and text search.
+Exports use an explicit field allowlist and do not include AI provider metadata,
+deleted timestamps, parser confidence, request IDs, or logs.
 
-The Pocket Ledger AI product spec and Phase 0 intake artifacts are present. The
-only application implementation currently present is the Phase 1 FastAPI
-backend foundation, local database infrastructure, and pure Money/Category
-domain primitives. Product database tables, transaction mutation behavior,
-frontend, AI provider integration, budgets, and dashboard business logic are
-still unimplemented.
+### Remove An Incorrect Transaction
 
-## Backend
+Use the transaction delete action in Recent Transactions. The confirmation
+explains that this is a soft delete: the row is retained locally, active ledger
+views hide it, and the backend reverses its account-balance effect. Repeated
+delete attempts are handled without reversing the balance twice.
 
-The Pocket Ledger AI backend lives in `backend/`.
+### Clear AI History
+
+Use the privacy action on the dashboard to clear locally stored AI draft/history
+records. Confirmed transactions, account balances, budgets, exports, and active
+ledger views remain intact.
+
+## Development Without Docker
+
+The Docker Compose workflow is the recommended full-stack path. Local backend
+and frontend development can also run directly.
+
+Backend setup and validation:
 
 ```bash
 cd backend
 python3 -m venv .venv
 .venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/alembic upgrade head
 .venv/bin/uvicorn app.main:app --reload
 ```
 
-Validation:
+Backend quality commands:
 
 ```bash
 cd backend
@@ -378,77 +273,176 @@ cd backend
 .venv/bin/mypy app
 ```
 
-Database migrations:
+Frontend setup and validation:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+npm test
+npm run lint
+npm run typecheck
+npm run build
+```
+
+See [backend/README.md](backend/README.md) and
+[frontend/README.md](frontend/README.md) for component-specific details.
+
+## Testing
+
+Backend:
 
 ```bash
 cd backend
-POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-migration.db \
-.venv/bin/alembic current
-POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-migration.db \
-.venv/bin/alembic upgrade head
-POCKET_LEDGER_DATABASE_URL=sqlite+aiosqlite:////tmp/pocket-ledger-migration.db \
-.venv/bin/alembic downgrade base
+.venv/bin/pytest
+.venv/bin/ruff check .
+.venv/bin/black --check .
+.venv/bin/mypy app
 ```
 
-## Product Sources
+Frontend:
 
-The Pocket Ledger AI product contract is defined under
-`docs/product/expense-ai/`.
-
-When a user provides a project specification, add or reference it as the input
-spec for the first buildout, then derive smaller living artifacts from it:
-
-- `docs/product/`: current product contract files, created from the spec.
-- `docs/stories/`: story packets and backlog created from selected work.
-- `docs/TEST_MATRIX.md`: behavior-to-proof control panel.
-- `docs/decisions/`: durable decisions and tradeoffs.
-
-Do not keep a project-specific spec or product breakdown in this harness until
-a real project supplies one.
-
-## Repository Structure
-
-```text
-project/
-  AGENTS.md
-  README.md
-  docs/
-    HARNESS.md
-    FEATURE_INTAKE.md
-    ARCHITECTURE.md
-    TEST_MATRIX.md
-    HARNESS_BACKLOG.md
-    product/
-    stories/
-    decisions/
-    demo/
-    templates/
-  scripts/
-    README.md
+```bash
+cd frontend
+npm ci
+npm test
+npm run lint
+npm run typecheck
+npm run build
 ```
 
-## Contributing
+Runtime smoke:
 
-This project is early and benefits most from real-world agent failure cases,
-example harness installs, docs improvements, and reusable workflow patterns.
-See `CONTRIBUTING.md` for contribution ideas.
+```bash
+scripts/runtime-smoke.sh
+```
 
-Useful contributions include:
+End-to-end MVP demo:
 
-- Show how the harness works in a real project.
-- Add missing templates or improve existing ones.
-- Propose validation patterns for different stacks.
-- Share failures where an agent made the wrong change because the repo lacked
-  context.
-- Compare harness behavior across Claude Code, Codex, Cursor, and other tools.
+```bash
+scripts/e2e-mvp.sh
+```
 
-## Share
+The E2E command uses an isolated Compose project, isolated SQLite volume, and
+deterministic fake provider. It does not require real Ollama and does not delete
+normal development data.
 
-If this idea resonates, please star the repo and share it with someone building
-with coding agents.
+Complete release validation:
 
-Short description:
+```bash
+scripts/release-validate.sh
+```
 
-> An agent-ready repo harness for Claude Code, Codex, Cursor, and other coding
-> agents: AGENTS.md, product contracts, story packets, validation matrix, and
-> decision records.
+The release command coordinates static configuration checks, backend quality
+gates, isolated Alembic validation, frontend quality gates, dependency/security
+review, accessibility-enabled Playwright E2E, default Compose runtime smoke,
+privacy-log smoke, and Harness checks.
+
+## Release Validation Status
+
+Latest report: [docs/releases/MVP_RELEASE_VALIDATION.md](docs/releases/MVP_RELEASE_VALIDATION.md).
+
+Release recommendation: Ready with documented limitations.
+
+Latest recorded evidence:
+
+- Backend: `241 passed, 1 skipped, 1 warning`; Ruff, Black, and mypy passed.
+- Frontend: `49 tests` across `9 files` passed; lint, typecheck, and build
+  passed.
+- Alembic: isolated base/head round trip passed; final current revision
+  `0004 (head)`.
+- E2E: the complete Playwright MVP demo passed twice from clean isolated state.
+- Accessibility: no critical or serious axe violations in the covered dashboard,
+  budget, AI draft, insight, delete dialog, and clear-history states.
+- Privacy logs: controlled raw AI text, transaction description, and provider
+  payload markers were absent from inspected Compose logs.
+- Support matrix: openSUSE Tumbleweed on Linux x86_64 with Docker Engine
+  `29.4.0-ce` and Docker Compose `5.3.1` is validated.
+
+Remaining dependency findings and platform boundaries are documented in the
+release report and known limitations.
+
+## Data Persistence And Reset
+
+The Compose backend stores SQLite data at `/app/data/pocket_ledger.db` inside a
+named Docker volume. `docker compose down` stops the stack and preserves that
+volume. `docker compose down -v` removes the volume and deletes local ledger
+data.
+
+There is no automatic backup in this MVP. Export CSV or JSON before destructive
+local resets if you need to keep a copy of transaction data.
+
+The E2E runner uses a separate Compose project and isolated SQLite volume. Its
+cleanup removes only the isolated E2E volume, not the normal development data
+volume.
+
+## Troubleshooting
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for detailed recovery
+steps.
+
+Common checks:
+
+- Docker permission denied: add your user to the `docker` group, then log out
+  and back in before retrying.
+- Docker daemon not running: start Docker, then run `docker info`.
+- Ports already in use: set `BACKEND_PORT` or `FRONTEND_PORT` in `.env`, or stop
+  the conflicting local process.
+- Frontend cannot reach backend: verify `BACKEND_INTERNAL_URL=http://backend:8010`
+  in the Compose environment.
+- Migration startup failure: inspect `docker compose logs backend` and
+  `docker compose exec backend alembic current`.
+- Clean local data reset: run `docker compose down -v` only after you are sure
+  you want to delete the local SQLite volume.
+- Ollama unavailable: keep `POCKET_LEDGER_OLLAMA_ENABLED=false` for safe
+  unavailable behavior, or verify the host model and base URL.
+
+## Known Limitations
+
+See [docs/KNOWN_LIMITATIONS.md](docs/KNOWN_LIMITATIONS.md) for the maintained
+list.
+
+Important MVP limits:
+
+- Local single-user application only.
+- No authentication or authorization.
+- No cloud sync, hosted database, or multi-device consistency.
+- No automatic backups.
+- No transaction restore or hard-delete UI.
+- No persistent conversational chat history.
+- SQLite has expected local concurrency limits.
+- Validated platform coverage is limited to the documented Linux Docker
+  environment.
+- Real Ollama behavior is model-dependent and not validated for the full demo.
+- Frontend npm audit and backend local-tooling findings remain documented release
+  risks.
+
+## Project Documentation
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Product contract](docs/product/expense-ai/PRODUCT_CONTRACT.md)
+- [API contract](docs/product/expense-ai/API_CONTRACT.md)
+- [Domain model](docs/product/expense-ai/DOMAIN_MODEL.md)
+- [LLM contract](docs/product/expense-ai/LLM_CONTRACT.md)
+- [Privacy and security](docs/product/expense-ai/PRIVACY_SECURITY.md)
+- [UX flows](docs/product/expense-ai/UX_FLOWS.md)
+- [Release guide](docs/RELEASE.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [Known limitations](docs/KNOWN_LIMITATIONS.md)
+- [MVP release validation report](docs/releases/MVP_RELEASE_VALIDATION.md)
+- [Test matrix](docs/TEST_MATRIX.md)
+- [Changelog](CHANGELOG.md)
+- [Harness guide](docs/HARNESS.md)
+- [Feature intake](docs/FEATURE_INTAKE.md)
+- [Tool registry](docs/TOOL_REGISTRY.md)
+- [Release-readiness initiative](docs/initiatives/I01-mvp-release-readiness/README.md)
+
+## Release Notes
+
+See [CHANGELOG.md](CHANGELOG.md) for release notes and
+[docs/releases/MVP_RELEASE_VALIDATION.md](docs/releases/MVP_RELEASE_VALIDATION.md)
+for the latest validation evidence.
+
+## License
+
+No license file is currently provided in this repository.
