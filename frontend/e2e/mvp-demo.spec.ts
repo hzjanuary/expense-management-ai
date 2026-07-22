@@ -28,7 +28,7 @@ test("complete local-first MVP demo", async ({ page }) => {
   await expect(dashboardBudget.getByText("Chưa thiết lập ngân sách"))
     .toBeVisible();
   await expect(page.getByLabel("Chat to ledger message")).toHaveCount(0);
-  await expect(page.getByText("Xuất giao dịch")).toHaveCount(0);
+  await expect(page.getByText("Xuất dữ liệu")).toHaveCount(0);
   await expect(page.getByText("Lịch sử AI")).toHaveCount(0);
   await expectNoCriticalOrSeriousA11yViolations(page, "dashboard overview");
 
@@ -51,17 +51,17 @@ test("complete local-first MVP demo", async ({ page }) => {
   await expectMoney(budgetStatus, "0");
   await expect(budgetStatus.getByText("Còn trong ngân sách").first()).toBeVisible();
 
-  await page.getByRole("link", { name: "Trợ lý AI" }).first().click();
+  await page.getByRole("link", { name: "Trợ lý" }).first().click();
   await expect(page).toHaveURL(/\/assistant$/);
-  const assistant = sectionByHeading(page, "Trợ lý tài chính");
+  const assistant = page.locator("main");
   await expectNoCriticalOrSeriousA11yViolations(page, "assistant empty");
   await assistant.getByLabel("Chat to ledger message").fill(DEMO_MESSAGE);
   await assistant.getByRole("button", { name: "Gửi" }).click();
-  await expect(assistant.getByText("Kiểm tra bản nháp").first()).toBeVisible();
+  await expect(assistant.getByText("Bản nháp giao dịch").first()).toBeVisible();
   await expect(assistant.getByText("Chi").first()).toBeVisible();
   await expectMoney(assistant, "28.000");
   await expect(assistant.getByText("Ăn uống").first()).toBeVisible();
-  await expect(assistant.getByText("Trợ lý AI").first()).toBeVisible();
+  await expect(assistant.getByText("Chưa được lưu").first()).toBeVisible();
   await expect(assistant.getByRole("button", { name: "Xác nhận" })).toBeVisible();
   await expect(assistant.getByRole("button", { name: "Hủy" })).toBeVisible();
   await expectNoCriticalOrSeriousA11yViolations(page, "AI draft review");
@@ -87,9 +87,11 @@ test("complete local-first MVP demo", async ({ page }) => {
   await expectMoney(page.locator("body"), "28.000");
   await expect(sectionByHeading(page, "Giao dịch gần đây").getByText("Cơm gà"))
     .toBeVisible();
+  await expectMoney(sectionByHeading(page, "Tình trạng ngân sách"), "4.972.000");
+  await page.getByRole("link", { name: "Ngân sách" }).first().click();
   await expectMoney(sectionByHeading(page, "Tình trạng ngân sách"), "1.972.000");
 
-  await page.getByRole("link", { name: "Trợ lý AI" }).first().click();
+  await page.getByRole("link", { name: "Trợ lý" }).first().click();
   await submitChat(page, TOTAL_SPENDING_QUERY);
   const totalSpendingInsight = insightByHeading(page, "Tổng chi tiêu");
   await expect(totalSpendingInsight.getByText("Danh mục")).toHaveCount(0);
@@ -122,9 +124,10 @@ test("complete local-first MVP demo", async ({ page }) => {
 
   await page.getByRole("link", { name: "Giao dịch" }).first().click();
   await expect(page).toHaveURL(/\/transactions$/);
-  const transactions = sectionByHeading(page, "Giao dịch gần đây");
-  const exportPanel = sectionByHeading(page, "Xuất giao dịch");
+  const transactions = sectionByHeading(page, "Danh sách giao dịch");
   await expect(transactions.getByText("Cơm gà")).toBeVisible();
+  await page.getByRole("button", { name: "Xuất dữ liệu" }).click();
+  const exportPanel = page.locator("body");
 
   const csvDownload = await downloadFromExportPanel(exportPanel);
   expect(csvDownload.suggestedFilename()).toMatch(/\.csv$/);
@@ -161,7 +164,7 @@ test("complete local-first MVP demo", async ({ page }) => {
   expect(exportedTransaction).not.toHaveProperty("parser_confidence");
   expect(exportedTransaction).not.toHaveProperty("provider_name");
 
-  await transactions.getByRole("button", { name: /Xóa giao dịch Cơm gà/ }).click();
+  await openTransactionDelete(transactions, "Cơm gà");
   const deleteDialog = page.getByRole("dialog", { name: "Xóa giao dịch?" });
   await expect(deleteDialog.getByText(/màn hình đang dùng/)).toBeVisible();
   await expect(deleteDialog.getByText(/số dư sẽ được hoàn lại/)).toBeVisible();
@@ -169,7 +172,7 @@ test("complete local-first MVP demo", async ({ page }) => {
   await deleteDialog.getByRole("button", { name: "Hủy" }).click();
   await expect(transactions.getByText("Cơm gà")).toBeVisible();
 
-  await transactions.getByRole("button", { name: /Xóa giao dịch Cơm gà/ }).click();
+  await openTransactionDelete(transactions, "Cơm gà");
   await page
     .getByRole("dialog", { name: "Xóa giao dịch?" })
     .getByRole("button", { name: "Xóa giao dịch" })
@@ -179,16 +182,18 @@ test("complete local-first MVP demo", async ({ page }) => {
   await page.getByRole("link", { name: "Tổng quan" }).first().click();
   await expectMoney(page.locator("body"), "1.000.000");
   await expectMoney(page.locator("body"), "0");
-  await expectMoney(sectionByHeading(page, "Tình trạng ngân sách"), "2.000.000");
+  await expectMoney(sectionByHeading(page, "Tình trạng ngân sách"), "5.000.000");
   await expect(sectionByHeading(page, "Giao dịch gần đây").getByText("Chưa có giao dịch"))
     .toBeVisible();
+  await page.getByRole("link", { name: "Ngân sách" }).first().click();
+  await expectMoney(sectionByHeading(page, "Tình trạng ngân sách"), "2.000.000");
 
   await page.getByRole("link", { name: "Cài đặt" }).first().click();
   await expect(page).toHaveURL(/\/settings$/);
   const historyPanel = sectionByHeading(page, "Lịch sử AI");
   await historyPanel.getByRole("button", { name: "Xóa lịch sử AI" }).click();
   await expect(
-    historyPanel.getByText(/Giao dịch đã xác nhận và số dư vẫn được giữ nguyên/),
+    historyPanel.getByText(/Giao dịch đã xác nhận, số dư và ngân sách vẫn được giữ nguyên/),
   ).toBeVisible();
   await expect(historyPanel.getByText(/không xóa lịch sử giao dịch/))
     .toBeVisible();
@@ -220,7 +225,7 @@ const responsiveRoutes = [
   { path: "/dashboard", heading: "Tổng quan" },
   { path: "/transactions", heading: "Giao dịch" },
   { path: "/budgets", heading: "Ngân sách" },
-  { path: "/assistant", heading: "Trợ lý AI" },
+  { path: "/assistant", heading: "Trợ lý" },
   { path: "/settings", heading: "Cài đặt" },
 ] as const;
 
@@ -245,7 +250,7 @@ function insightByHeading(page: Page, heading: string): Locator {
 }
 
 async function submitChat(page: Page, message: string) {
-  const assistant = sectionByHeading(page, "Trợ lý tài chính");
+  const assistant = page.locator("main");
   await assistant.getByLabel("Chat to ledger message").fill(message);
   await assistant.getByRole("button", { name: "Gửi" }).click();
 }
@@ -255,6 +260,18 @@ async function downloadFromExportPanel(exportPanel: Locator) {
   const downloadPromise = page.waitForEvent("download");
   await exportPanel.getByRole("button", { name: "Tải xuống" }).click();
   return downloadPromise;
+}
+
+async function openTransactionDelete(
+  transactions: Locator,
+  description: string,
+) {
+  await transactions
+    .getByRole("button", {
+      name: new RegExp(`Mở menu giao dịch ${escapeRegExp(description)}`),
+    })
+    .click();
+  await transactions.getByRole("menuitem", { name: "Xóa giao dịch" }).click();
 }
 
 async function expectMoney(scope: Locator, amountWithDots: string) {
@@ -306,7 +323,7 @@ async function expectResponsiveRoutes(page: Page) {
     if (viewport.name === "mobile" || viewport.name === "mobile-wide") {
       await expect(page.getByRole("navigation", { name: "Điều hướng chính" }).last())
         .toBeVisible();
-      await page.getByRole("link", { name: "Trợ lý AI" }).last().click();
+      await page.getByRole("link", { name: "Trợ lý" }).last().click();
       await expect(page).toHaveURL(/\/assistant$/);
       await expect(page.getByLabel("Chat to ledger message")).toBeVisible();
     } else {

@@ -7,7 +7,7 @@ import {
   DataManagementApiError,
   type ClearAiHistoryResponse,
 } from "@/lib/data-management";
-import { Button, panelClassName } from "@/components/ui";
+import { Button } from "@/components/ui";
 
 export function ClearAiHistory() {
   const abortRef = useRef<AbortController | null>(null);
@@ -53,16 +53,16 @@ export function ClearAiHistory() {
   }
 
   return (
-    <section className={panelClassName}>
+    <section className="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
       <div>
-        <h2 className="text-lg font-semibold text-ledger-ink">
-          Lịch sử AI
-        </h2>
-        <p className="mt-1 text-sm text-ledger-muted">
-          Xóa bản nháp và lịch sử phân tích AI đang lưu trên máy. Giao dịch đã
-          xác nhận và số dư vẫn được giữ nguyên.
-        </p>
+        <h2 className="text-lg font-semibold text-ledger-ink">Lịch sử AI</h2>
+        <p className="mt-1 text-sm text-ledger-muted">Quyền riêng tư</p>
       </div>
+      <div>
+        <p className="text-sm leading-6 text-ledger-muted">
+          Xóa bản nháp và lịch sử phân tích AI đang lưu trên máy. Giao dịch đã
+          xác nhận, số dư và ngân sách vẫn được giữ nguyên.
+        </p>
 
       {result ? (
         <p className="mt-4 text-sm font-medium text-ledger-accent" role="status">
@@ -131,6 +131,7 @@ export function ClearAiHistory() {
           Xóa lịch sử AI
         </Button>
       )}
+      </div>
     </section>
   );
 }

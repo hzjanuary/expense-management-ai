@@ -31,7 +31,9 @@ describe("insight chat UI", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
 
-    expect(await screen.findByText("Kiểm tra bản nháp")).toBeInTheDocument();
+    expect(await screen.findByText("Bản nháp giao dịch")).toBeInTheDocument();
+    expectTextBefore("Hôm nay tôi tiêu 35k vào ăn trưa", "Bản nháp giao dịch");
+    expect(screen.getByLabelText("Chat to ledger message")).toHaveValue("");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/ai/parse",
       expect.objectContaining({ method: "POST" }),
@@ -57,7 +59,8 @@ describe("insight chat UI", () => {
 
     await submitMessage("hôm nay tao ăn hộp cơm gà 28k");
 
-    expect(await screen.findByText("Kiểm tra bản nháp")).toBeInTheDocument();
+    expect(await screen.findByText("Bản nháp giao dịch")).toBeInTheDocument();
+    expectTextBefore("hôm nay tao ăn hộp cơm gà 28k", "Bản nháp giao dịch");
     expect(screen.getByText("Cơm gà")).toBeInTheDocument();
     expect(screen.getByText("Ăn uống")).toBeInTheDocument();
     expect(await findTextContaining("28.000")).toBeInTheDocument();
@@ -83,10 +86,6 @@ describe("insight chat UI", () => {
 
     render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
 
-    await userEvent.selectOptions(
-      screen.getByLabelText("Loại yêu cầu"),
-      "create_transaction",
-    );
     await submitMessage("hôm nay mua món lạ 28k");
 
     expect(
@@ -105,6 +104,7 @@ describe("insight chat UI", () => {
 
     await submitMessage("Tháng này tôi ăn uống hết bao nhiêu?");
     expect(await screen.findByRole("heading", { name: "Chi tiêu theo danh mục" })).toBeInTheDocument();
+    expectTextBefore("Tháng này tôi ăn uống hết bao nhiêu?", "Chi tiêu theo danh mục");
     expect(await findTextContaining("35.000")).toBeInTheDocument();
 
     await submitMessage("Tháng này tôi đã chi tổng cộng bao nhiêu?");
@@ -154,19 +154,52 @@ describe("insight chat UI", () => {
     expect(countExactCalls(fetchMock, "/api/ai/parse")).toBe(0);
   });
 
-  it("explicit spending selection accepts total spending questions", async () => {
+  it("automatic spending selection accepts total spending questions", async () => {
     mockInsightFetch();
 
     render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
 
-    await userEvent.selectOptions(
-      screen.getByLabelText("Loại yêu cầu"),
-      "query_spending",
-    );
     await submitMessage("Tháng này tôi đã chi tổng cộng bao nhiêu?");
 
     expect(await screen.findByRole("heading", { name: "Tổng chi tiêu" })).toBeInTheDocument();
     expect(await findTextContaining("155.000")).toBeInTheDocument();
+  });
+
+  it("routes aggregate wallet-decrease wording as a total spending query", async () => {
+    const fetchMock = mockInsightFetch();
+
+    render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+    await submitMessage(
+      "Kể từ ngày đầu tiên của tháng này đến giờ, ví của tôi đã giảm bao nhiêu vì các khoản chi?",
+    );
+
+    expect(await screen.findByRole("heading", { name: "Tổng chi tiêu" })).toBeInTheDocument();
+    expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(1);
+    expect(countCalls(fetchMock, "/api/ai/parse")).toBe(0);
+  });
+
+  it("routes varied aggregate spending prompts to the spending endpoint", async () => {
+    const fetchMock = mockInsightFetch();
+
+    render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+    for (const prompt of [
+      "Kể từ đầu tháng đến nay tôi đã chi bao nhiêu?",
+      "Ví của tôi đã giảm bao nhiêu vì các khoản chi tháng này?",
+      "Tổng tiền đi ra trong tháng hiện tại là bao nhiêu?",
+      "Chi phí cộng dồn tháng này là bao nhiêu?",
+    ]) {
+      await submitMessage(prompt);
+      await waitFor(() =>
+        expect(
+          screen.getAllByRole("heading", { name: "Tổng chi tiêu" }).length,
+        ).toBeGreaterThan(0),
+      );
+    }
+
+    expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(4);
+    expect(countCalls(fetchMock, "/api/ai/parse")).toBe(0);
   });
 
   it("shows supported examples for unknown input without calling a financial endpoint", async () => {
@@ -176,8 +209,9 @@ describe("insight chat UI", () => {
 
     await submitMessage("Bạn có khỏe không?");
 
+    expect(await screen.findByText("Cần thêm thông tin")).toBeInTheDocument();
     expect(
-      await screen.findByText(/Mình có thể giúp ghi nháp giao dịch/),
+      screen.getByText(/Mình chưa chắc đây có phải một giao dịch không/),
     ).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -259,6 +293,7 @@ describe("insight chat UI", () => {
     expect(
       await screen.findByText("Bạn muốn hỏi chi tiêu cho danh mục nào?"),
     ).toBeInTheDocument();
+    expectTextBefore("Tháng này tôi ăn uống hết bao nhiêu?", "Cần thêm thông tin");
     expect(
       screen.queryByText(/category_slug|date_range|spending_scope|query_scope/),
     ).not.toBeInTheDocument();
@@ -267,9 +302,10 @@ describe("insight chat UI", () => {
 
     await submitMessage("Tháng này tôi ăn uống hết bao nhiêu?");
     expect(
-      await screen.findByText("Trợ lý AI chưa sẵn sàng. Hãy kiểm tra Ollama trong phần Cài đặt."),
+      await screen.findByText("Trợ lý chưa sẵn sàng"),
     ).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Tháng này tôi ăn uống hết bao nhiêu?")).toBeInTheDocument();
+    expectTextBefore("Tháng này tôi ăn uống hết bao nhiêu?", "Trợ lý chưa sẵn sàng");
+    expect(screen.getByLabelText("Chat to ledger message")).toHaveValue("");
   });
 
   it("prevents duplicate submit while pending and ignores stale responses", async () => {
@@ -292,7 +328,7 @@ describe("insight chat UI", () => {
       "Tháng này tôi ăn uống hết bao nhiêu?",
     );
     await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
-    expect(screen.getByRole("button", { name: "Đang gửi" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Đang gửi" })).toBeDisabled();
     expect(countCalls(fetchMock, "/api/ai/query-spending")).toBe(1);
 
     await userEvent.clear(screen.getByLabelText("Chat to ledger message"));
@@ -337,6 +373,14 @@ async function submitMessage(message: string) {
   await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
 }
 
+function expectTextBefore(firstText: string, secondText: string) {
+  const first = screen.getAllByText(firstText)[0];
+  const second = screen.getAllByText(secondText)[0];
+  expect(
+    first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING,
+  ).toBeTruthy();
+}
+
 function mockInsightFetch() {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
     const url = String(input);
@@ -361,10 +405,21 @@ function mockInsightFetch() {
 }
 
 function isTotalSpendingTestMessage(message: string): boolean {
+  const normalized = message
+    .toLocaleLowerCase("vi-VN")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d");
+
   return (
-    message.includes("tổng") ||
-    message.includes("trong tháng này") ||
-    message.includes("hết bao nhiêu tiền")
+    normalized.includes("tong") ||
+    normalized.includes("trong thang nay") ||
+    normalized.includes("het bao nhieu tien") ||
+    normalized.includes("vi da giam") ||
+    normalized.includes("cac khoan chi") ||
+    normalized.includes("dau thang") ||
+    normalized.includes("tien di ra") ||
+    normalized.includes("chi phi cong don")
   );
 }
 

@@ -60,11 +60,12 @@ describe("live dashboard data", () => {
 
     render(<DashboardClient />);
 
-    expect(await findExactText("965.000\u00a0₫")).toBeInTheDocument();
-    expect(await findExactText("10.000.000\u00a0₫")).toBeInTheDocument();
+    expect(await findExactText("965.000 ₫")).toBeInTheDocument();
+    expect((await findAllTextContaining("10.000.000")).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/35\.000/).length).toBeGreaterThan(0);
-    expect(await findExactText("5.000.000\u00a0₫")).toBeInTheDocument();
-    expect(await findExactText("1.965.000\u00a0₫")).toBeInTheDocument();
+    expect(await findExactText("5.000.000 ₫")).toBeInTheDocument();
+    expect(await findExactText("4.965.000 ₫")).toBeInTheDocument();
+    expect(await screen.findByText("Chi tiêu theo danh mục")).toBeInTheDocument();
     expect(screen.getAllByText("Còn trong ngân sách").length).toBeGreaterThan(0);
   });
 
@@ -73,7 +74,7 @@ describe("live dashboard data", () => {
 
     render(<DashboardSummary month="2026-07" refreshSignal={0} />);
 
-    expect(screen.getAllByText(/Đang tải số liệu 2026-07/i)).toHaveLength(4);
+    expect(screen.getAllByText(/Đang tải số liệu 2026-07/i)).toHaveLength(1);
     expect(screen.queryByText(formatVnd(0))).not.toBeInTheDocument();
   });
 
@@ -82,7 +83,7 @@ describe("live dashboard data", () => {
 
     render(<DashboardClient />);
 
-    expect(await findExactText("965.000\u00a0₫")).toBeInTheDocument();
+    expect(await findExactText("965.000 ₫")).toBeInTheDocument();
     expect(
       await screen.findByText("Chưa thiết lập ngân sách"),
     ).toBeInTheDocument();
@@ -93,7 +94,7 @@ describe("live dashboard data", () => {
 
     render(<DashboardClient />);
 
-    await findExactText("965.000\u00a0₫");
+    await findExactText("965.000 ₫");
     fireEvent.change(screen.getByLabelText("Tháng đang xem"), {
       target: { value: "2026-08" },
     });
@@ -132,11 +133,11 @@ describe("live dashboard data", () => {
     rerender(<DashboardSummary month="2026-08" refreshSignal={0} />);
 
     august.resolve(jsonResponse({ ...summaryResponse, total_balance_minor: 222000 }));
-    expect(await findExactText("222.000\u00a0₫")).toBeInTheDocument();
+    expect(await findExactText("222.000 ₫")).toBeInTheDocument();
 
     july.resolve(jsonResponse({ ...summaryResponse, total_balance_minor: 111000 }));
     await waitFor(() =>
-      expect(screen.queryByText("111.000\u00a0₫")).not.toBeInTheDocument(),
+      expect(screen.queryByText("111.000 ₫")).not.toBeInTheDocument(),
     );
   });
 
@@ -145,20 +146,16 @@ describe("live dashboard data", () => {
 
     render(<DashboardClient />);
 
-    await findExactText("965.000\u00a0₫");
+    await findExactText("965.000 ₫");
     expect(screen.getByRole("link", { name: "Thêm giao dịch" })).toHaveAttribute(
       "href",
       "/assistant",
     );
     expect(
-      screen.getByRole("link", { name: "Thiết lập ngân sách" }),
+      screen.getAllByRole("link", { name: "Sửa ngân sách" })[0],
     ).toHaveAttribute("href", "/budgets");
-    expect(screen.getByRole("link", { name: "Xem giao dịch" })).toHaveAttribute(
-      "href",
-      "/transactions",
-    );
     expect(screen.queryByLabelText("Chat to ledger message")).not.toBeInTheDocument();
-    expect(screen.queryByText("Xuất giao dịch")).not.toBeInTheDocument();
+    expect(screen.queryByText("Xuất dữ liệu")).not.toBeInTheDocument();
     expect(screen.queryByText("Lịch sử AI")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getAllByRole("button", { name: "Làm mới" })[0]);
@@ -267,4 +264,10 @@ function createDeferred<T>() {
 
 async function findExactText(text: string): Promise<HTMLElement> {
   return screen.findByText((_, element) => element?.textContent === text);
+}
+
+async function findAllTextContaining(text: string): Promise<HTMLElement[]> {
+  return screen.findAllByText((_, element) =>
+    Boolean(element?.textContent?.includes(text)),
+  );
 }

@@ -204,14 +204,15 @@ export function BudgetSetupForm({
             ngân sách của tháng mới.
           </p>
         </div>
-        <Button
-          disabled={loadState === "loading"}
-          onClick={() => void loadBudget()}
-          type="button"
-          variant="outline"
-        >
-          {loadState === "loading" ? "Đang tải" : "Tải lại"}
-        </Button>
+        {loadState === "error" ? (
+          <Button
+            onClick={() => void loadBudget()}
+            type="button"
+            variant="outline"
+          >
+            Tải lại
+          </Button>
+        ) : null}
       </div>
 
       {loadState === "loading" || loadState === "idle" ? (

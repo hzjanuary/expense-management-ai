@@ -24,7 +24,6 @@ import {
 } from "@/lib/ai";
 import {
   CHAT_QUICK_ACTIONS,
-  formatIntentLabel,
   routeChatIntent,
 } from "@/lib/insight-router";
 import type { RoutedChatIntent } from "@/lib/insight-router";
@@ -33,11 +32,18 @@ import { formatVnd } from "@/lib/money";
 
 type ChatToLedgerProps = {
   layout?: "compact" | "workspace";
+  onConversationStateChange?: (hasConversation: boolean) => void;
   onTransactionConfirmed: () => void;
   refreshSignal?: number;
 };
 
 type ChatEntry =
+  | {
+      id: number;
+      intent: "pending";
+      isStale: false;
+      message: string;
+    }
   | {
       id: number;
       intent: "create_transaction";
@@ -57,6 +63,13 @@ type ChatEntry =
       intent: "unknown";
       isStale: false;
       message: string;
+    }
+  | {
+      error: string;
+      id: number;
+      intent: "error";
+      isStale: false;
+      message: string;
     };
 
 const MAX_CHAT_ENTRIES = 12;
@@ -64,6 +77,7 @@ const DEFAULT_INSIGHT_TIMEZONE = "Asia/Ho_Chi_Minh";
 
 export function ChatToLedger({
   layout = "compact",
+  onConversationStateChange,
   onTransactionConfirmed,
   refreshSignal = 0,
 }: ChatToLedgerProps) {
@@ -71,8 +85,7 @@ export function ChatToLedger({
   const [selectedIntent, setSelectedIntent] =
     useState<SupportedChatIntent>("auto");
   const [entries, setEntries] = useState<ChatEntry[]>([]);
-  const [activeParseResult, setActiveParseResult] =
-    useState<AiParseResponse | null>(null);
+  const [activeDraftEntryId, setActiveDraftEntryId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,6 +97,7 @@ export function ChatToLedger({
   } | null>(null);
   const requestSequenceRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const previousRefreshSignalRef = useRef(refreshSignal);
 
   useEffect(() => {
@@ -107,6 +121,12 @@ export function ChatToLedger({
       ),
     );
   }, [refreshSignal]);
+
+  useEffect(() => {
+    onConversationStateChange?.(
+      entries.length > 0 || Boolean(error) || Boolean(success),
+    );
+  }, [entries.length, error, onConversationStateChange, success]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -140,6 +160,8 @@ export function ChatToLedger({
     setSuccess(null);
     setIsSubmitting(true);
     setPendingMessage(trimmedMessage);
+    setMessage("");
+    window.requestAnimationFrame(() => textareaRef.current?.focus());
 
     if (routedIntent === "unknown") {
       appendEntry({
@@ -148,11 +170,18 @@ export function ChatToLedger({
         isStale: false,
         message: trimmedMessage,
       });
-      setActiveParseResult(null);
       setIsSubmitting(false);
       setPendingMessage(null);
       return;
     }
+
+    const entryId = Date.now();
+    appendEntry({
+      id: entryId,
+      intent: "pending",
+      isStale: false,
+      message: trimmedMessage,
+    });
 
     try {
       if (routedIntent === "create_transaction") {
@@ -160,9 +189,11 @@ export function ChatToLedger({
         if (requestSequenceRef.current !== requestSequence) {
           return;
         }
-        setActiveParseResult(result);
-        appendEntry({
-          id: Date.now(),
+        if (result.draft_id && result.draft) {
+          setActiveDraftEntryId(entryId);
+        }
+        updateEntry(entryId, {
+          id: entryId,
           intent: "create_transaction",
           isStale: false,
           message: trimmedMessage,
@@ -179,9 +210,9 @@ export function ChatToLedger({
       if (requestSequenceRef.current !== requestSequence) {
         return;
       }
-      setActiveParseResult(null);
-      appendEntry({
-        id: Date.now(),
+      setActiveDraftEntryId(null);
+      updateEntry(entryId, {
+        id: entryId,
         insight,
         intent: routedIntent,
         isStale: false,
@@ -194,9 +225,13 @@ export function ChatToLedger({
       if (requestSequenceRef.current !== requestSequence) {
         return;
       }
-      setError(
-        getSafeErrorMessage(caughtError, "Chưa xử lý được yêu cầu này."),
-      );
+      updateEntry(entryId, {
+        error: getSafeErrorMessage(caughtError, "Chưa xử lý được yêu cầu này."),
+        id: entryId,
+        intent: "error",
+        isStale: false,
+        message: trimmedMessage,
+      });
     } finally {
       if (requestSequenceRef.current === requestSequence) {
         setIsSubmitting(false);
@@ -206,7 +241,12 @@ export function ChatToLedger({
   }
 
   async function handleConfirm() {
-    if (!activeParseResult?.draft_id) {
+    const activeDraftEntry = entries.find(
+      (entry): entry is Extract<ChatEntry, { intent: "create_transaction" }> =>
+        entry.intent === "create_transaction" && entry.id === activeDraftEntryId,
+    );
+
+    if (!activeDraftEntry?.parseResult.draft_id) {
       setError("Vui lòng gửi lại tin nhắn trước khi xác nhận.");
       return;
     }
@@ -216,16 +256,16 @@ export function ChatToLedger({
     setIsConfirming(true);
 
     try {
-      const result = await confirmAiDraft(activeParseResult.draft_id);
+      const result = await confirmAiDraft(activeDraftEntry.parseResult.draft_id);
       const transaction = result.transaction;
-      const amountPrefix = transaction.type === "expense" ? "-" : "+";
+      const amountPrefix = transaction.type === "expense" ? "−" : "+";
       setSuccess(
         `Đã tạo giao dịch: ${amountPrefix}${formatVnd(
           transaction.amount_minor,
         )} cho ${formatCategoryLabel(transaction.category_slug)}.`,
       );
       setMessage("");
-      setActiveParseResult(null);
+      setActiveDraftEntryId(null);
       onTransactionConfirmed();
     } catch (caughtError) {
       setError(getSafeErrorMessage(caughtError, "Không xác nhận được bản nháp."));
@@ -235,7 +275,7 @@ export function ChatToLedger({
   }
 
   function handleCancel() {
-    setActiveParseResult(null);
+    setActiveDraftEntryId(null);
     setError(null);
   }
 
@@ -270,23 +310,38 @@ export function ChatToLedger({
     );
   }
 
-  const hasConfirmableDraft = Boolean(
-    activeParseResult?.draft_id && activeParseResult.draft,
-  );
+  function updateEntry(entryId: number, nextEntry: ChatEntry) {
+    setEntries((currentEntries) =>
+      currentEntries.map((entry) => (entry.id === entryId ? nextEntry : entry)),
+    );
+  }
+
+  function handleClarificationAction(label: string) {
+    setMessage(label);
+    textareaRef.current?.focus();
+  }
+
   const isDuplicatePendingSubmit =
     isSubmitting && pendingMessage === message.trim();
+  const isBlockedPendingSubmit =
+    isSubmitting && (message.trim().length === 0 || isDuplicatePendingSubmit);
   const containerClassName =
     layout === "workspace"
       ? "flex min-h-0 flex-1 flex-col"
       : panelClassName;
   const messageListClassName =
     layout === "workspace"
-      ? "min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5"
+      ? "min-h-0 flex-1 overflow-y-auto py-2 pr-1 sm:py-5"
       : "mt-4 grid gap-3";
   const composerClassName =
     layout === "workspace"
-      ? "border-t border-ledger-line bg-white px-4 py-4 sm:px-5"
+      ? "border-t border-ledger-line bg-ledger-wash pt-3 pb-[calc(env(safe-area-inset-bottom)+6rem)] sm:pt-4 sm:pb-4"
       : "grid gap-4";
+  const composerTextareaClassName =
+    layout === "workspace"
+      ? `${textareaClassName} min-h-20 sm:min-h-24`
+      : textareaClassName;
+  const isEmptyConversation = entries.length === 0 && !error && !success;
 
   return (
     <section className={containerClassName}>
@@ -297,132 +352,80 @@ export function ChatToLedger({
         role="log"
         tabIndex={0}
       >
-        {entries.length === 0 && !activeParseResult && !error && !success ? (
-          <div className="mx-auto grid max-w-2xl gap-3 rounded-lg border border-ledger-line bg-ledger-wash p-5 text-center">
-            <p className="text-base font-semibold text-ledger-ink">
-              Bạn muốn ghi chi tiêu hay hỏi số liệu?
+        {isEmptyConversation ? (
+          <div className="mx-auto grid max-w-2xl gap-4 py-5 text-center sm:py-8">
+            <p className="text-2xl font-semibold text-ledger-ink">
+              Bạn muốn ghi giao dịch hay hỏi số liệu?
             </p>
-            <p className="text-sm leading-6 text-ledger-muted">
-              Thử một ví dụ bên dưới, hoặc nhập câu hỏi ngắn gọn về chi tiêu
-              và ngân sách.
+            <p className="text-sm leading-6 text-ledger-muted sm:text-base">
+              Trợ lý tạo bản nháp để bạn kiểm tra trước khi lưu. Các câu hỏi
+              chi tiêu chỉ đọc dữ liệu đang có.
             </p>
+            <div className="mx-auto grid w-full max-w-xl grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-center">
+              {CHAT_QUICK_ACTIONS.map((action) => (
+                <Button
+                  key={action.intent}
+                  className="min-w-0 whitespace-normal text-center leading-tight sm:whitespace-nowrap"
+                  onClick={() => handleQuickAction(action.intent, action.example)}
+                  size="small"
+                  type="button"
+                  variant="outline"
+                >
+                  {action.label}
+                </Button>
+              ))}
+            </div>
           </div>
         ) : null}
-        {isSubmitting ? (
-          <Message tone="info" text="Đang hỏi trợ lý cục bộ..." />
-        ) : null}
-        {error ? (
-          <div className="grid gap-2" role="alert">
-            <Message tone="error" text={error} />
-            {lastSubmissionRef.current ? (
-              <Button
-                disabled={isSubmitting || isConfirming}
-                onClick={handleRetry}
-                size="small"
-                type="button"
-                variant="outline"
-              >
-                Thử lại
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
+        {error ? <Message tone="error" text={error} /> : null}
         {success ? <Message tone="success" text={success} /> : null}
-        {activeParseResult?.clarification ? (
-          <Clarification result={activeParseResult} />
-        ) : null}
-        {activeParseResult &&
-        activeParseResult.intent === "unknown" &&
-        !activeParseResult.clarification ? (
-          <Message
-            tone="info"
-            text="Mình chưa hiểu bạn muốn làm gì. Hãy chọn một gợi ý hoặc sửa lại câu hỏi."
-          />
-        ) : null}
-        {hasConfirmableDraft && activeParseResult?.draft ? (
-          <AiDraftReview
-            confidence={activeParseResult.confidence}
-            draft={activeParseResult.draft}
-            isConfirming={isConfirming}
-            onCancel={handleCancel}
-            onConfirm={() => void handleConfirm()}
-          />
-        ) : null}
 
         {entries.length > 0 ? (
           <div className="grid gap-3" aria-label="Kết quả trong phiên này">
             {entries.map((entry) => (
-              <ChatEntryView entry={entry} key={entry.id} />
+              <ChatEntryView
+                activeDraftEntryId={activeDraftEntryId}
+                entry={entry}
+                isConfirming={isConfirming}
+                isSubmitting={isSubmitting}
+                key={entry.id}
+                onCancelDraft={handleCancel}
+                onClarificationAction={handleClarificationAction}
+                onConfirmDraft={() => void handleConfirm()}
+                onRetry={handleRetry}
+              />
             ))}
           </div>
         ) : null}
       </div>
 
       <form className={composerClassName} onSubmit={handleSubmit}>
-        <fieldset className="grid gap-3">
-          <legend className="text-sm font-medium text-ledger-ink">
-            Trợ lý AI
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {CHAT_QUICK_ACTIONS.map((action) => (
-              <Button
-                key={action.intent}
-                onClick={() => handleQuickAction(action.intent, action.example)}
-                size="small"
-                type="button"
-                variant="outline"
-              >
-                {action.label}
-              </Button>
-            ))}
-          </div>
-        </fieldset>
-
-        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+        <div className="grid gap-3 rounded-lg border border-ledger-line bg-white p-3 shadow-soft lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <label className="grid gap-2">
-            <span className="text-sm font-medium text-ledger-ink">
+            <span className="sr-only">
               Tin nhắn
             </span>
             <textarea
               aria-label="Chat to ledger message"
-              className={textareaClassName}
+              className={composerTextareaClassName}
               disabled={isConfirming}
               onChange={(event) => setMessage(event.target.value)}
               onKeyDown={handleTextareaKeyDown}
               placeholder="Hôm nay tôi tiêu 35k vào ăn trưa"
+              ref={textareaRef}
               value={message}
             />
           </label>
-
-          <label className="grid gap-2 self-start">
-            <span className="text-sm font-medium text-ledger-ink">
-              Loại yêu cầu
-            </span>
-            <select
-              className="h-10 rounded-md border border-ledger-line bg-white px-3 text-sm text-ledger-ink focus:border-ledger-accent focus:ring-ledger-accent"
-              disabled={isConfirming}
-              onChange={(event) =>
-                setSelectedIntent(event.target.value as SupportedChatIntent)
-              }
-              value={selectedIntent}
-            >
-              <option value="auto">Tự chọn</option>
-              <option value="create_transaction">Tạo giao dịch</option>
-              <option value="query_spending">Hỏi chi tiêu</option>
-              <option value="budget_remaining">Ngân sách còn lại</option>
-              <option value="spending_breakdown">Phân tích chi tiêu</option>
-            </select>
-          </label>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
           <Button
-            disabled={isConfirming || isDuplicatePendingSubmit}
+            className="w-full lg:w-auto"
+            disabled={isConfirming || isBlockedPendingSubmit}
             size="large"
             type="submit"
           >
-            {isDuplicatePendingSubmit ? "Đang gửi" : "Gửi"}
+            {isBlockedPendingSubmit ? "Đang gửi" : "Gửi"}
           </Button>
+        </div>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs leading-5 text-ledger-muted">
             Enter để gửi, Shift+Enter để xuống dòng. Giao dịch cần bạn xác nhận
             trước khi ghi vào sổ.
@@ -464,36 +467,80 @@ async function runInsightQuery(
   };
 }
 
-function ChatEntryView({ entry }: { entry: ChatEntry }) {
+function ChatEntryView({
+  activeDraftEntryId,
+  entry,
+  isConfirming,
+  isSubmitting,
+  onCancelDraft,
+  onClarificationAction,
+  onConfirmDraft,
+  onRetry,
+}: {
+  activeDraftEntryId: number | null;
+  entry: ChatEntry;
+  isConfirming: boolean;
+  isSubmitting: boolean;
+  onCancelDraft: () => void;
+  onClarificationAction: (label: string) => void;
+  onConfirmDraft: () => void;
+  onRetry: () => void;
+}) {
   return (
-    <article className="grid gap-3 rounded-md border border-ledger-line bg-ledger-wash p-3">
+    <article className="grid gap-3">
       <div className="max-w-[90%] justify-self-end rounded-2xl rounded-br-sm bg-ledger-accent px-4 py-2 text-sm text-white">
         {entry.message}
       </div>
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm font-semibold text-ledger-ink">
-          {formatIntentLabel(entry.intent)}
-        </p>
-        <p className="text-xs text-ledger-muted">Kết quả từ dữ liệu đang lưu</p>
-      </div>
+      {entry.intent === "pending" ? (
+        <Message tone="info" text="Đang hỏi trợ lý cục bộ..." />
+      ) : null}
+      {entry.intent === "error" ? (
+        <ProviderUnavailable
+          disabled={isSubmitting || isConfirming}
+          message={entry.error}
+          onRetry={onRetry}
+        />
+      ) : null}
       {entry.intent === "unknown" ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          <p className="font-semibold">
-            Mình có thể giúp ghi nháp giao dịch và trả lời các câu hỏi chi tiêu
-            đã hỗ trợ.
-          </p>
-          <p className="mt-1 text-xs">
-            Thử: Hôm nay tôi tiêu 35k vào ăn trưa; Tháng này tôi ăn uống hết
-            bao nhiêu?; Còn bao nhiêu tiền ăn tháng này?; Tuần này tôi tiêu
-            nhiều nhất vào mục nào?
-          </p>
-        </div>
+        <Clarification
+          message="Mình chưa chắc đây có phải một giao dịch không. Bạn có thể nói rõ khoản thu hoặc chi không?"
+          title="Cần thêm thông tin"
+        />
       ) : null}
       {entry.intent === "create_transaction" &&
       entry.parseResult.clarification ? (
-        <Clarification result={entry.parseResult} />
+        <Clarification
+          fields={entry.parseResult.clarification.fields}
+          message={
+            entry.parseResult.clarification.message ??
+            "Bản nháp này cần thêm thông tin trước khi xác nhận."
+          }
+          onAction={onClarificationAction}
+          title="Cần thêm thông tin"
+        />
       ) : null}
-      {entry.intent !== "create_transaction" && entry.intent !== "unknown" ? (
+      {entry.intent === "create_transaction" &&
+      entry.parseResult.intent === "unknown" &&
+      !entry.parseResult.clarification ? (
+        <Clarification
+          message="Mình chưa chắc đây có phải một giao dịch không. Bạn có thể nói rõ khoản thu hoặc chi không?"
+          title="Cần thêm thông tin"
+        />
+      ) : null}
+      {entry.intent === "create_transaction" &&
+      entry.id === activeDraftEntryId &&
+      entry.parseResult.draft ? (
+        <AiDraftReview
+          confidence={entry.parseResult.confidence}
+          draft={entry.parseResult.draft}
+          isConfirming={isConfirming}
+          onCancel={onCancelDraft}
+          onConfirm={onConfirmDraft}
+        />
+      ) : null}
+      {entry.intent === "query_spending" ||
+      entry.intent === "budget_remaining" ||
+      entry.intent === "spending_breakdown" ? (
         <EntryInsightResult entry={entry} />
       ) : null}
     </article>
@@ -554,21 +601,75 @@ function Message({ text, tone }: MessageProps) {
   );
 }
 
-function Clarification({ result }: { result: AiParseResponse }) {
-  const fields = result.clarification?.fields ?? result.missing_fields;
+function Clarification({
+  fields = [],
+  message,
+  onAction,
+  title,
+}: {
+  fields?: string[];
+  message: string;
+  onAction?: (label: string) => void;
+  title: string;
+}) {
   const friendlyFields = fields.map(formatClarificationField).filter(Boolean);
+  const showCategoryActions = friendlyFields.includes("nhóm chi tiêu");
 
   return (
-    <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
-      <p className="text-sm font-semibold text-amber-900">
-        {result.clarification?.message ??
-          "Bản nháp này cần thêm thông tin trước khi xác nhận."}
-      </p>
+    <div className="max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-amber-950">
+      <p className="text-sm font-semibold">{title}</p>
+      <p className="mt-2 text-sm leading-6">{message}</p>
       {friendlyFields.length > 0 ? (
         <p className="mt-2 text-xs text-amber-800">
-          Cần bổ sung: {friendlyFields.join(", ")}
+          Thông tin cần rõ hơn: {friendlyFields.join(", ")}
         </p>
       ) : null}
+      {showCategoryActions && onAction ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {["Ăn uống", "Cà phê", "Đi lại"].map((label) => (
+            <Button
+              key={label}
+              onClick={() => onAction(label)}
+              size="small"
+              type="button"
+              variant="outline"
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ProviderUnavailable({
+  disabled,
+  message,
+  onRetry,
+}: {
+  disabled: boolean;
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <div
+      className="max-w-2xl rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-rose-950"
+      role="alert"
+    >
+      <p className="text-base font-semibold">Trợ lý chưa sẵn sàng</p>
+      <p className="mt-2 text-sm leading-6">{message}</p>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <Button disabled={disabled} onClick={onRetry} type="button" variant="primary">
+          Thử lại
+        </Button>
+        <a
+          className="inline-flex h-10 items-center justify-center rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition-colors hover:bg-ledger-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+          href="/settings"
+        >
+          Mở Cài đặt
+        </a>
+      </div>
     </div>
   );
 }

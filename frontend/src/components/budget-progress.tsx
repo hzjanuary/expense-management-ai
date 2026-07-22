@@ -9,13 +9,14 @@ import {
   fetchBudgetRemaining,
   type BudgetRemainingResponse,
 } from "@/lib/budgets";
-import { Button, panelClassName, subtlePanelClassName } from "@/components/ui";
+import { Button, panelClassName } from "@/components/ui";
 import { formatCategoryLabel } from "@/lib/categories";
 import { formatVnd } from "@/lib/money";
 
 type LoadState = "idle" | "loading" | "loaded" | "missing" | "error";
 
 type BudgetProgressProps = {
+  compact?: boolean;
   month: string;
   onSetupRequested: () => void;
   refreshSignal: number;
@@ -23,6 +24,7 @@ type BudgetProgressProps = {
 };
 
 export function BudgetProgress({
+  compact = false,
   month,
   onSetupRequested,
   refreshSignal,
@@ -83,14 +85,15 @@ export function BudgetProgress({
             Số đã chi và còn lại trong {month}.
           </p>
         </div>
-        <Button
-          disabled={state === "loading" || state === "idle"}
-          onClick={() => void loadBudget()}
-          type="button"
-          variant="outline"
-        >
-          {state === "loading" || state === "idle" ? "Đang tải" : "Thử lại"}
-        </Button>
+        {state === "error" ? (
+          <Button
+            onClick={() => void loadBudget()}
+            type="button"
+            variant="outline"
+          >
+            Thử lại
+          </Button>
+        ) : null}
       </div>
 
       {state === "loading" || state === "idle" ? <BudgetLoading /> : null}
@@ -106,6 +109,7 @@ export function BudgetProgress({
       {state === "loaded" && budget ? (
         <BudgetLoaded
           budget={budget}
+          compact={compact}
           onSetupRequested={onSetupRequested}
           setupHref={setupHref}
         />
@@ -116,33 +120,104 @@ export function BudgetProgress({
 
 function BudgetLoaded({
   budget,
+  compact,
   onSetupRequested,
   setupHref,
 }: {
   budget: BudgetRemainingResponse;
+  compact: boolean;
   onSetupRequested: () => void;
   setupHref?: string;
 }) {
   const isTotalOverBudget = budget.total_remaining_minor < 0;
+  const progressPercent = getProgressPercent(
+    budget.total_expense_minor,
+    budget.total_budget_minor,
+  );
+
+  if (compact) {
+    return (
+      <div className="mt-4 grid gap-4">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
+          <div>
+            <p className="text-sm font-semibold text-ledger-muted">
+              Ngân sách tháng
+            </p>
+            <p className="mt-1 text-3xl font-semibold tabular-nums text-ledger-ink">
+              {formatVnd(budget.total_budget_minor)}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-ledger-muted">
+              Đã dùng {formatProgressPercent(progressPercent)}
+            </p>
+          </div>
+          <BudgetMetric
+            label="Đã chi"
+            tone="expense"
+            value={formatVnd(budget.total_expense_minor)}
+          />
+          <BudgetMetric
+            label="Còn lại"
+            note={isTotalOverBudget ? "Đã vượt ngân sách" : "Còn trong ngân sách"}
+            tone={isTotalOverBudget ? "expense" : "income"}
+            value={formatVnd(budget.total_remaining_minor)}
+          />
+        </div>
+        <div
+          aria-label={`Đã dùng ${formatProgressPercent(progressPercent)} ngân sách tháng`}
+          className="h-2 overflow-hidden rounded-full bg-ledger-line"
+          role="img"
+        >
+          <div
+            className={isTotalOverBudget ? "h-full bg-rose-600" : "h-full bg-ledger-accent"}
+            style={{ width: `${Math.min(progressPercent, 100)}%` }}
+          />
+        </div>
+        <div className="flex justify-end">
+          <BudgetAction href={setupHref} onClick={onSetupRequested} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-5 grid gap-4">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <BudgetMetric
-          label="Ngân sách tháng"
-          value={formatVnd(budget.total_budget_minor)}
-        />
-        <BudgetMetric
-          label="Đã chi"
-          tone="expense"
-          value={formatVnd(budget.total_expense_minor)}
-        />
-        <BudgetMetric
-          label="Còn lại"
-          note={isTotalOverBudget ? "Đã vượt ngân sách" : "Còn trong ngân sách"}
-          tone={isTotalOverBudget ? "expense" : "income"}
-          value={formatVnd(budget.total_remaining_minor)}
-        />
+      <div className="rounded-lg border border-ledger-line bg-white p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-ledger-muted">
+              Ngân sách tháng
+            </p>
+            <p className="mt-2 text-3xl font-semibold tabular-nums text-ledger-ink">
+              {formatVnd(budget.total_budget_minor)}
+            </p>
+          </div>
+          <p className="text-sm font-semibold text-ledger-muted">
+            Đã dùng {formatProgressPercent(progressPercent)}
+          </p>
+        </div>
+        <div
+          aria-label={`Đã dùng ${formatProgressPercent(progressPercent)} ngân sách tháng`}
+          className="mt-5 h-2 overflow-hidden rounded-full bg-ledger-line"
+          role="img"
+        >
+          <div
+            className={isTotalOverBudget ? "h-full bg-rose-600" : "h-full bg-ledger-accent"}
+            style={{ width: `${Math.min(progressPercent, 100)}%` }}
+          />
+        </div>
+        <dl className="mt-5 grid gap-4 border-t border-ledger-line pt-4 sm:grid-cols-2">
+          <BudgetMetric
+            label="Đã chi"
+            tone="expense"
+            value={formatVnd(budget.total_expense_minor)}
+          />
+          <BudgetMetric
+            label="Còn lại"
+            note={isTotalOverBudget ? "Đã vượt ngân sách" : "Còn trong ngân sách"}
+            tone={isTotalOverBudget ? "expense" : "income"}
+            value={formatVnd(budget.total_remaining_minor)}
+          />
+        </dl>
       </div>
 
       {budget.categories.length === 0 ? (
@@ -183,6 +258,27 @@ function BudgetLoaded({
                   >
                     {category.is_over_budget ? "Đã vượt ngân sách" : "Còn trong ngân sách"}
                   </span>
+                </div>
+                <div
+                  aria-label={`Đã dùng ${formatProgressPercent(
+                    getProgressPercent(category.spent_minor, category.budget_minor),
+                  )} ngân sách ${formatCategoryLabel(category.category_slug)}`}
+                  className="h-1.5 overflow-hidden rounded-full bg-ledger-line"
+                  role="img"
+                >
+                  <div
+                    className={
+                      category.is_over_budget
+                        ? "h-full bg-rose-600"
+                        : "h-full bg-ledger-accent"
+                    }
+                    style={{
+                      width: `${Math.min(
+                        getProgressPercent(category.spent_minor, category.budget_minor),
+                        100,
+                      )}%`,
+                    }}
+                  />
                 </div>
                 <dl className="grid gap-2 text-xs text-ledger-muted sm:grid-cols-3">
                   <CategoryMetric
@@ -263,9 +359,11 @@ function BudgetMetric({
         : "text-ledger-ink";
 
   return (
-    <div className={subtlePanelClassName}>
-      <p className="text-xs font-medium uppercase text-ledger-muted">{label}</p>
-      <p className={`mt-2 text-xl font-semibold ${valueTone}`}>{value}</p>
+    <div>
+      <dt className="text-xs font-medium uppercase text-ledger-muted">{label}</dt>
+      <dd className={`mt-2 text-xl font-semibold tabular-nums ${valueTone}`}>
+        {value}
+      </dd>
       {note ? <p className="mt-1 text-xs text-ledger-muted">{note}</p> : null}
     </div>
   );
@@ -348,4 +446,18 @@ function getBudgetErrorMessage(error: unknown): string {
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
+}
+
+function getProgressPercent(spentMinor: number, budgetMinor: number): number {
+  if (budgetMinor <= 0) {
+    return spentMinor > 0 ? 100 : 0;
+  }
+  return (spentMinor / budgetMinor) * 100;
+}
+
+function formatProgressPercent(value: number): string {
+  return `${value.toLocaleString("vi-VN", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  })}%`;
 }

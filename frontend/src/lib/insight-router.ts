@@ -122,17 +122,34 @@ function isCreateTransactionMessage(normalized: string): boolean {
 }
 
 function mentionsThisMonth(normalized: string): boolean {
-  return normalized.includes("thang nay") || normalized.includes("this month");
+  return includesAny(normalized, [
+    "thang nay",
+    "thang hien tai",
+    "dau thang",
+    "tu dau thang",
+    "ngay dau tien cua thang nay",
+    "ke tu ngay dau tien cua thang nay",
+    "this month",
+  ]);
 }
 
 function hasSpendingLanguage(normalized: string): boolean {
   return includesAny(normalized, [
     "chi",
     "chi tieu",
+    "chi phi",
+    "cac khoan chi",
     "tieu",
+    "da tieu",
+    "da chi",
     "bao nhieu",
     "het bao nhieu",
     "het tien",
+    "tien da tieu",
+    "tien da chi",
+    "tien roi khoi vi",
+    "tien di ra",
+    "vi da giam",
   ]);
 }
 
@@ -141,7 +158,18 @@ function hasTotalLanguage(normalized: string): boolean {
     "tong",
     "tong cong",
     "tat ca",
+    "cong don",
+    "dau thang",
+    "aggregate",
+    "all expense",
     "bao nhieu trong thang nay",
+    "bao nhieu tien da chi",
+    "tien da tieu",
+    "tien roi khoi vi",
+    "tien di ra",
+    "vi da giam",
+    "cac khoan chi",
+    "chi phi trong thang",
     "thang nay het bao nhieu tien",
   ]);
 }

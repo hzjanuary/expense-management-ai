@@ -5,7 +5,7 @@ import { useState } from "react";
 import { BudgetProgress } from "@/components/budget-progress";
 import { BudgetSetupForm } from "@/components/budget-setup-form";
 import { MonthSelector } from "@/components/month-selector";
-import { Button, panelClassName } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { getCurrentMonthValue } from "@/lib/dashboard";
 
 export function BudgetsClient() {
@@ -20,10 +20,10 @@ export function BudgetsClient() {
 
   return (
     <div className="grid gap-5">
-      <section className={panelClassName}>
+      <section className="border-b border-ledger-line pb-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-ledger-ink">
+            <h2 className="text-base font-semibold text-ledger-ink">
               Ngân sách theo tháng
             </h2>
             <p className="mt-1 text-sm leading-6 text-ledger-muted">
@@ -38,14 +38,14 @@ export function BudgetsClient() {
           </div>
         </div>
       </section>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <BudgetProgress
+        month={selectedMonth}
+        onSetupRequested={() => undefined}
+        refreshSignal={refreshRevision}
+      />
+      <section className="border-t border-ledger-line pt-5">
         <BudgetSetupForm month={selectedMonth} onSaved={refresh} />
-        <BudgetProgress
-          month={selectedMonth}
-          onSetupRequested={() => undefined}
-          refreshSignal={refreshRevision}
-        />
-      </div>
+      </section>
     </div>
   );
 }

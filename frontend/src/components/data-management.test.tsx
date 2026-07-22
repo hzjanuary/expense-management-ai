@@ -56,6 +56,7 @@ describe("data management UI", () => {
 
     render(<TransactionExport month="2026-07" />);
 
+    await openExportOptions();
     expect(screen.getByLabelText("Định dạng")).toHaveValue("csv");
     expect(fetchMock).not.toHaveBeenCalled();
 
@@ -88,6 +89,7 @@ describe("data management UI", () => {
 
     render(<TransactionExport month="2026-07" />);
 
+    await openExportOptions();
     await userEvent.click(screen.getByRole("button", { name: "Tải xuống" }));
     expect(
       await screen.findByText(/File xuất quá lớn/i),
@@ -105,6 +107,7 @@ describe("data management UI", () => {
 
     render(<TransactionExport month="2026-07" />);
 
+    await openExportOptions();
     await userEvent.click(screen.getByRole("button", { name: "Tải xuống" }));
     expect(
       screen.getByRole("button", { name: "Đang chuẩn bị" }),
@@ -145,9 +148,7 @@ describe("data management UI", () => {
     );
 
     expect(await screen.findByText("US-705 lunch proof")).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: /Xóa giao dịch US-705 lunch proof/i }),
-    );
+    await openDeleteDialog();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText(/không bị xóa vĩnh viễn/i)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -180,21 +181,17 @@ describe("data management UI", () => {
     render(<RecentTransactions refreshSignal={0} />);
 
     expect(await screen.findByText("US-705 lunch proof")).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: /Xóa giao dịch US-705 lunch proof/i }),
-    );
+    await openDeleteDialog();
     await userEvent.click(screen.getByRole("button", { name: "Hủy" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /Xóa giao dịch US-705 lunch proof/i }),
-    );
+    await openDeleteDialog();
     await userEvent.click(screen.getByRole("button", { name: "Xóa giao dịch" }));
 
     expect(await screen.findByText("Không xóa được giao dịch. Hãy thử lại.")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: /Xóa giao dịch US-705 lunch proof/i,
+        name: /Mở menu giao dịch US-705 lunch proof/i,
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Xóa giao dịch" })).toBeEnabled();
@@ -226,9 +223,7 @@ describe("data management UI", () => {
     );
 
     expect(await screen.findByText("US-705 lunch proof")).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: /Xóa giao dịch US-705 lunch proof/i }),
-    );
+    await openDeleteDialog();
     await userEvent.click(screen.getByRole("button", { name: "Xóa giao dịch" }));
 
     expect(
@@ -253,9 +248,7 @@ describe("data management UI", () => {
     render(<RecentTransactions refreshSignal={0} />);
 
     expect(await screen.findByText("US-705 lunch proof")).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: /Xóa giao dịch US-705 lunch proof/i }),
-    );
+    await openDeleteDialog();
     await userEvent.click(screen.getByRole("button", { name: "Xóa giao dịch" }));
     expect(screen.getByRole("button", { name: "Đang xóa" })).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: "Đang xóa" }));
@@ -276,7 +269,7 @@ describe("data management UI", () => {
 
     render(<ClearAiHistory />);
 
-    expect(screen.getByText(/Giao dịch đã xác nhận và số dư vẫn được giữ nguyên/i)).toBeInTheDocument();
+    expect(screen.getByText(/Giao dịch đã xác nhận, số dư và ngân sách vẫn được giữ nguyên/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Xóa lịch sử AI" }));
     expect(screen.getByText(/không xóa lịch sử giao dịch/i)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Hủy" }));
@@ -367,4 +360,15 @@ function createDeferred<T>() {
     reject = promiseReject;
   });
   return { promise, reject, resolve };
+}
+
+async function openExportOptions() {
+  await userEvent.click(screen.getByRole("button", { name: "Xuất dữ liệu" }));
+}
+
+async function openDeleteDialog() {
+  await userEvent.click(
+    screen.getByRole("button", { name: /Mở menu giao dịch US-705 lunch proof/i }),
+  );
+  await userEvent.click(screen.getByRole("menuitem", { name: "Xóa giao dịch" }));
 }

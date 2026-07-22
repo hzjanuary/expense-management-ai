@@ -37,15 +37,15 @@ export function TransactionDeleteDialog({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isDeleting, onCancel]);
 
-  const amountPrefix = transaction.type === "expense" ? "-" : "+";
+  const amountPrefix = transaction.type === "expense" ? "−" : "+";
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/30 p-4">
+    <div className="fixed inset-0 z-50 grid items-end bg-black/40 p-0 sm:place-items-center sm:p-4">
       <div
         aria-describedby="delete-transaction-description"
         aria-labelledby="delete-transaction-title"
         aria-modal="true"
-        className="w-full max-w-md rounded-lg border border-ledger-line bg-white p-5 shadow-xl"
+        className="max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-t-xl border border-ledger-line bg-white p-5 shadow-dialog sm:max-w-md sm:rounded-lg"
         role="dialog"
       >
         <h3
@@ -102,7 +102,7 @@ export function TransactionDeleteDialog({
           </p>
         ) : null}
 
-        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <div className="mt-5 flex flex-col-reverse gap-3 pb-[env(safe-area-inset-bottom)] sm:flex-row sm:justify-end sm:pb-0">
           <Button
             disabled={isDeleting}
             onClick={onCancel}

@@ -7,6 +7,7 @@ import {
   fetchDashboardSummary,
   type DashboardSummaryResponse,
 } from "@/lib/dashboard";
+import { formatCategoryLabel } from "@/lib/categories";
 import { formatVnd } from "@/lib/money";
 
 type LoadState = "idle" | "loading" | "loaded" | "error";
@@ -94,48 +95,147 @@ export function DashboardSummary({
     return null;
   }
 
-  const items = [
-    {
-      label: "Số dư hiện tại",
-      value: formatVnd(summary.total_balance_minor),
-      note: `Số dư đang lưu. Tiền tệ: ${summary.currency}.`,
-      tone: "text-ledger-ink",
-    },
-    {
-      label: "Thu trong tháng",
-      value: formatVnd(summary.monthly_income_minor),
-      note: `Khoản thu trong ${month}.`,
-      tone: "text-emerald-700",
-    },
-    {
-      label: "Chi trong tháng",
-      value: formatVnd(summary.monthly_expense_minor),
-      note: `Khoản chi trong ${month}.`,
-      tone: "text-rose-700",
-    },
-    {
-      label: "Danh mục có chi",
-      value: String(summary.category_breakdown.length),
-      note: "Số danh mục có giao dịch trong tháng.",
-      tone: "text-ledger-ink",
-    },
-  ];
+  return (
+    <section aria-live="polite">
+      <article className="rounded-lg border border-ledger-line bg-white p-6 shadow-soft">
+        <p className="text-sm font-semibold text-ledger-muted">
+          Số dư hiện tại
+        </p>
+        <p className="mt-3 break-words text-4xl font-semibold tracking-normal text-ledger-ink sm:text-5xl">
+          {formatVnd(summary.total_balance_minor)}
+        </p>
+        <div className="mt-6 grid gap-4 border-t border-ledger-line pt-5 sm:grid-cols-2">
+          <SummarySubValue
+            label="Thu tháng này"
+            prefix="+"
+            tone="income"
+            value={formatVnd(summary.monthly_income_minor)}
+          />
+          <SummarySubValue
+            label="Chi tháng này"
+            prefix="−"
+            tone="expense"
+            value={formatVnd(summary.monthly_expense_minor)}
+          />
+        </div>
+      </article>
+    </section>
+  );
+}
+
+export function DashboardCategoryBreakdown({
+  month,
+  refreshSignal,
+}: DashboardSummaryProps) {
+  const [summary, setSummary] = useState<DashboardSummaryResponse | null>(null);
+  const [state, setState] = useState<LoadState>("idle");
+  const requestSequence = useRef(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const requestId = requestSequence.current + 1;
+    requestSequence.current = requestId;
+    setState("loading");
+
+    fetchDashboardSummary(month, controller.signal)
+      .then((result) => {
+        if (requestSequence.current !== requestId || controller.signal.aborted) {
+          return;
+        }
+        setSummary(result);
+        setState("loaded");
+      })
+      .catch((caughtError) => {
+        if (isAbortError(caughtError) || requestSequence.current !== requestId) {
+          return;
+        }
+        setState("error");
+      });
+
+    return () => controller.abort();
+  }, [month, refreshSignal]);
+
+  const expenseBreakdown = (summary?.category_breakdown ?? []).filter(
+    (category) => category.type === "expense",
+  );
 
   return (
-    <section aria-live="polite" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {items.map((item) => (
-        <article
-          className="rounded-lg border border-ledger-line bg-ledger-panel p-5 shadow-soft"
-          key={item.label}
-        >
-          <p className="text-sm font-medium text-ledger-muted">{item.label}</p>
-          <p className={`mt-3 text-2xl font-semibold tracking-normal ${item.tone}`}>
-            {item.value}
+    <section aria-live="polite" className="min-w-0">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-ledger-ink">
+            Chi tiêu theo danh mục
+          </h2>
+          <p className="mt-1 text-sm text-ledger-muted">
+            Các khoản chi trong {month}.
           </p>
-          <p className="mt-3 text-xs leading-5 text-ledger-muted">{item.note}</p>
-        </article>
-      ))}
+        </div>
+        {state === "loaded" ? (
+          <span className="text-sm font-semibold text-ledger-muted">
+            {expenseBreakdown.length}
+          </span>
+        ) : null}
+      </div>
+      {state === "loading" || state === "idle" ? (
+        <div className="mt-4 grid gap-3" role="status">
+          <div className="h-4 rounded bg-ledger-line" />
+          <div className="h-4 w-10/12 rounded bg-ledger-line" />
+          <div className="h-4 w-8/12 rounded bg-ledger-line" />
+        </div>
+      ) : null}
+      {state === "error" ? (
+        <p className="mt-4 text-sm text-rose-700">
+          Chưa tải được chi tiêu theo danh mục.
+        </p>
+      ) : null}
+      {state === "loaded" && expenseBreakdown.length === 0 ? (
+        <p className="mt-4 border-t border-ledger-line pt-4 text-sm text-ledger-muted">
+          Chưa có khoản chi nào trong tháng này.
+        </p>
+      ) : null}
+      {state === "loaded" && expenseBreakdown.length > 0 ? (
+        <ul className="mt-4 divide-y divide-ledger-line">
+          {expenseBreakdown.slice(0, 5).map((category) => (
+            <li
+              className="flex items-center justify-between gap-4 py-3"
+              key={category.category_slug}
+            >
+              <span className="text-sm font-medium text-ledger-ink">
+                {formatCategoryLabel(category.category_slug)}
+              </span>
+              <span className="shrink-0 text-right text-sm font-semibold tabular-nums text-ledger-ink">
+                {formatVnd(category.amount_minor)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </section>
+  );
+}
+
+function SummarySubValue({
+  label,
+  prefix,
+  tone,
+  value,
+}: {
+  label: string;
+  prefix: "+" | "−";
+  tone: "expense" | "income";
+  value: string;
+}) {
+  const toneClass = tone === "income" ? "text-ledger-accent" : "text-rose-700";
+
+  return (
+    <div>
+      <p className="text-sm font-medium text-ledger-muted">{label}</p>
+      <p className={`mt-1 text-2xl font-semibold tabular-nums ${toneClass}`}>
+        <span className="sr-only">{tone === "income" ? "Khoản thu" : "Khoản chi"}</span>
+        {prefix}
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -143,21 +243,18 @@ function SummaryLoading({ month }: { month: string }) {
   return (
     <section
       aria-live="polite"
-      className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
       role="status"
     >
-      {[1, 2, 3, 4].map((item) => (
-        <article
-          className="rounded-lg border border-ledger-line bg-ledger-panel p-5 shadow-soft"
-          key={item}
-        >
-          <p className="text-sm font-medium text-ledger-muted">
-            Đang tải số liệu {month}...
-          </p>
-          <div className="mt-4 h-8 w-28 rounded bg-ledger-line" />
-          <div className="mt-4 h-3 w-36 rounded bg-ledger-line" />
-        </article>
-      ))}
+      <article className="rounded-lg border border-ledger-line bg-white p-6 shadow-soft">
+        <p className="text-sm font-medium text-ledger-muted">
+          Đang tải số liệu {month}...
+        </p>
+        <div className="mt-4 h-12 w-64 max-w-full rounded bg-ledger-line" />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="h-16 rounded bg-ledger-line" />
+          <div className="h-16 rounded bg-ledger-line" />
+        </div>
+      </article>
     </section>
   );
 }

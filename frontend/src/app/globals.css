@@ -12,18 +12,31 @@
 
 html {
   min-height: 100%;
-  background: #f5f8f4;
+  background: #f7faf7;
+  font-feature-settings: "tnum" 1, "ss01" 1;
 }
 
 body {
   min-height: 100%;
   margin: 0;
   color: #17201b;
-  background: #f5f8f4;
+  background: #f7faf7;
 }
 
 button,
 input,
+select,
 textarea {
   font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

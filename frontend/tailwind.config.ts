@@ -7,17 +7,20 @@ const config: Config = {
     extend: {
       colors: {
         ledger: {
-          ink: "#17201b",
-          muted: "#637067",
-          line: "#dbe5dc",
-          wash: "#f5f8f4",
+          ink: "#111815",
+          muted: "#66736b",
+          line: "#dfe8e1",
+          wash: "#f7faf7",
           panel: "#ffffff",
-          accent: "#2f7d50",
+          accent: "#24764a",
+          "accent-strong": "#185a37",
+          "accent-soft": "#e7f3ec",
           amber: "#b7791f"
         }
       },
       boxShadow: {
-        soft: "0 18px 60px rgba(23, 32, 27, 0.08)"
+        soft: "0 10px 30px rgba(17, 24, 21, 0.06)",
+        dialog: "0 24px 70px rgba(17, 24, 21, 0.18)"
       }
     }
   },

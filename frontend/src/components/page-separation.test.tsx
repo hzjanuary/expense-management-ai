@@ -25,7 +25,8 @@ describe("separated post-MVP pages", () => {
     render(<TransactionsClient />);
 
     expect(await screen.findByText("Chưa có giao dịch")).toBeInTheDocument();
-    expect(screen.getByText("Xuất giao dịch")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Xuất dữ liệu" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Bộ lọc" }));
     await userEvent.selectOptions(screen.getAllByLabelText("Danh mục")[0], "food");
 
     await waitFor(() =>

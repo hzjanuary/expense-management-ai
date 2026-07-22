@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { TransactionDeleteDialog } from "@/components/transaction-delete-dialog";
@@ -18,17 +19,27 @@ import { TransactionRow } from "@/components/transaction-row";
 type LoadState = "idle" | "loading" | "loaded" | "error";
 
 type RecentTransactionsProps = {
+  description?: string;
   filters?: TransactionListFilters;
   hideDeleteActions?: boolean;
+  hideRefreshAction?: boolean;
+  onClearFilters?: () => void;
   onTransactionDeleted?: () => void;
+  presentation?: "ledger" | "panel";
   refreshSignal?: number;
+  title?: string;
 };
 
 export function RecentTransactions({
+  description = "Các giao dịch mới nhất đang được lưu trên máy này.",
   filters,
   hideDeleteActions = false,
+  hideRefreshAction = false,
+  onClearFilters,
   onTransactionDeleted,
+  presentation = "panel",
   refreshSignal = 0,
+  title = "Giao dịch gần đây",
 }: RecentTransactionsProps) {
   const [transactions, setTransactions] = useState<TransactionListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -98,33 +109,44 @@ export function RecentTransactions({
 
   const isLoading = state === "idle" || state === "loading";
   const isRefreshing = state === "loaded";
+  const sectionClassName =
+    presentation === "ledger"
+      ? "border-t border-ledger-line pt-4"
+      : panelClassName;
+  const listClassName =
+    presentation === "ledger"
+      ? "mt-4 overflow-visible rounded-lg border border-ledger-line bg-white shadow-soft"
+      : "mt-4 overflow-visible rounded-md border border-ledger-line";
 
   return (
-    <section className={panelClassName}>
+    <section className={sectionClassName}>
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <h2 className="text-lg font-semibold text-ledger-ink">
-            Giao dịch gần đây
-          </h2>
+          <h2 className="text-lg font-semibold text-ledger-ink">{title}</h2>
           <p className="mt-1 text-sm text-ledger-muted">
-            Các giao dịch mới nhất đang được lưu trên máy này.
+            {description}
           </p>
         </div>
-        <Button
-          disabled={isLoading}
-          onClick={() => void loadTransactions()}
-          type="button"
-          variant="outline"
-        >
-          {isLoading ? "Đang tải" : isRefreshing ? "Làm mới" : "Thử lại"}
-        </Button>
+        {!hideRefreshAction || state === "error" ? (
+          <Button
+            disabled={isLoading}
+            onClick={() => void loadTransactions()}
+            type="button"
+            variant="outline"
+          >
+            {isLoading ? "Đang tải" : isRefreshing ? "Làm mới" : "Thử lại"}
+          </Button>
+        ) : null}
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-md border border-ledger-line">
+      <div className={listClassName}>
         {isLoading ? <LoadingState /> : null}
         {state === "error" ? <ErrorState /> : null}
         {state === "loaded" && transactions.length === 0 ? (
-          <EmptyState hasFilters={hasActiveFilters(filters)} />
+          <EmptyState
+            hasFilters={hasActiveFilters(filters)}
+            onClearFilters={onClearFilters}
+          />
         ) : null}
         {state === "loaded" && transactions.length > 0 ? (
           <div>
@@ -188,17 +210,48 @@ function LoadingState() {
   );
 }
 
-function EmptyState({ hasFilters }: { hasFilters: boolean }) {
+function EmptyState({
+  hasFilters,
+  onClearFilters,
+}: {
+  hasFilters: boolean;
+  onClearFilters?: () => void;
+}) {
   return (
-    <div className="bg-white p-4">
-      <p className="text-sm font-medium text-ledger-ink">
+    <div className="grid min-h-48 place-items-center bg-white p-6 text-center">
+      <div className="max-w-sm">
+      <div
+        aria-hidden="true"
+        className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-ledger-accent-soft text-ledger-accent"
+      >
+        <span className="text-xl">≡</span>
+      </div>
+      <p className="text-base font-semibold text-ledger-ink">
         {hasFilters ? "Không có giao dịch phù hợp" : "Chưa có giao dịch"}
       </p>
       <p className="mt-1 text-sm text-ledger-muted">
         {hasFilters
           ? "Thử đổi tháng, danh mục, loại giao dịch hoặc từ khóa tìm kiếm."
-          : "Bạn có thể thêm giao dịch bằng Trợ lý AI."}
+          : "Bạn có thể thêm giao dịch bằng Trợ lý."}
       </p>
+      {hasFilters && onClearFilters ? (
+        <Button
+          className="mt-4"
+          onClick={onClearFilters}
+          type="button"
+          variant="outline"
+        >
+          Xóa bộ lọc
+        </Button>
+      ) : (
+        <Link
+          className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition-colors hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+          href="/assistant"
+        >
+          Mở Trợ lý
+        </Link>
+      )}
+      </div>
     </div>
   );
 }

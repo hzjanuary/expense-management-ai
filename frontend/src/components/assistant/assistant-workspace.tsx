@@ -8,6 +8,7 @@ import { Button } from "@/components/ui";
 export function AssistantWorkspace() {
   const [refreshRevision, setRefreshRevision] = useState(0);
   const [conversationKey, setConversationKey] = useState(0);
+  const [hasConversation, setHasConversation] = useState(false);
 
   function handleFinancialDataChanged() {
     setRefreshRevision((currentValue) => currentValue + 1);
@@ -15,36 +16,47 @@ export function AssistantWorkspace() {
 
   function handleNewConversation() {
     setConversationKey((currentValue) => currentValue + 1);
+    setHasConversation(false);
   }
 
   return (
-    <div className="grid h-[calc(100vh-12rem)] min-h-[640px] gap-4 sm:h-[calc(100vh-11rem)] sm:min-h-[680px]">
-      <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-ledger-line bg-ledger-panel shadow-soft">
-        <div className="flex flex-col gap-3 border-b border-ledger-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-ledger-ink">
-              Trợ lý tài chính
-            </h2>
-            <p className="mt-1 text-sm text-ledger-muted">
-              Trợ lý có thể ghi nháp giao dịch hoặc trả lời câu hỏi chi tiêu.
-              Sổ tiền chỉ thay đổi sau khi bạn bấm xác nhận.
-            </p>
-          </div>
+    <section
+      aria-labelledby="assistant-workspace-heading"
+      className="flex h-[calc(100vh-8.75rem)] min-h-[620px] min-w-0 flex-col overflow-hidden sm:h-[calc(100vh-8rem)]"
+    >
+      <div
+        className={
+          hasConversation
+            ? "hidden gap-3 border-b border-ledger-line pb-4 sm:flex sm:flex-row sm:items-center sm:justify-between"
+            : "flex flex-col gap-3 border-b border-ledger-line pb-4 sm:flex-row sm:items-center sm:justify-between"
+        }
+      >
+        <div>
+          <p
+            className="text-sm text-ledger-muted"
+            id="assistant-workspace-heading"
+          >
+            Bản nháp chỉ được lưu sau khi bạn xác nhận.
+          </p>
+        </div>
+        {hasConversation ? (
           <Button
             onClick={handleNewConversation}
+            size="small"
             type="button"
-            variant="outline"
+            variant="ghost"
           >
             Cuộc trò chuyện mới
           </Button>
-        </div>
-        <ChatToLedger
-          key={conversationKey}
-          layout="workspace"
-          onTransactionConfirmed={handleFinancialDataChanged}
-          refreshSignal={refreshRevision}
-        />
-      </section>
-    </div>
+        ) : null}
+      </div>
+      <ChatToLedger
+        key={conversationKey}
+        layout="workspace"
+        onConversationStateChange={setHasConversation}
+        onTransactionConfirmed={handleFinancialDataChanged}
+        refreshSignal={refreshRevision}
+      />
+    </section>
   );
 }

@@ -25,10 +25,10 @@ export const APP_ROUTES: AppRoute[] = [
     label: "Ngân sách",
   },
   {
-    description: "Nhập giao dịch bằng AI và hỏi nhanh về chi tiêu.",
+    description: "Ghi giao dịch bằng trợ lý và hỏi nhanh về chi tiêu.",
     href: "/assistant",
     icon: "assistant",
-    label: "Trợ lý AI",
+    label: "Trợ lý",
   },
   {
     description: "Xem hướng dẫn AI cục bộ và xóa lịch sử AI khi cần.",

@@ -4,7 +4,7 @@ import { formatVnd } from "@/lib/money";
 import { Button } from "@/components/ui";
 
 type AiDraftReviewProps = {
-  confidence: string;
+  confidence?: string;
   draft: AiTransactionDraft;
   isConfirming: boolean;
   onCancel: () => void;
@@ -12,45 +12,36 @@ type AiDraftReviewProps = {
 };
 
 export function AiDraftReview({
-  confidence,
   draft,
   isConfirming,
   onCancel,
   onConfirm,
 }: AiDraftReviewProps) {
-  const amountPrefix = draft.type === "expense" ? "-" : "+";
-  const amountTone =
-    draft.type === "expense" ? "text-rose-700" : "text-ledger-accent";
-
   return (
-    <div className="rounded-md border border-ledger-line bg-white p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="rounded-lg border border-ledger-line bg-white p-3 shadow-soft sm:p-5">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-ledger-ink">
-            Kiểm tra bản nháp
+          <p className="text-sm font-semibold text-ledger-muted">
+            Bản nháp giao dịch
           </p>
-          <p className="mt-1 text-xs text-ledger-muted">
-            Chỉ khi bạn xác nhận, giao dịch này mới được ghi vào sổ.
+          <p className="mt-1 text-3xl font-semibold tabular-nums text-ledger-accent sm:mt-2 sm:text-4xl">
+            <span className="sr-only">
+              {draft.type === "expense" ? "Khoản chi" : "Khoản thu"}
+            </span>
+            {formatVnd(draft.amount_minor)}
+          </p>
+          <p className="mt-1 text-lg font-semibold leading-6 text-ledger-ink sm:mt-2">
+            {draft.description}
           </p>
         </div>
-        <span className="w-fit rounded-md bg-ledger-wash px-2 py-1 text-xs font-semibold text-ledger-muted">
-          độ tin cậy: {confidence}
+        <span className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 sm:px-3">
+          Chưa được lưu
         </span>
       </div>
 
-      <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+      <dl className="mt-3 grid grid-cols-3 gap-2 border-t border-ledger-line pt-3 text-xs sm:mt-4 sm:grid-cols-3 sm:gap-3 sm:pt-4 sm:text-sm">
         <DraftField label="Loại" value={draft.type === "expense" ? "Chi" : "Thu"} />
-        <DraftField
-          label="Số tiền"
-          value={`${amountPrefix}${formatVnd(draft.amount_minor)} ${draft.currency}`}
-          valueClassName={amountTone}
-        />
         <DraftField label="Danh mục" value={formatCategory(draft.category_slug)} />
-        <DraftField
-          label="Nguồn"
-          value={draft.source === "ai_chat" ? "Trợ lý AI" : "Thủ công"}
-        />
-        <DraftField label="Ghi chú" value={draft.description} />
         <DraftField
           label="Thời điểm"
           value={
@@ -61,19 +52,26 @@ export function AiDraftReview({
         />
       </dl>
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+      <p className="mt-3 text-xs leading-5 text-ledger-muted sm:text-sm">
+        Chưa ghi vào sổ cho đến khi bạn xác nhận.
+      </p>
+
+      <div className="mt-3 flex items-center gap-2 sm:mt-5">
         <Button
+          className="flex-1 sm:flex-none"
           disabled={isConfirming}
           onClick={onConfirm}
           type="button"
+          variant="primary"
         >
           {isConfirming ? "Đang xác nhận" : "Xác nhận"}
         </Button>
         <Button
+          className="shrink-0"
           disabled={isConfirming}
           onClick={onCancel}
           type="button"
-          variant="outline"
+          variant="ghost"
         >
           Hủy
         </Button>
@@ -90,11 +88,11 @@ type DraftFieldProps = {
 
 function DraftField({ label, value, valueClassName }: DraftFieldProps) {
   return (
-    <div>
-      <dt className="text-xs font-medium uppercase text-ledger-muted">
+    <div className="min-w-0">
+      <dt className="text-[0.68rem] font-medium uppercase leading-4 text-ledger-muted sm:text-xs">
         {label}
       </dt>
-      <dd className={`mt-1 font-semibold ${valueClassName ?? "text-ledger-ink"}`}>
+      <dd className={`mt-1 truncate font-semibold ${valueClassName ?? "text-ledger-ink"}`}>
         {value}
       </dd>
     </div>

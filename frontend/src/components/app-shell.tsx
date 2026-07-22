@@ -23,8 +23,8 @@ export function AppShell({ children }: AppShellProps) {
         Bỏ qua điều hướng
       </a>
       <DesktopSidebar pathname={pathname} />
-      <div className="min-h-screen pb-24 lg:pl-64 lg:pb-0">
-        <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:px-8">
+      <div className="min-h-screen pb-24 lg:pl-[232px] lg:pb-0">
+        <div className="mx-auto grid w-full max-w-[1240px] gap-5 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
           <PageHeader route={currentRoute} />
           <main
             className="min-w-0"
@@ -42,16 +42,9 @@ export function AppShell({ children }: AppShellProps) {
 
 function DesktopSidebar({ pathname }: { pathname: string }) {
   return (
-    <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-ledger-line bg-white/95 px-4 py-5 shadow-soft lg:block">
+    <aside className="fixed inset-y-0 left-0 hidden w-[232px] border-r border-ledger-line bg-white px-4 py-5 lg:block">
       <div className="grid h-full gap-6">
-        <div>
-          <p className="text-lg font-semibold tracking-normal text-ledger-ink">
-            Pocket Ledger AI
-          </p>
-          <p className="mt-1 text-sm leading-5 text-ledger-muted">
-            Dữ liệu lưu cục bộ. AI không tự ghi sổ.
-          </p>
-        </div>
+        <BrandLockup />
         <nav aria-label="Điều hướng chính">
           <ul className="grid gap-1">
             {APP_ROUTES.map((route) => (
@@ -61,8 +54,8 @@ function DesktopSidebar({ pathname }: { pathname: string }) {
             ))}
           </ul>
         </nav>
-        <div className="mt-auto rounded-md border border-ledger-line bg-ledger-wash p-3 text-xs leading-5 text-ledger-muted">
-          Ollama là tùy chọn. Mặc định an toàn khi AI cục bộ chưa bật.
+        <div className="mt-auto border-t border-ledger-line pt-4 text-xs leading-5 text-ledger-muted">
+          Dữ liệu lưu trên máy này. Trợ lý không tự ghi giao dịch.
         </div>
       </div>
     </aside>
@@ -83,9 +76,9 @@ function MobileBottomNavigation({ pathname }: { pathname: string }) {
               <Link
                 aria-current={isActive ? "page" : undefined}
                 className={[
-                  "flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 text-center text-[0.68rem] font-semibold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent",
+                  "relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 text-center text-[0.68rem] font-semibold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent",
                   isActive
-                    ? "border border-ledger-accent bg-emerald-50 text-ledger-accent"
+                    ? "bg-ledger-accent-soft text-ledger-accent before:absolute before:top-1 before:h-0.5 before:w-6 before:rounded-full before:bg-ledger-accent"
                     : "text-ledger-muted hover:bg-ledger-wash hover:text-ledger-ink",
                 ].join(" ")}
                 href={route.href}
@@ -116,7 +109,7 @@ function NavigationLink({
       className={[
         "flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent",
         isActive
-          ? "border border-ledger-accent bg-emerald-50 text-ledger-accent"
+          ? "bg-ledger-accent-soft text-ledger-accent shadow-[inset_3px_0_0_#24764a]"
           : "text-ledger-muted hover:bg-ledger-wash hover:text-ledger-ink",
       ].join(" ")}
       href={route.href}
@@ -129,17 +122,48 @@ function NavigationLink({
 
 function PageHeader({ route }: { route: AppRoute }) {
   return (
-    <header className="rounded-lg border border-ledger-line bg-white px-5 py-4 shadow-soft">
-      <p className="text-sm font-semibold text-ledger-accent">
-        Pocket Ledger AI
-      </p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-normal text-ledger-ink">
+    <header className="py-1">
+      <h1 className="text-2xl font-semibold tracking-normal text-ledger-ink sm:text-3xl">
         {route.label}
       </h1>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-ledger-muted">
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-ledger-muted sm:text-base">
         {route.description}
       </p>
     </header>
+  );
+}
+
+function BrandLockup() {
+  return (
+    <Link
+      className="flex items-center gap-3 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+      href="/dashboard"
+    >
+      <span className="grid h-9 w-9 place-items-center rounded-md bg-ledger-accent text-white">
+        <svg
+          aria-hidden="true"
+          className="h-5 w-5"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+          viewBox="0 0 24 24"
+        >
+          <path d="M5 8.5A2.5 2.5 0 0 1 7.5 6H18a1 1 0 0 1 1 1v10.5a1.5 1.5 0 0 1-1.5 1.5h-10A2.5 2.5 0 0 1 5 16.5v-8Z" />
+          <path d="M5 8.5A2.5 2.5 0 0 0 7.5 11H19" />
+          <path d="M15 15h2" />
+        </svg>
+      </span>
+      <span>
+        <span className="block text-sm font-semibold tracking-normal text-ledger-ink">
+          Pocket Ledger
+        </span>
+        <span className="block text-xs leading-5 text-ledger-muted">
+          Sổ tiền cá nhân
+        </span>
+      </span>
+    </Link>
   );
 }
 

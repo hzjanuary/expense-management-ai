@@ -27,7 +27,7 @@ describe("multi-page navigation shell", () => {
       "Tổng quan",
       "Giao dịch",
       "Ngân sách",
-      "Trợ lý AI",
+      "Trợ lý",
       "Cài đặt",
     ]) {
       expect(screen.getAllByRole("link", { name: label })).toHaveLength(2);
@@ -49,11 +49,11 @@ describe("multi-page navigation shell", () => {
     );
 
     const currentLinks = screen
-      .getAllByRole("link", { name: "Trợ lý AI" })
+      .getAllByRole("link", { name: "Trợ lý" })
       .filter((link) => link.getAttribute("aria-current") === "page");
 
     expect(currentLinks).toHaveLength(2);
-    expect(screen.getByRole("heading", { level: 1, name: "Trợ lý AI" }))
+    expect(screen.getByRole("heading", { level: 1, name: "Trợ lý" }))
       .toBeInTheDocument();
   });
 

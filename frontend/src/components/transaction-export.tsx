@@ -9,20 +9,22 @@ import {
   readDataManagementError,
   type TransactionExportFormat,
 } from "@/lib/data-management";
-import { Button, inputClassName, panelClassName, selectClassName } from "@/components/ui";
+import { Button, inputClassName, selectClassName } from "@/components/ui";
 import type { TransactionType } from "@/lib/transactions";
 
 type TransactionExportProps = {
+  compact?: boolean;
   month: string;
 };
 
-export function TransactionExport({ month }: TransactionExportProps) {
+export function TransactionExport({ compact = false, month }: TransactionExportProps) {
   const abortRef = useRef<AbortController | null>(null);
   const [format, setFormat] = useState<TransactionExportFormat>("csv");
   const [exportMonth, setExportMonth] = useState(month);
   const [category, setCategory] = useState("");
   const [type, setType] = useState<TransactionType | "">("");
   const [query, setQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -95,18 +97,29 @@ export function TransactionExport({ month }: TransactionExportProps) {
     }
   }
 
-  return (
-    <section className={panelClassName}>
-      <div>
-        <h2 className="text-lg font-semibold text-ledger-ink">
-          Xuất giao dịch
-        </h2>
-        <p className="mt-1 text-sm text-ledger-muted">
-          Tải CSV hoặc JSON từ giao dịch đang lưu trên máy này.
-        </p>
+  const content = (
+    <>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-ledger-ink">
+            Xuất dữ liệu
+          </h2>
+          <p className="mt-1 text-sm text-ledger-muted">
+            Tải CSV hoặc JSON từ dữ liệu đang lưu.
+          </p>
+        </div>
+        <Button
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+          type="button"
+          variant="outline"
+        >
+          {isOpen ? "Ẩn tùy chọn" : "Xuất dữ liệu"}
+        </Button>
       </div>
 
-      <form className="mt-4 grid gap-4" onSubmit={handleSubmit}>
+      {isOpen ? (
+      <form className="mt-4 grid gap-4 border-t border-ledger-line pt-4" onSubmit={handleSubmit}>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="grid gap-1 text-sm font-medium text-ledger-ink">
             Định dạng
@@ -187,12 +200,85 @@ export function TransactionExport({ month }: TransactionExportProps) {
         ) : null}
 
         <Button
+          className="w-full sm:w-fit"
           disabled={isDownloading}
           type="submit"
         >
           {isDownloading ? "Đang chuẩn bị" : "Tải xuống"}
         </Button>
       </form>
+      ) : null}
+    </>
+  );
+
+  if (compact) {
+    return (
+      <div className="min-w-0">
+        <Button
+          aria-expanded={isOpen}
+          className="w-full sm:w-auto"
+          onClick={() => setIsOpen((current) => !current)}
+          type="button"
+          variant="outline"
+        >
+          Xuất dữ liệu
+        </Button>
+
+        {isOpen ? (
+          <form className="mt-4 grid gap-4 border-t border-ledger-line pt-4" onSubmit={handleSubmit}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm font-medium text-ledger-ink">
+                Định dạng
+                <select
+                  className={selectClassName}
+                  onChange={(event) =>
+                    setFormat(event.target.value as TransactionExportFormat)
+                  }
+                  value={format}
+                >
+                  <option value="csv">CSV</option>
+                  <option value="json">JSON</option>
+                </select>
+              </label>
+
+              <label className="grid gap-1 text-sm font-medium text-ledger-ink">
+                Tháng
+                <input
+                  className={inputClassName}
+                  onChange={(event) => setExportMonth(event.target.value)}
+                  type="month"
+                  value={exportMonth}
+                />
+              </label>
+            </div>
+
+            {error ? (
+              <p className="text-sm font-medium text-rose-700" role="alert">
+                {error}
+              </p>
+            ) : null}
+            {success ? (
+              <p className="text-sm font-medium text-ledger-accent" role="status">
+                {success}
+              </p>
+            ) : null}
+
+            <Button
+              className="w-full sm:w-fit"
+              disabled={isDownloading}
+              type="submit"
+            >
+              {isDownloading ? "Đang chuẩn bị" : "Tải xuống"}
+            </Button>
+          </form>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <section className="rounded-lg border border-ledger-line bg-white p-4 shadow-soft">
+      {content}
     </section>
   );
 }

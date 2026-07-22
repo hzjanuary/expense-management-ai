@@ -3,9 +3,10 @@ export function formatVnd(amountMinor: number): string {
     throw new Error("amountMinor must be an integer");
   }
 
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
+  const formattedAmount = new Intl.NumberFormat("vi-VN", {
     maximumFractionDigits: 0,
+    useGrouping: true,
   }).format(amountMinor);
+
+  return `${formattedAmount} ₫`;
 }

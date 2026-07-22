@@ -9,6 +9,9 @@ The frontend currently provides:
 - App Router layout with a multi-page app shell.
 - User-facing routes for `/dashboard`, `/transactions`, `/budgets`,
   `/assistant`, and `/settings`.
+- Professional product UI treatment based on the approved Revision 2 design
+  system: compact sidebar, mobile bottom navigation, ledger-style transaction
+  rows, balance-led dashboard, and receipt-style AI draft review.
 - Live dashboard summary cards backed by the dashboard summary proxy.
 - Live monthly budget remaining status backed by the budget remaining proxy.
 - Dashboard overview with compact summary, budget preview, recent transaction

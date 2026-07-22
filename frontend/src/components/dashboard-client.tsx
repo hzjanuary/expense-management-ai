@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { BudgetProgress } from "@/components/budget-progress";
-import { Button, panelClassName } from "@/components/ui";
-import { DashboardSummary } from "@/components/dashboard-summary";
+import { Button } from "@/components/ui";
+import {
+  DashboardCategoryBreakdown,
+  DashboardSummary,
+} from "@/components/dashboard-summary";
 import { MonthSelector } from "@/components/month-selector";
 import { RecentTransactions } from "@/components/recent-transactions";
 import { getCurrentMonthValue } from "@/lib/dashboard";
@@ -22,16 +25,11 @@ export function DashboardClient() {
 
   return (
     <div className="grid gap-5">
-      <section className={panelClassName}>
+      <section className="order-2 border-b border-ledger-line pb-5 lg:order-none">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-ledger-ink">
-              Tổng quan tháng
-            </h2>
-            <p className="mt-1 text-sm leading-6 text-ledger-muted">
-              Xem nhanh số dư, thu chi và ngân sách. Các thao tác chi tiết nằm
-              ở các trang riêng để dễ dùng hơn.
-            </p>
+          <div className="flex flex-wrap gap-2 lg:pb-1">
+              <QuickAction href="/assistant" label="Thêm giao dịch" />
+              <QuickAction href="/budgets" label="Sửa ngân sách" />
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <MonthSelector onChange={setSelectedMonth} value={selectedMonth} />
@@ -47,27 +45,25 @@ export function DashboardClient() {
         </div>
       </section>
 
-      <DashboardSummary
+      <div className="order-1 lg:order-none">
+        <DashboardSummary
+          month={selectedMonth}
+          refreshSignal={refreshRevision}
+        />
+      </div>
+
+      <BudgetProgress
+        compact
         month={selectedMonth}
+        onSetupRequested={() => undefined}
         refreshSignal={refreshRevision}
+        setupHref="/budgets"
       />
 
-      <section className={panelClassName}>
-        <h2 className="text-lg font-semibold text-ledger-ink">Thao tác nhanh</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <QuickAction href="/assistant" label="Thêm giao dịch" />
-          <QuickAction href="/budgets" label="Thiết lập ngân sách" />
-          <QuickAction href="/assistant" label="Hỏi trợ lý" />
-          <QuickAction href="/transactions" label="Xem giao dịch" />
-        </div>
-      </section>
-
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
-        <BudgetProgress
+      <div className="grid gap-5 border-t border-ledger-line pt-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(360px,1.1fr)]">
+        <DashboardCategoryBreakdown
           month={selectedMonth}
-          onSetupRequested={() => undefined}
           refreshSignal={refreshRevision}
-          setupHref="/budgets"
         />
         <RecentTransactions
           hideDeleteActions
@@ -83,12 +79,12 @@ function QuickAction({
   href,
   label,
 }: {
-  href: "/assistant" | "/budgets" | "/transactions";
+  href: "/assistant" | "/budgets";
   label: string;
 }) {
   return (
     <Link
-      className="inline-flex min-h-11 items-center justify-center rounded-md border border-ledger-line bg-ledger-wash px-4 text-center text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+      className="inline-flex min-h-9 items-center justify-center rounded-md border border-ledger-line bg-white px-3 text-center text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
       href={href}
     >
       {label}

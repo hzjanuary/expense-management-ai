@@ -73,6 +73,11 @@ function SpendingQueryResult({
   return (
     <div className="grid gap-3">
       <InsightAnswer answer={result.answer} />
+      <p className="text-3xl font-semibold tabular-nums text-ledger-ink">
+        {result.amount_minor === null
+          ? "Cần làm rõ"
+          : formatVnd(result.amount_minor)}
+      </p>
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         {result.spending_scope !== "total" ? (
           <InsightField
@@ -81,14 +86,6 @@ function SpendingQueryResult({
           />
         ) : null}
         <InsightField label="Thời gian" value={formatDateRange(result.date_range)} />
-        <InsightField
-          label={result.spending_scope === "total" ? "Tổng chi" : "Số tiền"}
-          value={
-            result.amount_minor === null
-              ? "Cần làm rõ"
-              : formatVnd(result.amount_minor)
-          }
-        />
         <InsightField
           label="Số giao dịch"
           value={String(result.transaction_count)}
@@ -260,7 +257,7 @@ function InsightCard({
   title: string;
 }) {
   return (
-    <article className="rounded-md border border-ledger-line bg-white p-4">
+    <article className="rounded-lg border border-ledger-line bg-white p-5 shadow-soft">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-sm font-semibold text-ledger-ink">{title}</h3>
@@ -272,17 +269,21 @@ function InsightCard({
           </span>
         ) : null}
       </div>
-      <div className="mt-4">{children}</div>
+      <div className="mt-4 border-t border-ledger-line pt-4">{children}</div>
     </article>
   );
 }
 
 function InsightAnswer({ answer }: { answer: string | null }) {
   return answer ? (
-    <p className="rounded-md border border-ledger-line bg-ledger-wash px-3 py-2 text-sm text-ledger-ink">
-      {answer}
+    <p className="text-sm leading-6 text-ledger-muted">
+      {formatAnswerText(answer)}
     </p>
   ) : null;
+}
+
+function formatAnswerText(answer: string): string {
+  return answer.replace(/(\d[\d.]*)\s*₫/g, "$1 ₫");
 }
 
 function InsightField({ label, value }: { label: string; value: string }) {
@@ -302,13 +303,14 @@ function InsightClarification({
   clarification: { message: string; fields: string[] } | null;
 }) {
   return (
-    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-      <p className="font-semibold">
-        {clarification?.message ?? "Cần thêm thông tin để trả lời."}
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
+      <p className="font-semibold">Cần thêm thông tin</p>
+      <p className="mt-2 leading-6">
+        {clarification?.message ?? "Bạn có thể nói rõ hơn để trợ lý trả lời chính xác."}
       </p>
       {clarification && clarification.fields.length > 0 ? (
-        <p className="mt-1 text-xs">
-          Cần bổ sung: {clarification.fields.map(formatClarificationField).join(", ")}
+        <p className="mt-2 text-xs text-amber-800">
+          {formatClarificationPrompt(clarification.fields)}
         </p>
       ) : null}
     </div>
@@ -329,20 +331,14 @@ function formatDateRange(dateRange: AiInsightDateRange | null): string {
   return `${formatDate(dateRange.start)} đến ${formatDate(dateRange.end)} (${formatPeriodLabel(dateRange.label)})`;
 }
 
-function formatClarificationField(field: string): string {
-  switch (field) {
-    case "category_slug":
-      return "nhóm chi tiêu";
-    case "date_range":
-      return "khoảng thời gian";
-    case "spending_scope":
-    case "query_scope":
-      return "loại câu hỏi";
-    case "intent":
-      return "yêu cầu";
-    default:
-      return "thông tin cần làm rõ";
+function formatClarificationPrompt(fields: string[]): string {
+  if (fields.includes("category_slug")) {
+    return "Bạn muốn xem nhóm chi tiêu nào?";
   }
+  if (fields.includes("date_range")) {
+    return "Bạn muốn xem trong khoảng thời gian nào?";
+  }
+  return "Bạn có thể nói rõ hơn để trợ lý trả lời chính xác.";
 }
 
 function formatDate(value: string): string {
