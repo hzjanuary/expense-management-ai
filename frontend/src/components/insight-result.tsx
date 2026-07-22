@@ -177,6 +177,7 @@ function SpendingBreakdownResult({
     return (
       <div className="grid gap-3">
         <InsightAnswer answer={result.answer} />
+        <InsightField label="Thời gian" value={formatDateRange(result.date_range)} />
         <p className="rounded-md border border-ledger-line bg-ledger-wash px-3 py-2 text-sm text-ledger-muted">
           Chưa có khoản chi trong khoảng thời gian này.
         </p>
@@ -328,6 +329,17 @@ function formatDateRange(dateRange: AiInsightDateRange | null): string {
     return "Cần làm rõ";
   }
 
+  if (dateRange.label === "this_month") {
+    return formatMonthLabel(dateRange.start);
+  }
+  if (dateRange.label === "this_week") {
+    const inclusiveEnd = new Date(dateRange.end);
+    inclusiveEnd.setDate(inclusiveEnd.getDate() - 1);
+    return `${formatDate(dateRange.start)} đến ${formatDate(
+      inclusiveEnd.toISOString(),
+    )}`;
+  }
+
   return `${formatDate(dateRange.start)} đến ${formatDate(dateRange.end)} (${formatPeriodLabel(dateRange.label)})`;
 }
 
@@ -349,6 +361,20 @@ function formatDate(value: string): string {
 
   return new Intl.DateTimeFormat("vi-VN", {
     dateStyle: "medium",
+    timeZone: "Asia/Ho_Chi_Minh",
+  }).format(date);
+}
+
+function formatMonthLabel(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Tháng này";
+  }
+
+  return new Intl.DateTimeFormat("vi-VN", {
+    month: "long",
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
   }).format(date);
 }
 

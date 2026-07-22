@@ -118,6 +118,7 @@ Settings are loaded from environment variables with the `POCKET_LEDGER_` prefix.
 | log level | `POCKET_LEDGER_LOG_LEVEL` | `INFO` |
 | default currency | `POCKET_LEDGER_DEFAULT_CURRENCY` | `VND` |
 | database URL | `POCKET_LEDGER_DATABASE_URL` | `sqlite+aiosqlite:///./data/pocket_ledger.db` |
+| default timezone | `POCKET_LEDGER_DEFAULT_TIMEZONE` | `Asia/Ho_Chi_Minh` |
 | default account name | `POCKET_LEDGER_DEFAULT_ACCOUNT_NAME` | `Cash Wallet` |
 | default account opening balance | `POCKET_LEDGER_DEFAULT_ACCOUNT_OPENING_BALANCE_MINOR` | `0` |
 | Ollama enabled | `POCKET_LEDGER_OLLAMA_ENABLED` | `false` |
@@ -246,6 +247,19 @@ curl -i -X POST http://127.0.0.1:8000/api/v1/ai/confirm \
 
 Confirmation revalidates the stored draft, creates exactly one ledger
 transaction with `source = "ai_chat"`, and marks the draft confirmed.
+
+Cancel a pending AI draft without mutating the ledger:
+
+```bash
+curl -i -X POST http://127.0.0.1:8000/api/v1/ai/cancel \
+  -H 'Content-Type: application/json' \
+  -d '{"draft_id": "<draft_id>"}'
+```
+
+Cancellation marks a pending draft as `cancelled`. Repeated cancellation of an
+already-cancelled draft is idempotent success. Confirmed or expired drafts
+return `422`, missing drafts return `404`, and no transaction, balance, or
+budget row is changed.
 
 Ask a spending question. The provider classifies the query, but the amount is
 computed from persisted ledger records:

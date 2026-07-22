@@ -23,6 +23,7 @@ export function TransactionDeleteDialog({
   transaction,
 }: TransactionDeleteDialogProps) {
   const cancelButtonRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     cancelButtonRef.current?.focus();
@@ -30,6 +31,9 @@ export function TransactionDeleteDialog({
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape" && !isDeleting) {
         onCancel();
+      }
+      if (event.key === "Tab") {
+        trapFocus(event, dialogRef.current);
       }
     }
 
@@ -46,6 +50,7 @@ export function TransactionDeleteDialog({
         aria-labelledby="delete-transaction-title"
         aria-modal="true"
         className="max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-t-xl border border-ledger-line bg-white p-5 shadow-dialog sm:max-w-md sm:rounded-lg"
+        ref={dialogRef}
         role="dialog"
       >
         <h3
@@ -124,6 +129,29 @@ export function TransactionDeleteDialog({
       </div>
     </div>
   );
+}
+
+function trapFocus(event: KeyboardEvent, container: HTMLElement | null) {
+  if (!container) {
+    return;
+  }
+  const focusable = Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  );
+  if (focusable.length === 0) {
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function formatDeleteDate(value: string): string {

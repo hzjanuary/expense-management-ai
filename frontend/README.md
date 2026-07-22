@@ -54,7 +54,7 @@ Browser-facing requests continue to call same-origin frontend routes such as
 `/api/transactions`, `/api/dashboard/summary`,
 `/api/budgets/monthly/{year}/{month}`,
 `/api/budgets/monthly/{year}/{month}/remaining`, `/api/ai/parse`,
-`/api/ai/confirm`, `/api/ai/query-spending`,
+`/api/ai/confirm`, `/api/ai/cancel`, `/api/ai/query-spending`,
 `/api/ai/query-budget-remaining`, `/api/ai/query-spending-breakdown`,
 `/api/transactions/export`, `/api/transactions/{transactionId}`, and
 `/api/ai/history`.

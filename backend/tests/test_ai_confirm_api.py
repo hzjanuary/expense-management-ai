@@ -84,6 +84,10 @@ def confirm_draft(client: TestClient, draft_id: str):
     return client.post("/api/v1/ai/confirm", json={"draft_id": draft_id})
 
 
+def cancel_draft(client: TestClient, draft_id: str):
+    return client.post("/api/v1/ai/cancel", json={"draft_id": draft_id})
+
+
 async def seed_ai_draft(
     session_factory: async_sessionmaker[AsyncSession],
     *,
@@ -250,6 +254,75 @@ def test_missing_draft_is_rejected(
 
     assert response.status_code == 404
     assert response.json()["detail"] == "AI draft not found"
+
+
+def test_pending_draft_can_be_cancelled_without_ledger_mutation(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    asyncio.run(seed_cash_account(session_factory, balance_minor=1_000_000))
+    draft_id = parse_draft(client)
+
+    response = cancel_draft(client, draft_id)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "draft_id": draft_id,
+        "status": "cancelled",
+        "cancelled": True,
+    }
+    assert asyncio.run(count_transactions(session_factory)) == 0
+    account = asyncio.run(fetch_account(session_factory))
+    assert account.current_balance_minor == 1_000_000
+    draft = asyncio.run(fetch_ai_transaction_draft(session_factory, draft_id))
+    assert draft.status == "cancelled"
+
+
+def test_cancelled_draft_cancel_is_idempotent_and_confirm_is_rejected(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    asyncio.run(seed_cash_account(session_factory, balance_minor=1_000_000))
+    draft_id = parse_draft(client)
+
+    first_cancel = cancel_draft(client, draft_id)
+    second_cancel = cancel_draft(client, draft_id)
+    confirm_response = confirm_draft(client, draft_id)
+
+    assert first_cancel.status_code == 200
+    assert second_cancel.status_code == 200
+    assert confirm_response.status_code == 422
+    assert confirm_response.json()["detail"] == "AI draft is not pending"
+    assert asyncio.run(count_transactions(session_factory)) == 0
+    account = asyncio.run(fetch_account(session_factory))
+    assert account.current_balance_minor == 1_000_000
+
+
+def test_confirmed_and_expired_drafts_cannot_be_cancelled(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    asyncio.run(seed_cash_account(session_factory, balance_minor=1_000_000))
+    confirmed_id = parse_draft(client)
+    assert confirm_draft(client, confirmed_id).status_code == 200
+    asyncio.run(
+        seed_ai_draft(
+            session_factory,
+            draft_id="expired-cancel-draft",
+            status="expired",
+            expires_at=datetime.now(UTC) - timedelta(seconds=1),
+        )
+    )
+
+    confirmed_cancel = cancel_draft(client, confirmed_id)
+    expired_cancel = cancel_draft(client, "expired-cancel-draft")
+    missing_cancel = cancel_draft(client, "missing-draft")
+
+    assert confirmed_cancel.status_code == 422
+    assert confirmed_cancel.json()["detail"] == "confirmed AI draft cannot be cancelled"
+    assert expired_cancel.status_code == 422
+    assert expired_cancel.json()["detail"] == "expired AI draft cannot be cancelled"
+    assert missing_cancel.status_code == 404
 
 
 def test_invalid_stored_category_cannot_be_confirmed_atomically(

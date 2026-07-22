@@ -214,8 +214,8 @@ def test_budget_remaining_returns_configured_food_budget_and_db_spend(
         "category_slug": "food",
         "currency": "VND",
         "date_range": {
-            "start": "2026-07-01T00:00:00+07:00",
-            "end": "2026-08-01T00:00:00+07:00",
+            "start": "2026-06-30T17:00:00Z",
+            "end": "2026-07-31T17:00:00Z",
             "label": "this_month",
         },
         "budget_minor": 2_000_000,
@@ -306,8 +306,8 @@ def test_budget_remaining_missing_budget_returns_no_budget_response(
         "category_slug": "food",
         "currency": "VND",
         "date_range": {
-            "start": "2026-07-01T00:00:00+07:00",
-            "end": "2026-08-01T00:00:00+07:00",
+            "start": "2026-06-30T17:00:00Z",
+            "end": "2026-07-31T17:00:00Z",
             "label": "this_month",
         },
         "budget_minor": None,

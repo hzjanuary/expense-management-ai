@@ -13,6 +13,7 @@ import { InsightResult } from "@/components/insight-result";
 import { Button, panelClassName, textareaClassName } from "@/components/ui";
 import {
   AiApiError,
+  cancelAiDraft,
   confirmAiDraft,
   parseAiMessage,
   queryBudgetRemainingInsight,
@@ -90,7 +91,7 @@ export function ChatToLedger({
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
-  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   const lastSubmissionRef = useRef<{
     intent: SupportedChatIntent;
     message: string;
@@ -145,7 +146,10 @@ export function ChatToLedger({
       return;
     }
 
-    abortControllerRef.current?.abort();
+    if (isSubmitting) {
+      return;
+    }
+
     const controller = new AbortController();
     abortControllerRef.current = controller;
     const requestSequence = requestSequenceRef.current + 1;
@@ -156,10 +160,10 @@ export function ChatToLedger({
       intent: intentSelection,
       message: trimmedMessage,
     };
+    setSelectedIntent("auto");
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);
-    setPendingMessage(trimmedMessage);
     setMessage("");
     window.requestAnimationFrame(() => textareaRef.current?.focus());
 
@@ -171,7 +175,6 @@ export function ChatToLedger({
         message: trimmedMessage,
       });
       setIsSubmitting(false);
-      setPendingMessage(null);
       return;
     }
 
@@ -234,8 +237,10 @@ export function ChatToLedger({
       });
     } finally {
       if (requestSequenceRef.current === requestSequence) {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
         setIsSubmitting(false);
-        setPendingMessage(null);
       }
     }
   }
@@ -274,9 +279,29 @@ export function ChatToLedger({
     }
   }
 
-  function handleCancel() {
-    setActiveDraftEntryId(null);
+  async function handleCancel() {
+    const activeDraftEntry = entries.find(
+      (entry): entry is Extract<ChatEntry, { intent: "create_transaction" }> =>
+        entry.intent === "create_transaction" && entry.id === activeDraftEntryId,
+    );
+
+    if (!activeDraftEntry?.parseResult.draft_id) {
+      setActiveDraftEntryId(null);
+      setError(null);
+      return;
+    }
+
     setError(null);
+    setSuccess(null);
+    setIsCancelling(true);
+    try {
+      await cancelAiDraft(activeDraftEntry.parseResult.draft_id);
+      setActiveDraftEntryId(null);
+    } catch (caughtError) {
+      setError(getSafeErrorMessage(caughtError, "Không hủy được bản nháp."));
+    } finally {
+      setIsCancelling(false);
+    }
   }
 
   function handleQuickAction(intent: SupportedChatIntent, example: string) {
@@ -286,7 +311,13 @@ export function ChatToLedger({
   }
 
   function handleTextareaKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== "Enter" || event.shiftKey || isSubmitting || isConfirming) {
+    if (
+      event.key !== "Enter" ||
+      event.shiftKey ||
+      isSubmitting ||
+      isConfirming ||
+      isCancelling
+    ) {
       return;
     }
 
@@ -321,10 +352,7 @@ export function ChatToLedger({
     textareaRef.current?.focus();
   }
 
-  const isDuplicatePendingSubmit =
-    isSubmitting && pendingMessage === message.trim();
-  const isBlockedPendingSubmit =
-    isSubmitting && (message.trim().length === 0 || isDuplicatePendingSubmit);
+  const isBlockedPendingSubmit = isSubmitting;
   const containerClassName =
     layout === "workspace"
       ? "flex min-h-0 flex-1 flex-col"
@@ -387,9 +415,10 @@ export function ChatToLedger({
                 activeDraftEntryId={activeDraftEntryId}
                 entry={entry}
                 isConfirming={isConfirming}
+                isCancelling={isCancelling}
                 isSubmitting={isSubmitting}
                 key={entry.id}
-                onCancelDraft={handleCancel}
+                onCancelDraft={() => void handleCancel()}
                 onClarificationAction={handleClarificationAction}
                 onConfirmDraft={() => void handleConfirm()}
                 onRetry={handleRetry}
@@ -418,11 +447,11 @@ export function ChatToLedger({
           </label>
           <Button
             className="w-full lg:w-auto"
-            disabled={isConfirming || isBlockedPendingSubmit}
+            disabled={isConfirming || isCancelling || isBlockedPendingSubmit}
             size="large"
             type="submit"
           >
-            {isBlockedPendingSubmit ? "Đang gửi" : "Gửi"}
+            {isSubmitting ? "Đang gửi" : "Gửi"}
           </Button>
         </div>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -471,6 +500,7 @@ function ChatEntryView({
   activeDraftEntryId,
   entry,
   isConfirming,
+  isCancelling,
   isSubmitting,
   onCancelDraft,
   onClarificationAction,
@@ -480,6 +510,7 @@ function ChatEntryView({
   activeDraftEntryId: number | null;
   entry: ChatEntry;
   isConfirming: boolean;
+  isCancelling: boolean;
   isSubmitting: boolean;
   onCancelDraft: () => void;
   onClarificationAction: (label: string) => void;
@@ -496,7 +527,7 @@ function ChatEntryView({
       ) : null}
       {entry.intent === "error" ? (
         <ProviderUnavailable
-          disabled={isSubmitting || isConfirming}
+          disabled={isSubmitting || isConfirming || isCancelling}
           message={entry.error}
           onRetry={onRetry}
         />
@@ -534,6 +565,7 @@ function ChatEntryView({
           confidence={entry.parseResult.confidence}
           draft={entry.parseResult.draft}
           isConfirming={isConfirming}
+          isCancelling={isCancelling}
           onCancel={onCancelDraft}
           onConfirm={onConfirmDraft}
         />

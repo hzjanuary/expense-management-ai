@@ -8,7 +8,10 @@ import { formatVnd } from "@/lib/money";
 import type { TransactionListItem } from "@/lib/transactions";
 
 type TransactionRowProps = {
-  onDeleteRequested?: (transaction: TransactionListItem) => void;
+  onDeleteRequested?: (
+    transaction: TransactionListItem,
+    returnFocus: () => void,
+  ) => void;
   transaction: TransactionListItem;
 };
 
@@ -17,7 +20,9 @@ export function TransactionRow({
   transaction,
 }: TransactionRowProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const deleteItemRef = useRef<HTMLButtonElement | null>(null);
   const isExpense = transaction.type === "expense";
   const amountPrefix = isExpense ? "−" : "+";
   const amountTone = isExpense ? "text-rose-700" : "text-ledger-accent";
@@ -36,9 +41,18 @@ export function TransactionRow({
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsMenuOpen(false);
+        menuButtonRef.current?.focus();
+      }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        deleteItemRef.current?.focus();
+      }
+      if (event.key === "Tab") {
+        setIsMenuOpen(false);
       }
     }
 
+    window.requestAnimationFrame(() => deleteItemRef.current?.focus());
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -91,6 +105,7 @@ export function TransactionRow({
               aria-haspopup="menu"
               aria-label={`Mở menu giao dịch ${transaction.description}`}
               onClick={() => setIsMenuOpen((current) => !current)}
+              ref={menuButtonRef}
               size="icon"
               type="button"
               variant="ghost"
@@ -108,8 +123,17 @@ export function TransactionRow({
                   className="flex min-h-10 w-full items-center rounded px-3 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ledger-accent"
                   onClick={() => {
                     setIsMenuOpen(false);
-                    onDeleteRequested(transaction);
+                    onDeleteRequested(transaction, () =>
+                      menuButtonRef.current?.focus(),
+                    );
                   }}
+                  onKeyDown={(event) => {
+                    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                      event.preventDefault();
+                      deleteItemRef.current?.focus();
+                    }
+                  }}
+                  ref={deleteItemRef}
                   role="menuitem"
                   type="button"
                 >

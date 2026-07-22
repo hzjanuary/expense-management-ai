@@ -208,8 +208,8 @@ def test_query_spending_uses_fake_provider_and_returns_db_total(
         "category_slug": "food",
         "currency": "VND",
         "date_range": {
-            "start": "2026-07-01T00:00:00+07:00",
-            "end": "2026-08-01T00:00:00+07:00",
+            "start": "2026-06-30T17:00:00Z",
+            "end": "2026-07-31T17:00:00Z",
             "label": "this_month",
         },
         "amount_minor": 50_000,

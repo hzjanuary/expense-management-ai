@@ -2,7 +2,11 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 
-import { EXPENSE_CATEGORY_OPTIONS } from "@/lib/categories";
+import {
+  CATEGORY_OPTIONS,
+  EXPENSE_CATEGORY_OPTIONS,
+  INCOME_CATEGORY_OPTIONS,
+} from "@/lib/categories";
 import {
   buildTransactionExportUrl,
   DataManagementApiError,
@@ -155,7 +159,7 @@ export function TransactionExport({ compact = false, month }: TransactionExportP
               value={category}
             >
               <option value="">Tất cả danh mục</option>
-              {EXPENSE_CATEGORY_OPTIONS.map((option) => (
+              {categoryOptionsForType(type).map((option) => (
                 <option key={option.slug} value={option.slug}>
                   {option.label}
                 </option>
@@ -281,6 +285,16 @@ export function TransactionExport({ compact = false, month }: TransactionExportP
       {content}
     </section>
   );
+}
+
+function categoryOptionsForType(type: TransactionType | "") {
+  if (type === "expense") {
+    return EXPENSE_CATEGORY_OPTIONS;
+  }
+  if (type === "income") {
+    return INCOME_CATEGORY_OPTIONS;
+  }
+  return CATEGORY_OPTIONS;
 }
 
 function getExportErrorMessage(error: DataManagementApiError): string {

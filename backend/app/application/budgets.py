@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.db.models import BudgetPeriodModel
 from app.db.repositories import (
     create_budget_period,
@@ -14,6 +14,7 @@ from app.db.repositories import (
 from app.domain.categories import CategoryValidationError, get_category_for_transaction
 from app.domain.enums import TransactionType
 from app.domain.money import MoneyValidationError, normalize_currency
+from app.domain.time_ranges import TimeRangeValidationError, month_range_utc
 
 
 class BudgetValidationError(ValueError):
@@ -159,7 +160,14 @@ async def get_budget_remaining(
     if budget_period is None:
         raise BudgetNotFoundError("monthly budget setup was not found")
 
-    month_start, month_end = _month_range(query.year, query.month)
+    try:
+        month_start, month_end = month_range_utc(
+            query.year,
+            query.month,
+            get_settings().default_timezone,
+        )
+    except TimeRangeValidationError as error:
+        raise BudgetValidationError(str(error)) from error
     category_spending = await get_monthly_expense_totals_by_category(
         session,
         month_start=month_start,
@@ -268,15 +276,6 @@ def _validate_non_negative_minor_units(value: int, field_name: str) -> int:
     if value < 0:
         raise BudgetValidationError(f"{field_name} must be zero or positive")
     return value
-
-
-def _month_range(year: int, month: int) -> tuple[datetime, datetime]:
-    next_year = year + 1 if month == 12 else year
-    next_month = 1 if month == 12 else month + 1
-    return (
-        datetime(year, month, 1, tzinfo=UTC),
-        datetime(next_year, next_month, 1, tzinfo=UTC),
-    )
 
 
 def _remaining_category_result(

@@ -163,6 +163,8 @@ describe("insight chat UI", () => {
 
     expect(await screen.findByRole("heading", { name: "Tổng chi tiêu" })).toBeInTheDocument();
     expect(await findTextContaining("155.000")).toBeInTheDocument();
+    expect(screen.getByText("tháng 7 năm 2026")).toBeInTheDocument();
+    expect(screen.queryByText(/1 thg 8|01\/08\/2026/)).not.toBeInTheDocument();
   });
 
   it("routes aggregate wallet-decrease wording as a total spending query", async () => {
@@ -228,6 +230,78 @@ describe("insight chat UI", () => {
     expect(countCalls(fetchMock, "/api/ai/query-budget-remaining")).toBe(1);
   });
 
+  it.each([
+    ["Thêm chi tiêu", "/api/ai/parse"],
+    ["Chi tiêu tháng này", "/api/ai/query-spending"],
+    ["Ngân sách còn lại", "/api/ai/query-budget-remaining"],
+    ["Chi nhiều nhất tuần này", "/api/ai/query-spending-breakdown"],
+  ])(
+    "uses quick action %s once and resets later free-form routing to auto",
+    async (quickActionLabel, firstEndpoint) => {
+      const fetchMock = mockAllChatEndpoints();
+
+      render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+      await userEvent.click(
+        screen.getByRole("button", { name: quickActionLabel }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
+      await waitFor(() =>
+        expect(countExactCalls(fetchMock, firstEndpoint)).toBe(1),
+      );
+
+      await submitMessage("Tháng này tôi đã chi tổng cộng bao nhiêu?");
+
+      expect(
+        await screen.findByRole("heading", { name: "Tổng chi tiêu" }),
+      ).toBeInTheDocument();
+      expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBeGreaterThan(
+        firstEndpoint === "/api/ai/query-spending" ? 1 : 0,
+      );
+      expect(countExactCalls(fetchMock, "/api/ai/parse")).toBe(
+        firstEndpoint === "/api/ai/parse" ? 1 : 0,
+      );
+    },
+  );
+
+  it("cancels a persisted draft through the cancellation endpoint before hiding it", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url === "/api/ai/parse") {
+        return Promise.resolve(jsonResponse(parseResponse));
+      }
+      if (url === "/api/ai/cancel") {
+        return Promise.resolve(
+          jsonResponse({
+            draft_id: "draft-1",
+            status: "cancelled",
+            cancelled: true,
+          }),
+        );
+      }
+      return Promise.reject(new Error(`Unexpected URL ${url}`));
+    });
+
+    render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+    await submitMessage("Hôm nay tôi tiêu 35k vào ăn trưa");
+    expect(await screen.findByText("Bản nháp giao dịch")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Hủy" }));
+
+    await waitFor(() =>
+      expect(screen.queryByText("Bản nháp giao dịch")).not.toBeInTheDocument(),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/ai/cancel",
+      expect.objectContaining({
+        body: JSON.stringify({ draft_id: "draft-1" }),
+        method: "POST",
+      }),
+    );
+    expect(countExactCalls(fetchMock, "/api/ai/confirm")).toBe(0);
+  });
+
   it("sends on Enter and keeps newlines with Shift Enter", async () => {
     const fetchMock = mockInsightFetch();
 
@@ -275,6 +349,7 @@ describe("insight chat UI", () => {
 
     await submitMessage("Tuần này tôi tiêu nhiều nhất vào mục nào?");
     expect(await screen.findByText(/Chưa có khoản chi/)).toBeInTheDocument();
+    expect(screen.getAllByText(/13 thg 7, 2026 đến 19 thg 7, 2026/).length).toBeGreaterThan(0);
   });
 
   it("renders clarification and provider errors without fabricated totals", async () => {
@@ -308,15 +383,12 @@ describe("insight chat UI", () => {
     expect(screen.getByLabelText("Chat to ledger message")).toHaveValue("");
   });
 
-  it("prevents duplicate submit while pending and ignores stale responses", async () => {
+  it("blocks new submits while pending and leaves no stale pending entry", async () => {
     const first = createDeferred<Response>();
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const url = String(input);
-      if (url === "/api/ai/query-spending" && fetchMock.mock.calls.length === 1) {
+      if (url === "/api/ai/query-spending") {
         return first.promise;
-      }
-      if (url === "/api/ai/query-budget-remaining") {
-        return Promise.resolve(jsonResponse(budgetResponse));
       }
       return Promise.reject(new Error(`Unexpected URL ${url}`));
     });
@@ -331,19 +403,18 @@ describe("insight chat UI", () => {
     expect(await screen.findByRole("button", { name: "Đang gửi" })).toBeDisabled();
     expect(countCalls(fetchMock, "/api/ai/query-spending")).toBe(1);
 
-    await userEvent.clear(screen.getByLabelText("Chat to ledger message"));
     await userEvent.type(
       screen.getByLabelText("Chat to ledger message"),
       "Còn bao nhiêu tiền ăn tháng này?",
     );
-    await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
-
-    expect(await screen.findByRole("heading", { name: "Ngân sách còn lại" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Đang gửi" })).toBeDisabled();
+    expect(countCalls(fetchMock, "/api/ai/query-budget-remaining")).toBe(0);
     first.resolve(jsonResponse(spendingResponse));
 
-    await waitFor(() =>
-      expect(screen.queryByRole("heading", { name: "Chi tiêu theo danh mục" })).not.toBeInTheDocument(),
-    );
+    expect(
+      await screen.findByRole("heading", { name: "Chi tiêu theo danh mục" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Đang hỏi trợ lý cục bộ...")).not.toBeInTheDocument();
   });
 
   it("marks old insight results stale when financial data changes and does not persist chat", async () => {
@@ -384,6 +455,32 @@ function expectTextBefore(firstText: string, secondText: string) {
 function mockInsightFetch() {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
     const url = String(input);
+    if (url === "/api/ai/query-spending") {
+      const body = getRequestBody(init);
+      return Promise.resolve(
+        jsonResponse(
+          isTotalSpendingTestMessage(body.message)
+            ? totalSpendingResponse
+            : spendingResponse,
+        ),
+      );
+    }
+    if (url === "/api/ai/query-budget-remaining") {
+      return Promise.resolve(jsonResponse(budgetResponse));
+    }
+    if (url === "/api/ai/query-spending-breakdown") {
+      return Promise.resolve(jsonResponse(breakdownResponse));
+    }
+    return Promise.reject(new Error(`Unexpected URL ${url}`));
+  });
+}
+
+function mockAllChatEndpoints() {
+  return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+    const url = String(input);
+    if (url === "/api/ai/parse") {
+      return Promise.resolve(jsonResponse(parseResponse));
+    }
     if (url === "/api/ai/query-spending") {
       const body = getRequestBody(init);
       return Promise.resolve(

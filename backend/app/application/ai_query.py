@@ -23,6 +23,7 @@ from app.domain.categories import (
 )
 from app.domain.enums import TransactionType
 from app.domain.money import MoneyValidationError, normalize_currency
+from app.domain.time_ranges import TimeRangeValidationError, month_range_utc
 
 
 class SpendingQueryValidationError(ValueError):
@@ -303,10 +304,11 @@ async def answer_budget_remaining_query(
         range_start=date_range.start,
         range_end=date_range.end,
     )
+    period_year, period_month = _current_local_year_month(command.timezone, now=now)
     budget_period = await get_budget_period(
         session,
-        year=date_range.start.year,
-        month=date_range.start.month,
+        year=period_year,
+        month=period_month,
         currency=currency,
     )
     category_budget = None
@@ -656,13 +658,31 @@ def _this_month_range(timezone: str, *, now: datetime | None) -> DateRange:
         if current.tzinfo is not None
         else current.replace(tzinfo=zone)
     )
-    start = current.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    if start.month == 12:
-        end = start.replace(year=start.year + 1, month=1)
-    else:
-        end = start.replace(month=start.month + 1)
+    try:
+        start, end = month_range_utc(current.year, current.month, timezone)
+    except TimeRangeValidationError as error:
+        raise SpendingQueryValidationError(str(error)) from error
 
     return DateRange(start=start, end=end, label="this_month")
+
+
+def _current_local_year_month(
+    timezone: str,
+    *,
+    now: datetime | None,
+) -> tuple[int, int]:
+    try:
+        zone = ZoneInfo(timezone)
+    except ZoneInfoNotFoundError as error:
+        raise SpendingQueryValidationError("timezone is invalid") from error
+
+    current = now or datetime.now(zone)
+    current = (
+        current.astimezone(zone)
+        if current.tzinfo is not None
+        else current.replace(tzinfo=zone)
+    )
+    return current.year, current.month
 
 
 def _this_week_range(timezone: str, *, now: datetime | None) -> DateRange:

@@ -97,14 +97,14 @@ test("complete local-first MVP demo", async ({ page }) => {
   await expect(totalSpendingInsight.getByText("Danh mục")).toHaveCount(0);
   await expectMoney(totalSpendingInsight, "28.000");
   await expect(totalSpendingInsight.getByText("Số giao dịch").locator("..")).toContainText("1");
-  await expect(totalSpendingInsight.getByText(/tháng này/)).toBeVisible();
+  await expect(totalSpendingInsight.getByText(/tháng 7 năm 2026/i)).toBeVisible();
 
   await submitChat(page, SPENDING_QUERY);
   const spendingInsight = insightByHeading(page, "Chi tiêu theo danh mục");
   await expect(spendingInsight.getByText("Ăn uống", { exact: true })).toBeVisible();
   await expectMoney(spendingInsight, "28.000");
   await expect(spendingInsight.getByText("Số giao dịch").locator("..")).toContainText("1");
-  await expect(spendingInsight.getByText(/tháng này/)).toBeVisible();
+  await expect(spendingInsight.getByText(/tháng 7 năm 2026/i)).toBeVisible();
   await expectNoCriticalOrSeriousA11yViolations(page, "insight result");
 
   await submitChat(page, BUDGET_QUERY);

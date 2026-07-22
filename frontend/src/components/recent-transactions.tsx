@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TransactionDeleteDialog } from "@/components/transaction-delete-dialog";
 import { Button, panelClassName } from "@/components/ui";
@@ -47,24 +47,46 @@ export function RecentTransactions({
   const [localRefreshSignal, setLocalRefreshSignal] = useState(0);
   const [transactionToDelete, setTransactionToDelete] =
     useState<TransactionListItem | null>(null);
+  const returnFocusAfterDeleteRef = useRef<(() => void) | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
+  const requestSequenceRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const loadTransactions = useCallback(async () => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const requestSequence = requestSequenceRef.current + 1;
+    requestSequenceRef.current = requestSequence;
     setState((current) => (current === "loaded" ? current : "loading"));
     try {
-      const result = await fetchRecentTransactions(filters);
+      const result = await fetchRecentTransactions(filters, controller.signal);
+      if (requestSequenceRef.current !== requestSequence) {
+        return;
+      }
       setTransactions(result.items);
       setTotal(result.total);
       setState("loaded");
-    } catch {
+    } catch (caughtError) {
+      if (isAbortError(caughtError)) {
+        return;
+      }
+      if (requestSequenceRef.current !== requestSequence) {
+        return;
+      }
       setState("error");
+    } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   }, [filters]);
 
   useEffect(() => {
     void loadTransactions();
+    return () => abortControllerRef.current?.abort();
   }, [loadTransactions, localRefreshSignal, refreshSignal]);
 
   async function handleConfirmDelete() {
@@ -83,6 +105,8 @@ export function RecentTransactions({
         return;
       }
       setTransactionToDelete(null);
+      returnFocusAfterDeleteRef.current?.();
+      returnFocusAfterDeleteRef.current = null;
       setDeleteNotice("Đã xóa giao dịch khỏi các màn hình đang dùng.");
       setLocalRefreshSignal((currentValue) => currentValue + 1);
       onTransactionDeleted?.();
@@ -96,6 +120,8 @@ export function RecentTransactions({
         (caughtError.status === 404 || caughtError.status === 409)
       ) {
         setTransactionToDelete(null);
+        returnFocusAfterDeleteRef.current?.();
+        returnFocusAfterDeleteRef.current = null;
         setDeleteNotice(message);
         setLocalRefreshSignal((currentValue) => currentValue + 1);
         onTransactionDeleted?.();
@@ -157,9 +183,10 @@ export function RecentTransactions({
                   onDeleteRequested={
                     hideDeleteActions
                       ? undefined
-                      : (selectedTransaction) => {
+                      : (selectedTransaction, returnFocus) => {
                           setDeleteNotice(null);
                           setDeleteError(null);
+                          returnFocusAfterDeleteRef.current = returnFocus;
                           setTransactionToDelete(selectedTransaction);
                         }
                   }
@@ -187,6 +214,8 @@ export function RecentTransactions({
           onCancel={() => {
             if (!isDeleting) {
               setTransactionToDelete(null);
+              returnFocusAfterDeleteRef.current?.();
+              returnFocusAfterDeleteRef.current = null;
               setDeleteError(null);
             }
           }}
@@ -271,6 +300,13 @@ function ErrorState() {
 
 function hasActiveFilters(filters: TransactionListFilters | undefined): boolean {
   return Boolean(filters?.category || filters?.type || filters?.q);
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    error instanceof DOMException &&
+    (error.name === "AbortError" || error.code === DOMException.ABORT_ERR)
+  );
 }
 
 function getDeleteErrorMessage(error: DataManagementApiError): string {

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui";
 type AiDraftReviewProps = {
   confidence?: string;
   draft: AiTransactionDraft;
+  isCancelling?: boolean;
   isConfirming: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -13,6 +14,7 @@ type AiDraftReviewProps = {
 
 export function AiDraftReview({
   draft,
+  isCancelling = false,
   isConfirming,
   onCancel,
   onConfirm,
@@ -59,7 +61,7 @@ export function AiDraftReview({
       <div className="mt-3 flex items-center gap-2 sm:mt-5">
         <Button
           className="flex-1 sm:flex-none"
-          disabled={isConfirming}
+          disabled={isConfirming || isCancelling}
           onClick={onConfirm}
           type="button"
           variant="primary"
@@ -68,12 +70,12 @@ export function AiDraftReview({
         </Button>
         <Button
           className="shrink-0"
-          disabled={isConfirming}
+          disabled={isConfirming || isCancelling}
           onClick={onCancel}
           type="button"
           variant="ghost"
         >
-          Hủy
+          {isCancelling ? "Đang hủy" : "Hủy"}
         </Button>
       </div>
     </div>

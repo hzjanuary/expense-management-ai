@@ -48,6 +48,12 @@ export type AiConfirmResponse = {
   account_balance_minor: number;
 };
 
+export type AiCancelResponse = {
+  draft_id: string;
+  status: "cancelled" | string;
+  cancelled: boolean;
+};
+
 export type AiInsightDateRange = {
   start: string;
   end: string;
@@ -175,6 +181,49 @@ export async function confirmAiDraft(
 
   const payload: unknown = await response.json();
   return parseAiConfirmResponse(payload);
+}
+
+export async function cancelAiDraft(
+  draftId: string,
+  signal?: AbortSignal,
+): Promise<AiCancelResponse> {
+  const response = await fetch("/api/ai/cancel", {
+    body: JSON.stringify({ draft_id: draftId }),
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    method: "POST",
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new AiApiError(await readErrorMessage(response), response.status);
+  }
+
+  const payload: unknown = await response.json();
+  return parseAiCancelResponse(payload);
+}
+
+export function parseAiCancelResponse(payload: unknown): AiCancelResponse {
+  if (!isRecord(payload)) {
+    throw new AiApiError("Invalid AI cancellation response");
+  }
+
+  const { draft_id: draftId, status, cancelled } = payload;
+  if (
+    typeof draftId !== "string" ||
+    typeof status !== "string" ||
+    typeof cancelled !== "boolean"
+  ) {
+    throw new AiApiError("Invalid AI cancellation response");
+  }
+
+  return {
+    draft_id: draftId,
+    status,
+    cancelled,
+  };
 }
 
 export async function querySpendingInsight(
@@ -482,7 +531,7 @@ export function parseAiQuerySpendingBreakdownResponse(
 
 export function getAiErrorMessageForStatus(
   status: number,
-  action: "parse" | "confirm" | "insight",
+  action: "parse" | "confirm" | "cancel" | "insight",
 ): string {
   if (status === 503) {
     return "Local AI is disabled or unavailable. Start Ollama or try again later.";
@@ -491,7 +540,9 @@ export function getAiErrorMessageForStatus(
     return "AI provider timed out. Try again with a shorter message.";
   }
   if (status === 404) {
-    return "AI draft was not found. Parse the message again before confirming.";
+    return action === "cancel"
+      ? "AI draft was not found. Parse the message again before cancelling."
+      : "AI draft was not found. Parse the message again before confirming.";
   }
   if (status === 422) {
     if (action === "insight") {
@@ -499,7 +550,9 @@ export function getAiErrorMessageForStatus(
     }
     return action === "parse"
       ? "Message could not be parsed. Edit the text and try again."
-      : "AI draft could not be confirmed. It may be expired, duplicate, or invalid.";
+      : action === "cancel"
+        ? "AI draft could not be cancelled. It may already be confirmed or expired."
+        : "AI draft could not be confirmed. It may be expired, duplicate, or invalid.";
   }
   if (status === 502) {
     if (action === "insight") {
@@ -507,11 +560,15 @@ export function getAiErrorMessageForStatus(
     }
     return action === "parse"
       ? "AI provider returned an invalid parse response."
-      : "AI confirmation failed safely.";
+      : action === "cancel"
+        ? "AI cancellation failed safely."
+        : "AI confirmation failed safely.";
   }
 
   return action === "parse"
     ? "Unable to parse the message."
+    : action === "cancel"
+      ? "Unable to cancel the AI draft."
     : action === "confirm"
       ? "Unable to confirm the AI draft."
       : "Unable to answer the insight request.";

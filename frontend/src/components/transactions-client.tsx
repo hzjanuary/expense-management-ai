@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 
 import { MonthSelector } from "@/components/month-selector";
 import { RecentTransactions } from "@/components/recent-transactions";
@@ -10,7 +16,11 @@ import {
   inputClassName,
   selectClassName,
 } from "@/components/ui";
-import { EXPENSE_CATEGORY_OPTIONS } from "@/lib/categories";
+import {
+  CATEGORY_OPTIONS,
+  EXPENSE_CATEGORY_OPTIONS,
+  INCOME_CATEGORY_OPTIONS,
+} from "@/lib/categories";
 import { getCurrentMonthValue } from "@/lib/dashboard";
 import type { TransactionType } from "@/lib/transactions";
 
@@ -22,6 +32,7 @@ export function TransactionsClient() {
   const [type, setType] = useState<TransactionType | "">("");
   const [query, setQuery] = useState("");
   const [areFiltersOpen, setAreFiltersOpen] = useState(false);
+  const filterButtonRef = useRef<HTMLButtonElement | null>(null);
   const [refreshRevision, setRefreshRevision] = useState(0);
   const transactionFilters = useMemo(
     () => ({
@@ -42,6 +53,16 @@ export function TransactionsClient() {
     setType("");
     setQuery("");
     setAreFiltersOpen(false);
+  }
+
+  function handleTypeChange(nextType: TransactionType | "") {
+    setType(nextType);
+    const allowed = categoryOptionsForType(nextType).some(
+      (option) => option.slug === category,
+    );
+    if (!allowed) {
+      setCategory("");
+    }
   }
 
   return (
@@ -68,6 +89,7 @@ export function TransactionsClient() {
           <Button
             aria-expanded={areFiltersOpen}
             onClick={() => setAreFiltersOpen((current) => !current)}
+            ref={filterButtonRef}
             type="button"
             variant="outline"
           >
@@ -89,7 +111,8 @@ export function TransactionsClient() {
             onClose={() => setAreFiltersOpen(false)}
             onMonthChange={setSelectedMonth}
             onQueryChange={setQuery}
-            onTypeChange={setType}
+            onTypeChange={handleTypeChange}
+            returnFocus={() => filterButtonRef.current?.focus()}
             query={query}
             selectedMonth={selectedMonth}
             type={type}
@@ -118,6 +141,7 @@ function FilterPanel({
   onMonthChange,
   onQueryChange,
   onTypeChange,
+  returnFocus,
   query,
   selectedMonth,
   type,
@@ -128,10 +152,17 @@ function FilterPanel({
   onMonthChange: (month: string) => void;
   onQueryChange: (query: string) => void;
   onTypeChange: (type: TransactionType | "") => void;
+  returnFocus: () => void;
   query: string;
   selectedMonth: string;
   type: TransactionType | "";
 }) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
+
   const controls = (
     <div className="grid gap-3 md:grid-cols-4">
       <MonthSelector onChange={onMonthChange} value={selectedMonth} />
@@ -143,7 +174,7 @@ function FilterPanel({
           value={category}
         >
           <option value="">Tất cả danh mục</option>
-          {EXPENSE_CATEGORY_OPTIONS.map((option) => (
+          {categoryOptionsForType(type).map((option) => (
             <option key={option.slug} value={option.slug}>
               {option.label}
             </option>
@@ -182,15 +213,45 @@ function FilterPanel({
       <div className="mt-4 hidden border-t border-ledger-line pt-4 md:block">
         {controls}
       </div>
-      <div className="fixed inset-0 z-40 bg-black/30 p-4 md:hidden" role="presentation">
+      <div
+        className="fixed inset-0 z-40 bg-black/30 p-4 md:hidden"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            onClose();
+            returnFocus();
+          }
+        }}
+        role="presentation"
+      >
         <div
           aria-label="Bộ lọc giao dịch"
+          aria-modal="true"
           className="mt-16 rounded-lg bg-white p-4 shadow-dialog"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              onClose();
+              returnFocus();
+            }
+            if (event.key === "Tab") {
+              trapFocus(event, dialogRef.current);
+            }
+          }}
+          ref={dialogRef}
           role="dialog"
         >
           <div className="mb-4 flex items-center justify-between gap-3">
             <p className="text-base font-semibold text-ledger-ink">Bộ lọc</p>
-            <Button onClick={onClose} size="small" type="button" variant="ghost">
+            <Button
+              onClick={() => {
+                onClose();
+                returnFocus();
+              }}
+              ref={closeButtonRef}
+              size="small"
+              type="button"
+              variant="ghost"
+            >
               Đóng
             </Button>
           </div>
@@ -199,6 +260,39 @@ function FilterPanel({
       </div>
     </>
   );
+}
+
+function trapFocus(event: KeyboardEvent, container: HTMLElement | null) {
+  if (!container) {
+    return;
+  }
+  const focusable = Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  );
+  if (focusable.length === 0) {
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function categoryOptionsForType(type: TransactionType | "") {
+  if (type === "expense") {
+    return EXPENSE_CATEGORY_OPTIONS;
+  }
+  if (type === "income") {
+    return INCOME_CATEGORY_OPTIONS;
+  }
+  return CATEGORY_OPTIONS;
 }
 
 function getFilterSummary({

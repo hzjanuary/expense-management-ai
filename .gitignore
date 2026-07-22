@@ -42,6 +42,10 @@ test-results/
 frontend/playwright-report/
 frontend/test-results/
 frontend/e2e-artifacts/
+frontend/visual-evidence-output/
+pocket-ledger-*-evidence*.tar.gz
+pocket-ledger-*-concepts*.tar.gz
+**/TASK-*-visual-evidence-*.tar.gz
 tsconfig.tsbuildinfo
 
 # Downloaded Harness CLI binary for installed project instances.
