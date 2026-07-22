@@ -251,6 +251,17 @@ curl -i -X POST http://127.0.0.1:8000/api/v1/ai/query-spending \
   -d '{"message": "Tháng này tôi ăn uống hết bao nhiêu?"}'
 ```
 
+Total spending questions use the same endpoint and do not require a category:
+
+```bash
+curl -i -X POST http://127.0.0.1:8000/api/v1/ai/query-spending \
+  -H 'Content-Type: application/json' \
+  -d '{"message": "Tháng này tôi đã chi tổng cộng bao nhiêu?"}'
+```
+
+For category spending questions, Vietnamese aliases such as `ăn uống`, `cà phê`,
+and `xăng` are normalized deterministically before the SQL aggregation runs.
+
 Ask a budget remaining question. The provider classifies the query, but the
 remaining budget is computed from configured budgets and persisted transactions:
 

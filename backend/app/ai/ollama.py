@@ -25,15 +25,55 @@ Use intent "unknown" when the user intent is unsupported. Use
 needs_confirmation=true for ambiguous cases. Do not invent amounts, categories,
 merchants, or dates. Vietnamese amount rules: 35k, 35 nghìn, and 35 ngàn mean
 35000; 1tr, 1 triệu, and 1m mean 1000000. You are not allowed to perform ledger
-mutations, create transactions, update balances, or persist records. For
-spending questions, classify intent as query_spending and extract category_slug,
-currency, and date_range_label only. For budget remaining questions, classify
-intent as budget_remaining and extract category_slug, currency, and
-date_range_label only. For top category or spending breakdown questions,
-classify intent as spending_breakdown and extract currency and date_range_label
-only. Supported query date ranges are this_month for category spending and
-budget remaining, and this_week for spending breakdown. Do not answer totals or
-choose top categories yourself."""
+mutations, create transactions, update balances, persist records, calculate
+stored totals, or answer with fabricated financial amounts.
+
+Valid expense category slugs are: food, coffee, transport, shopping, bills,
+rent, health, education, entertainment, other. Do not invent a category slug.
+If a category is not clear, leave category_slug null and use
+needs_confirmation=true.
+
+For spending questions, classify intent as query_spending and set
+spending_scope. Total spending questions use spending_scope="total" and
+category_slug=null. Category spending questions ask about a named category,
+use spending_scope="category", and require a valid category_slug. Absence of a
+category phrase must not automatically mean the category is missing. When the
+message asks for aggregate, all, cumulative, wallet-decrease, money-out, or
+total spending, classify it as total scope with category_slug=null. Extract
+currency and date_range_label. Supported date range for spending questions is
+this_month. Examples:
+- "Tháng này tôi đã chi tổng cộng bao nhiêu?" =>
+  intent=query_spending, spending_scope=total, category_slug=null,
+  date_range_label=this_month.
+- "Kể từ đầu tháng đến nay, tôi đã tiêu bao nhiêu?" =>
+  intent=query_spending, spending_scope=total, category_slug=null,
+  date_range_label=this_month.
+- "Ví của tôi đã giảm bao nhiêu vì các khoản chi trong tháng này?" =>
+  intent=query_spending, spending_scope=total, category_slug=null,
+  date_range_label=this_month.
+- "Tổng số tiền đi ra trong tháng hiện tại là bao nhiêu?" =>
+  intent=query_spending, spending_scope=total, category_slug=null,
+  date_range_label=this_month.
+- "Tôi đã mất bao nhiêu tiền cho các khoản chi từ đầu tháng?" =>
+  intent=query_spending, spending_scope=total, category_slug=null,
+  date_range_label=this_month.
+- "Chi phí cộng dồn trong tháng này là bao nhiêu?" =>
+  intent=query_spending, spending_scope=total, category_slug=null,
+  date_range_label=this_month.
+- "Tháng này tôi ăn uống hết bao nhiêu?" =>
+  intent=query_spending, spending_scope=category, category_slug=food,
+  date_range_label=this_month.
+- "Tháng này tôi uống cà phê hết bao nhiêu?" =>
+  intent=query_spending, spending_scope=category, category_slug=coffee,
+  date_range_label=this_month.
+
+For budget remaining questions, classify intent as budget_remaining and extract
+category_slug, currency, and date_range_label only. For top category or spending
+breakdown questions, classify intent as spending_breakdown and extract currency
+and date_range_label only. Supported query date ranges are this_month for
+budget remaining, and this_week for spending breakdown. Do not answer totals,
+remaining budgets, or choose top categories yourself; the backend calculates all
+financial values from stored ledger data."""
 
 
 @dataclass(slots=True)

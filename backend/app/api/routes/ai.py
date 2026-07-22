@@ -233,6 +233,7 @@ async def query_spending(
 
     return AiQuerySpendingResponse(
         intent=result.intent,
+        spending_scope=result.spending_scope,
         category_slug=result.category_slug,
         currency=result.currency,
         date_range=date_range,

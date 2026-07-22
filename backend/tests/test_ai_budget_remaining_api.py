@@ -223,7 +223,7 @@ def test_budget_remaining_returns_configured_food_budget_and_db_spend(
         "remaining_minor": 1_965_000,
         "is_over_budget": False,
         "transaction_count": 1,
-        "answer": "Tháng này bạn còn 1.965.000₫ cho food.",
+        "answer": "Tháng này bạn còn 1.965.000₫ cho Ăn uống.",
         "needs_clarification": False,
         "clarification": None,
     }
@@ -271,7 +271,7 @@ def test_budget_remaining_over_budget_state_is_computed(
     assert payload["spent_minor"] == 35_000
     assert payload["remaining_minor"] == -15_000
     assert payload["is_over_budget"] is True
-    assert payload["answer"] == "Tháng này bạn còn -15.000₫ cho food."
+    assert payload["answer"] == "Tháng này bạn còn -15.000₫ cho Ăn uống."
 
 
 def test_budget_remaining_empty_spending_returns_full_remaining_budget(
@@ -315,7 +315,7 @@ def test_budget_remaining_missing_budget_returns_no_budget_response(
         "remaining_minor": None,
         "is_over_budget": None,
         "transaction_count": 1,
-        "answer": "Bạn chưa thiết lập ngân sách cho food tháng này.",
+        "answer": "Bạn chưa thiết lập ngân sách cho Ăn uống tháng này.",
         "needs_clarification": False,
         "clarification": None,
     }

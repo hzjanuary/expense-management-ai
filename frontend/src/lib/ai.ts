@@ -63,6 +63,7 @@ export type AiQueryRequest = {
 
 export type AiQuerySpendingResponse = {
   intent: "query_spending" | string;
+  spending_scope: "total" | "category" | string | null;
   category_slug: string | null;
   currency: string;
   date_range: AiInsightDateRange | null;
@@ -315,6 +316,7 @@ export function parseAiQuerySpendingResponse(
 
   const {
     intent,
+    spending_scope: spendingScope,
     category_slug: categorySlug,
     currency,
     date_range: dateRange,
@@ -327,6 +329,12 @@ export function parseAiQuerySpendingResponse(
 
   if (
     typeof intent !== "string" ||
+    !(
+      spendingScope === "total" ||
+      spendingScope === "category" ||
+      typeof spendingScope === "string" ||
+      spendingScope === null
+    ) ||
     !(typeof categorySlug === "string" || categorySlug === null) ||
     typeof currency !== "string" ||
     !(dateRange === null || isRecord(dateRange)) ||
@@ -344,6 +352,7 @@ export function parseAiQuerySpendingResponse(
 
   return {
     intent,
+    spending_scope: spendingScope,
     category_slug: categorySlug,
     currency,
     date_range: dateRange === null ? null : parseAiDateRange(dateRange),

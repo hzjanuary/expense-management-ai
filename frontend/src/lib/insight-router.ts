@@ -41,45 +41,20 @@ export function routeChatIntent(
 
   const normalized = normalizeMessage(message);
 
-  if (
-    includesAny(normalized, [
-      "thang nay toi an uong het bao nhieu",
-      "thang nay toi an ngoai het bao nhieu",
-      "thang nay toi tieu cho food het bao nhieu",
-    ])
-  ) {
-    return "query_spending";
+  if (isCreateTransactionMessage(normalized)) {
+    return "create_transaction";
   }
 
-  if (
-    normalized.includes("con bao nhieu") &&
-    includesAny(normalized, [
-      "tien an",
-      "ngan sach an",
-      "budget food",
-      "an uong",
-      "an ngoai",
-    ])
-  ) {
+  if (isBudgetRemainingMessage(normalized)) {
     return "budget_remaining";
   }
 
-  if (
-    includesAny(normalized, [
-      "tuan nay toi tieu nhieu nhat vao muc nao",
-      "tuan nay muc nao toi tieu nhieu nhat",
-      "toi chi nhieu nhat vao dau tuan nay",
-      "top chi tieu tuan nay",
-    ])
-  ) {
+  if (isSpendingBreakdownMessage(normalized)) {
     return "spending_breakdown";
   }
 
-  if (
-    normalized.includes("tieu") &&
-    includesAny(normalized, ["35k", "an trua", "hom nay"])
-  ) {
-    return "create_transaction";
+  if (isSpendingQueryMessage(normalized)) {
+    return "query_spending";
   }
 
   return "unknown";
@@ -102,6 +77,123 @@ export function formatIntentLabel(intent: RoutedChatIntent | SupportedChatIntent
     default:
       return intent;
   }
+}
+
+function isSpendingQueryMessage(normalized: string): boolean {
+  return mentionsThisMonth(normalized) && hasSpendingLanguage(normalized) && (
+    hasTotalLanguage(normalized) || hasCategorySignal(normalized)
+  );
+}
+
+function isBudgetRemainingMessage(normalized: string): boolean {
+  return (
+    mentionsThisMonth(normalized) &&
+    includesAny(normalized, ["con bao nhieu", "ngan sach", "budget"]) &&
+    includesAny(normalized, ["tien an", "an uong", "an ngoai", "food"])
+  );
+}
+
+function isSpendingBreakdownMessage(normalized: string): boolean {
+  if (
+    includesAny(normalized, [
+      "tuan nay toi tieu nhieu nhat vao muc nao",
+      "tuan nay muc nao toi tieu nhieu nhat",
+      "toi chi nhieu nhat vao dau tuan nay",
+      "top chi tieu tuan nay",
+    ])
+  ) {
+    return true;
+  }
+
+  return normalized.includes("tuan nay") && includesAny(normalized, [
+    "tieu nhieu nhat",
+    "chi nhieu nhat",
+    "muc nao",
+    "top chi",
+  ]);
+}
+
+function isCreateTransactionMessage(normalized: string): boolean {
+  return (
+    normalized.includes("tieu") &&
+    includesAny(normalized, ["35k", "an trua", "hom nay"])
+  );
+}
+
+function mentionsThisMonth(normalized: string): boolean {
+  return normalized.includes("thang nay") || normalized.includes("this month");
+}
+
+function hasSpendingLanguage(normalized: string): boolean {
+  return includesAny(normalized, [
+    "chi",
+    "chi tieu",
+    "tieu",
+    "bao nhieu",
+    "het bao nhieu",
+    "het tien",
+  ]);
+}
+
+function hasTotalLanguage(normalized: string): boolean {
+  return includesAny(normalized, [
+    "tong",
+    "tong cong",
+    "tat ca",
+    "bao nhieu trong thang nay",
+    "thang nay het bao nhieu tien",
+  ]);
+}
+
+function hasCategorySignal(normalized: string): boolean {
+  return includesAny(normalized, [
+    "an uong",
+    "do an",
+    "an sang",
+    "an trua",
+    "an toi",
+    "com",
+    "nha hang",
+    "an ngoai",
+    "food",
+    "ca phe",
+    "cafe",
+    "coffee",
+    "tra sua",
+    "di lai",
+    "di chuyen",
+    "xang",
+    "do xang",
+    "taxi",
+    "grab",
+    "xe buyt",
+    "transport",
+    "mua sam",
+    "quan ao",
+    "shopping",
+    "hoa don",
+    "tien dien",
+    "tien nuoc",
+    "internet",
+    "dien thoai",
+    "tien nha",
+    "thue nha",
+    "tien thue",
+    "suc khoe",
+    "thuoc",
+    "kham benh",
+    "benh vien",
+    "giao duc",
+    "hoc phi",
+    "sach vo",
+    "khoa hoc",
+    "giai tri",
+    "xem phim",
+    "tro choi",
+    "game",
+    "khac",
+    "linh tinh",
+  ]);
 }
 
 function includesAny(value: string, needles: string[]): boolean {

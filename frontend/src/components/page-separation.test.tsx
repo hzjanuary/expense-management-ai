@@ -130,6 +130,7 @@ const budgetRemaining = {
 
 const spendingResponse = {
   intent: "query_spending",
+  spending_scope: "category",
   category_slug: "food",
   currency: "VND",
   date_range: {
@@ -139,7 +140,7 @@ const spendingResponse = {
   },
   amount_minor: 35000,
   transaction_count: 1,
-  answer: "Tháng này bạn đã chi 35.000₫ cho food.",
+  answer: "Tháng này bạn đã chi 35.000₫ cho Ăn uống.",
   needs_clarification: false,
   clarification: null,
 };

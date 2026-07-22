@@ -17,6 +17,7 @@ from app.ai.factory import get_llm_provider
 from app.ai.schemas import (
     Confidence,
     LlmProviderStatus,
+    SpendingScope,
     SupportedIntent,
     TransactionParseRequest,
     TransactionParseResult,
@@ -32,17 +33,23 @@ from tests.conftest import (
 )
 
 QUERY_NOW = datetime(2026, 7, 15, 3, 0, tzinfo=UTC)
+WALLET_DECREASE_PROMPT = (
+    "Kể từ ngày đầu tiên của tháng này đến giờ, ví của tôi đã giảm bao nhiêu "
+    "vì các khoản chi?"
+)
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class StaticQueryProvider:
     result: TransactionParseResult | None = None
     error: Exception | None = None
+    call_count: int = 0
 
     async def parse_transaction_text(
         self,
         request: TransactionParseRequest,
     ) -> TransactionParseResult:
+        self.call_count += 1
         if self.error is not None:
             raise self.error
         if self.result is None:
@@ -88,6 +95,7 @@ def query_result(**overrides: object) -> TransactionParseResult:
         "occurred_at_text": None,
         "occurred_at_iso": None,
         "date_range_label": "this_month",
+        "spending_scope": SpendingScope.CATEGORY,
         "needs_confirmation": False,
         "confidence": Confidence.HIGH,
         "missing_fields": [],
@@ -140,6 +148,15 @@ async def seed_query_spending_transactions(
         session_factory,
         transaction_id="95000000-0000-0000-0000-000000000005",
         transaction_type="expense",
+        amount_minor=25_000,
+        category_slug="coffee",
+        description="cà phê",
+        occurred_at=datetime(2026, 7, 13, 10, 0, tzinfo=UTC),
+    )
+    await seed_transaction(
+        session_factory,
+        transaction_id="95000000-0000-0000-0000-000000000006",
+        transaction_type="expense",
         amount_minor=500_000,
         category_slug="food",
         description="outside month",
@@ -147,7 +164,7 @@ async def seed_query_spending_transactions(
     )
     await seed_transaction(
         session_factory,
-        transaction_id="95000000-0000-0000-0000-000000000006",
+        transaction_id="95000000-0000-0000-0000-000000000007",
         transaction_type="expense",
         amount_minor=70_000,
         category_slug="food",
@@ -187,6 +204,7 @@ def test_query_spending_uses_fake_provider_and_returns_db_total(
     assert response.status_code == 200
     assert response.json() == {
         "intent": "query_spending",
+        "spending_scope": "category",
         "category_slug": "food",
         "currency": "VND",
         "date_range": {
@@ -196,7 +214,7 @@ def test_query_spending_uses_fake_provider_and_returns_db_total(
         },
         "amount_minor": 50_000,
         "transaction_count": 2,
-        "answer": "Tháng này bạn đã chi 50.000₫ cho food.",
+        "answer": "Tháng này bạn đã chi 50.000₫ cho Ăn uống.",
         "needs_clarification": False,
         "clarification": None,
     }
@@ -222,7 +240,244 @@ def test_query_spending_supports_food_query_variants(
     assert response.status_code == 200
     payload = response.json()
     assert payload["intent"] == "query_spending"
+    assert payload["spending_scope"] == "category"
     assert payload["category_slug"] == "food"
+    assert payload["amount_minor"] == 50_000
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Tháng này tôi đã chi tổng cộng bao nhiêu?",
+        "Tôi đã tiêu bao nhiêu trong tháng này?",
+        "Tổng chi tháng này là bao nhiêu?",
+        "Tháng này hết bao nhiêu tiền?",
+    ],
+)
+def test_query_spending_supports_total_current_month_queries(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+    message: str,
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    asyncio.run(seed_query_spending_transactions(session_factory))
+
+    response = query_spending(client, message)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["intent"] == "query_spending"
+    assert payload["spending_scope"] == "total"
+    assert payload["category_slug"] is None
+    assert payload["amount_minor"] == 155_000
+    assert payload["transaction_count"] == 4
+    assert payload["answer"] == "Tháng này bạn đã chi tổng cộng 155.000₫."
+
+
+@pytest.mark.parametrize(
+    ("message", "expected_category", "expected_amount"),
+    [
+        ("Tháng này tôi ăn uống hết bao nhiêu?", "food", 50_000),
+        ("Tháng này tôi uống cà phê hết bao nhiêu?", "coffee", 25_000),
+        ("Tháng này tôi chi bao nhiêu tiền xăng?", "transport", 80_000),
+    ],
+)
+def test_query_spending_resolves_vietnamese_category_aliases(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+    message: str,
+    expected_category: str,
+    expected_amount: int,
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    asyncio.run(seed_query_spending_transactions(session_factory))
+
+    response = query_spending(client, message)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["spending_scope"] == "category"
+    assert payload["category_slug"] == expected_category
+    assert payload["amount_minor"] == expected_amount
+
+
+def test_query_spending_normalizes_provider_alias_to_canonical_category(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    asyncio.run(seed_query_spending_transactions(session_factory))
+    override_provider(
+        client,
+        StaticQueryProvider(result=query_result(category_slug="cà phê")),
+    )
+
+    response = query_spending(client, "Tôi muốn biết chi tiêu tháng này")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["category_slug"] == "coffee"
+    assert payload["amount_minor"] == 25_000
+
+
+def test_query_spending_total_scope_does_not_require_category_slug(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    asyncio.run(seed_query_spending_transactions(session_factory))
+    override_provider(
+        client,
+        StaticQueryProvider(
+            result=query_result(
+                category_slug=None,
+                spending_scope=SpendingScope.TOTAL,
+            )
+        ),
+    )
+
+    response = query_spending(client, "Tôi muốn biết tổng chi")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["spending_scope"] == "total"
+    assert payload["category_slug"] is None
+    assert payload["amount_minor"] == 155_000
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        WALLET_DECREASE_PROMPT,
+        "Kể từ đầu tháng đến nay, tôi đã tiêu bao nhiêu?",
+        "Ví của tôi đã giảm bao nhiêu vì các khoản chi trong tháng này?",
+        "Tổng số tiền đi ra trong tháng hiện tại là bao nhiêu?",
+        "Tôi đã mất bao nhiêu tiền cho các khoản chi từ đầu tháng?",
+        "Chi phí cộng dồn trong tháng này là bao nhiêu?",
+    ],
+)
+def test_query_spending_normalizes_provider_omitted_scope_to_total(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+    message: str,
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    asyncio.run(seed_query_spending_transactions(session_factory))
+    provider = StaticQueryProvider(
+        result=query_result(
+            category_slug=None,
+            date_range_label=None,
+            spending_scope=None,
+        )
+    )
+    override_provider(client, provider)
+
+    response = query_spending(client, message)
+
+    assert provider.call_count == 1
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["intent"] == "query_spending"
+    assert payload["spending_scope"] == "total"
+    assert payload["category_slug"] is None
+    assert payload["date_range"]["label"] == "this_month"
+    assert payload["amount_minor"] == 155_000
+    assert payload["transaction_count"] == 4
+    assert payload["needs_clarification"] is False
+
+
+def test_query_spending_normalizes_provider_omitted_scope_to_category_alias(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    asyncio.run(seed_query_spending_transactions(session_factory))
+    provider = StaticQueryProvider(
+        result=query_result(
+            category_slug=None,
+            date_range_label=None,
+            spending_scope=None,
+        )
+    )
+    override_provider(client, provider)
+
+    response = query_spending(
+        client,
+        "Trong tháng hiện tại, khoản dành cho ẩm thực của tôi đã ngốn bao nhiêu?",
+    )
+
+    assert provider.call_count == 1
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["spending_scope"] == "category"
+    assert payload["category_slug"] == "food"
+    assert payload["date_range"]["label"] == "this_month"
+    assert payload["amount_minor"] == 50_000
+    assert payload["transaction_count"] == 2
+    assert payload["needs_clarification"] is False
+
+
+def test_query_spending_provider_fallback_is_read_only(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    asyncio.run(seed_query_spending_transactions(session_factory))
+    budget_response = client.put(
+        "/api/v1/budgets/monthly/2026/7",
+        json={
+            "currency": "VND",
+            "total_budget_minor": 1_000_000,
+            "category_budgets": [{"category_slug": "food", "budget_minor": 500_000}],
+        },
+    )
+    assert budget_response.status_code == 200
+    provider = StaticQueryProvider(
+        result=query_result(
+            category_slug=None,
+            date_range_label=None,
+            spending_scope=None,
+        )
+    )
+    override_provider(client, provider)
+    before_account = asyncio.run(fetch_account(session_factory))
+    before_transactions = asyncio.run(count_transactions(session_factory))
+    before_amounts = asyncio.run(fetch_transaction_amounts(session_factory))
+    before_drafts = asyncio.run(count_ai_transaction_drafts(session_factory))
+    before_budgets = asyncio.run(count_budget_periods(session_factory))
+
+    response = query_spending(
+        client,
+        WALLET_DECREASE_PROMPT,
+    )
+
+    assert provider.call_count == 1
+    assert response.status_code == 200
+    assert response.json()["spending_scope"] == "total"
+    after_account = asyncio.run(fetch_account(session_factory))
+    assert after_account.current_balance_minor == before_account.current_balance_minor
+    assert asyncio.run(count_transactions(session_factory)) == before_transactions
+    assert asyncio.run(fetch_transaction_amounts(session_factory)) == before_amounts
+    assert asyncio.run(count_ai_transaction_drafts(session_factory)) == before_drafts
+    assert asyncio.run(count_budget_periods(session_factory)) == before_budgets
+
+
+def test_query_spending_falls_back_to_this_month_when_provider_omits_label(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    asyncio.run(seed_query_spending_transactions(session_factory))
+    override_provider(
+        client,
+        StaticQueryProvider(result=query_result(date_range_label=None)),
+    )
+
+    response = query_spending(client, "Tháng này tôi muốn biết khoản đó")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["date_range"]["label"] == "this_month"
     assert payload["amount_minor"] == 50_000
 
 
@@ -238,7 +493,7 @@ def test_query_spending_empty_ledger_returns_zero(
     payload = response.json()
     assert payload["amount_minor"] == 0
     assert payload["transaction_count"] == 0
-    assert payload["answer"] == "Tháng này bạn đã chi 0₫ cho food."
+    assert payload["answer"] == "Tháng này bạn đã chi 0₫ cho Ăn uống."
 
 
 def test_query_spending_missing_category_returns_clarification(
@@ -252,6 +507,7 @@ def test_query_spending_missing_category_returns_clarification(
     assert response.status_code == 200
     assert response.json() == {
         "intent": "query_spending",
+        "spending_scope": None,
         "category_slug": None,
         "currency": "VND",
         "date_range": None,
@@ -260,7 +516,7 @@ def test_query_spending_missing_category_returns_clarification(
         "answer": None,
         "needs_clarification": True,
         "clarification": {
-            "message": "Bạn muốn hỏi chi tiêu cho danh mục nào?",
+            "message": "Bạn muốn xem chi tiêu cho nhóm nào?",
             "fields": ["category_slug"],
         },
     }
@@ -277,12 +533,12 @@ def test_query_spending_invalid_category_returns_clarification(
         StaticQueryProvider(result=query_result(category_slug="salary")),
     )
 
-    response = query_spending(client)
+    response = query_spending(client, "Tháng này tôi chi cho danh mục lạ bao nhiêu?")
 
     assert response.status_code == 200
     assert response.json()["needs_clarification"] is True
     assert response.json()["clarification"] == {
-        "message": "Bạn muốn hỏi chi tiêu cho danh mục nào?",
+        "message": "Bạn muốn xem chi tiêu cho nhóm nào?",
         "fields": ["category_slug"],
     }
 
@@ -297,7 +553,7 @@ def test_query_spending_unsupported_date_range_returns_clarification(
         StaticQueryProvider(result=query_result(date_range_label="last_month")),
     )
 
-    response = query_spending(client)
+    response = query_spending(client, "Bạn có thể làm gì?")
 
     assert response.status_code == 200
     assert response.json()["needs_clarification"] is True
@@ -324,7 +580,7 @@ def test_query_spending_unknown_intent_returns_clarification(
         ),
     )
 
-    response = query_spending(client)
+    response = query_spending(client, "Bạn có thể làm gì?")
 
     assert response.status_code == 200
     assert response.json()["intent"] == "unknown"
@@ -381,7 +637,7 @@ def test_query_spending_maps_provider_errors_to_safe_api_errors(
     override_now(client)
     override_provider(client, StaticQueryProvider(error=error))
 
-    response = query_spending(client)
+    response = query_spending(client, "Bạn có thể làm gì?")
 
     assert response.status_code == expected_status
     assert response.json()["detail"] == expected_detail

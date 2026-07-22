@@ -138,6 +138,59 @@ async def test_ollama_successful_parse_returns_structured_result() -> None:
 
 
 @pytest.mark.anyio
+async def test_ollama_query_spending_schema_accepts_total_scope() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json=parse_success_payload(
+                intent="query_spending",
+                transaction_type=None,
+                amount_minor=None,
+                category_slug=None,
+                description=None,
+                occurred_at_text=None,
+                date_range_label="this_month",
+                spending_scope="total",
+                needs_confirmation=False,
+            ),
+        )
+
+    async with make_client(httpx.MockTransport(handler)) as client:
+        provider = ollama_provider(client)
+
+        result = await provider.parse_transaction_text(
+            TransactionParseRequest(message="Tháng này tôi đã chi tổng cộng bao nhiêu?")
+        )
+
+    assert result.intent == SupportedIntent.QUERY_SPENDING
+    assert result.spending_scope == "total"
+    assert result.category_slug is None
+    assert result.date_range_label == "this_month"
+
+
+def test_ollama_prompt_documents_spending_scopes_and_examples() -> None:
+    assert 'spending_scope="total"' in SYSTEM_PROMPT
+    assert 'spending_scope="category"' in SYSTEM_PROMPT
+    assert "Absence of a" in SYSTEM_PROMPT
+    assert (
+        "category phrase must not automatically mean the category is missing"
+        in SYSTEM_PROMPT
+    )
+    assert "aggregate, all, cumulative, wallet-decrease, money-out, or" in SYSTEM_PROMPT
+    assert "Tháng này tôi đã chi tổng cộng bao nhiêu?" in SYSTEM_PROMPT
+    assert "Kể từ đầu tháng đến nay, tôi đã tiêu bao nhiêu?" in SYSTEM_PROMPT
+    assert (
+        "Ví của tôi đã giảm bao nhiêu vì các khoản chi trong tháng này?"
+        in SYSTEM_PROMPT
+    )
+    assert "Tổng số tiền đi ra trong tháng hiện tại là bao nhiêu?" in SYSTEM_PROMPT
+    assert "Tôi đã mất bao nhiêu tiền cho các khoản chi từ đầu tháng?" in SYSTEM_PROMPT
+    assert "Chi phí cộng dồn trong tháng này là bao nhiêu?" in SYSTEM_PROMPT
+    assert "Tháng này tôi ăn uống hết bao nhiêu?" in SYSTEM_PROMPT
+    assert "Tháng này tôi uống cà phê hết bao nhiêu?" in SYSTEM_PROMPT
+
+
+@pytest.mark.anyio
 async def test_ollama_successful_parse_validates_integer_amount_and_currency() -> None:
     async with make_client(
         httpx.MockTransport(

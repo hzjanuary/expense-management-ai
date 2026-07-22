@@ -588,6 +588,7 @@ Response:
 ```json
 {
   "intent": "query_spending",
+  "spending_scope": "category",
   "category_slug": "food",
   "currency": "VND",
   "date_range": {
@@ -597,7 +598,28 @@ Response:
   },
   "amount_minor": 35000,
   "transaction_count": 1,
-  "answer": "Tháng này bạn đã chi 35.000₫ cho food.",
+  "answer": "Tháng này bạn đã chi 35.000₫ cho Ăn uống.",
+  "needs_clarification": false,
+  "clarification": null
+}
+```
+
+Total spending response:
+
+```json
+{
+  "intent": "query_spending",
+  "spending_scope": "total",
+  "category_slug": null,
+  "currency": "VND",
+  "date_range": {
+    "start": "2026-07-01T00:00:00+07:00",
+    "end": "2026-08-01T00:00:00+07:00",
+    "label": "this_month"
+  },
+  "amount_minor": 155000,
+  "transaction_count": 4,
+  "answer": "Tháng này bạn đã chi tổng cộng 155.000₫.",
   "needs_clarification": false,
   "clarification": null
 }
@@ -608,6 +630,7 @@ Clarification response:
 ```json
 {
   "intent": "query_spending",
+  "spending_scope": null,
   "category_slug": null,
   "currency": "VND",
   "date_range": null,
@@ -616,7 +639,7 @@ Clarification response:
   "answer": null,
   "needs_clarification": true,
   "clarification": {
-    "message": "Bạn muốn hỏi chi tiêu cho danh mục nào?",
+    "message": "Bạn muốn xem chi tiêu cho nhóm nào?",
     "fields": ["category_slug"]
   }
 }
@@ -624,19 +647,28 @@ Clarification response:
 
 Rules:
 
-- The provider may classify intent, category, currency, and date range.
+- The provider may classify intent, spending scope, category, currency, and date range.
+- `spending_scope = "total"` answers current-month total expense and does not require a category.
+- `spending_scope = "category"` answers current-month expense for one resolved expense category.
 - The provider must not answer or invent totals.
 - The API computes `amount_minor` and `transaction_count` from persisted ledger records.
 - US-501 supports `date_range.label = "this_month"`.
 - `this_month` uses the request timezone and spans the first instant of the current month inclusive to the first instant of the next month exclusive.
-- Category must be a valid expense category.
+- For category scope, category must resolve to a valid expense category.
+- Deterministic backend category alias normalization accepts canonical slugs and common Vietnamese labels such as `ăn uống` -> `food`, `ẩm thực` -> `food`, `cà phê` -> `coffee`, and `xăng` -> `transport`.
+- Unknown analytical categories are not silently mapped to `other`; they return clarification.
+- If the provider omits `date_range.label` but the message clearly says `tháng này` or `this month`, the backend may normalize it to `this_month`.
+- If the provider returns `intent = "query_spending"` but omits `spending_scope`, the backend resolves scope from the original message before asking for clarification.
+- Messages with current-month language and aggregate/all/cumulative spending signals such as `tổng`, `tổng cộng`, `tất cả`, `cộng dồn`, `tiền đã tiêu`, `tiền rời khỏi ví`, `ví đã giảm`, `các khoản chi`, or `chi phí trong tháng` resolve to `spending_scope = "total"` when no unique category is present.
+- Absence of a category phrase must not automatically become a missing-category clarification for total/all spending questions.
 - Income categories, unknown categories, and unsupported date ranges return a safe clarification response.
 - Empty messages and invalid currency/timezone values are rejected with `422`.
 - Provider unavailable returns `503`.
 - Provider timeout returns `504`.
 - Invalid provider structured output returns `502`.
-- The endpoint counts only non-deleted expense transactions matching the category, currency, and date range.
-- Income transactions, other categories, out-of-range transactions, and soft-deleted transactions do not count.
+- The endpoint counts only non-deleted expense transactions matching the scope, currency, and date range.
+- Income transactions, out-of-range transactions, and soft-deleted transactions do not count.
+- For category scope, other categories do not count.
 - The endpoint must not mutate transactions, accounts, budgets, or AI draft rows.
 
 ## Query Budget Remaining

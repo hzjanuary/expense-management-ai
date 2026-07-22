@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 
 const DEMO_MONTH = "2026-07";
 const DEMO_MESSAGE = "Hôm nay tôi tiêu 35k vào ăn trưa";
+const TOTAL_SPENDING_QUERY = "Tháng này tôi đã chi tổng cộng bao nhiêu?";
 const SPENDING_QUERY = "Tháng này tôi ăn uống hết bao nhiêu?";
 const BUDGET_QUERY = "Còn bao nhiêu tiền ăn tháng này?";
 const BREAKDOWN_QUERY = "Tuần này tôi tiêu nhiều nhất vào mục nào?";
@@ -89,6 +90,13 @@ test("complete local-first MVP demo", async ({ page }) => {
   await expectMoney(sectionByHeading(page, "Tình trạng ngân sách"), "1.965.000");
 
   await page.getByRole("link", { name: "Trợ lý AI" }).first().click();
+  await submitChat(page, TOTAL_SPENDING_QUERY);
+  const totalSpendingInsight = insightByHeading(page, "Tổng chi tiêu");
+  await expect(totalSpendingInsight.getByText("Danh mục")).toHaveCount(0);
+  await expectMoney(totalSpendingInsight, "35.000");
+  await expect(totalSpendingInsight.getByText("Số giao dịch").locator("..")).toContainText("1");
+  await expect(totalSpendingInsight.getByText(/tháng này/)).toBeVisible();
+
   await submitChat(page, SPENDING_QUERY);
   const spendingInsight = insightByHeading(page, "Chi tiêu theo danh mục");
   await expect(spendingInsight.getByText("Ăn uống", { exact: true })).toBeVisible();

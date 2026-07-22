@@ -391,6 +391,29 @@ async def get_expense_total_for_category(
     return int(amount_minor), int(transaction_count)
 
 
+async def get_expense_total(
+    session: AsyncSession,
+    *,
+    currency: str,
+    range_start: datetime,
+    range_end: datetime,
+) -> tuple[int, int]:
+    result = await session.execute(
+        select(
+            func.coalesce(func.sum(TransactionModel.amount_minor), 0),
+            func.count(TransactionModel.id),
+        ).where(
+            TransactionModel.deleted_at.is_(None),
+            TransactionModel.type == "expense",
+            TransactionModel.currency == currency,
+            TransactionModel.occurred_at >= range_start,
+            TransactionModel.occurred_at < range_end,
+        )
+    )
+    amount_minor, transaction_count = result.one()
+    return int(amount_minor), int(transaction_count)
+
+
 async def get_expense_breakdown_by_category(
     session: AsyncSession,
     *,

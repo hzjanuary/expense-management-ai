@@ -208,13 +208,22 @@ LLM output may extract the phrase, but final normalization must be deterministic
 
 ## Spending Query Rules
 
-- The LLM may classify a query intent and extract category/date range.
+- The LLM may classify a query intent and extract spending scope, category, and date range.
 - The answer must be computed from local ledger records.
 - The answer must not rely on provider-generated totals.
 - Responses must include the amount and explicit date range when answering a query.
-- For US-501, query classification uses `intent = "query_spending"`, a valid expense `category_slug`, `currency`, and `date_range_label = "this_month"`.
-- Food query phrases such as `ăn uống`, `ăn ngoài`, and `food` map to category `food`.
+- Query classification uses `intent = "query_spending"`, `currency`, `date_range_label = "this_month"`, and an explicit `spending_scope`.
+- `spending_scope = "total"` means total current-month expense and requires `category_slug = null`.
+- `spending_scope = "category"` means current-month expense for one category and requires a valid resolved expense `category_slug`.
+- Total examples such as `Tháng này tôi đã chi tổng cộng bao nhiêu?`, `Tôi đã tiêu bao nhiêu trong tháng này?`, `Tổng chi tháng này là bao nhiêu?`, `Kể từ đầu tháng đến nay, tôi đã tiêu bao nhiêu?`, `Ví của tôi đã giảm bao nhiêu vì các khoản chi trong tháng này?`, `Tổng số tiền đi ra trong tháng hiện tại là bao nhiêu?`, `Tôi đã mất bao nhiêu tiền cho các khoản chi từ đầu tháng?`, and `Chi phí cộng dồn trong tháng này là bao nhiêu?` map to `spending_scope = "total"` with `category_slug = null`.
+- Absence of a category phrase must not automatically become a missing-category clarification when the message asks for aggregate, all, cumulative, wallet-decrease, money-out, or total spending.
+- If the provider returns `intent = "query_spending"` but omits `spending_scope`, the backend resolves the scope from the original message before asking for clarification.
+- Food query phrases such as `ăn uống`, `ăn ngoài`, `ẩm thực`, and `food` map to category `food`.
+- Coffee query phrases such as `cà phê`, `cafe`, `coffee`, and `trà sữa` map to category `coffee`.
+- Transport query phrases such as `xăng`, `đổ xăng`, `taxi`, and `grab` map to category `transport`.
+- Category alias normalization is deterministic backend behavior; provider aliases or labels are normalized before repository lookup.
 - Missing, invalid, or income-only categories should produce clarification rather than a fabricated total.
+- Unknown category phrases must not be silently mapped to `other` for analytical queries.
 - Unsupported date ranges should produce clarification.
 - The backend computes `amount_minor` and `transaction_count` from non-deleted expense transactions only.
 

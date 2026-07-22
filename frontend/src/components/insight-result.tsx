@@ -26,10 +26,11 @@ type InsightResultProps =
 
 export function InsightResult(props: InsightResultProps) {
   if (props.type === "query_spending") {
+    const isTotal = props.result.spending_scope === "total";
     return (
       <InsightCard
         isStale={props.isStale}
-        title="Chi tiêu theo danh mục"
+        title={isTotal ? "Tổng chi tiêu" : "Chi tiêu theo danh mục"}
         subtitle="Số liệu lấy từ giao dịch đang lưu"
       >
         <SpendingQueryResult result={props.result} />
@@ -73,13 +74,15 @@ function SpendingQueryResult({
     <div className="grid gap-3">
       <InsightAnswer answer={result.answer} />
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
-        <InsightField
-          label="Danh mục"
-          value={formatOptionalCategory(result.category_slug)}
-        />
+        {result.spending_scope !== "total" ? (
+          <InsightField
+            label="Danh mục"
+            value={formatOptionalCategory(result.category_slug)}
+          />
+        ) : null}
         <InsightField label="Thời gian" value={formatDateRange(result.date_range)} />
         <InsightField
-          label="Số tiền"
+          label={result.spending_scope === "total" ? "Tổng chi" : "Số tiền"}
           value={
             result.amount_minor === null
               ? "Cần làm rõ"
@@ -304,7 +307,9 @@ function InsightClarification({
         {clarification?.message ?? "Cần thêm thông tin để trả lời."}
       </p>
       {clarification && clarification.fields.length > 0 ? (
-        <p className="mt-1 text-xs">Cần bổ sung: {clarification.fields.join(", ")}</p>
+        <p className="mt-1 text-xs">
+          Cần bổ sung: {clarification.fields.map(formatClarificationField).join(", ")}
+        </p>
       ) : null}
     </div>
   );
@@ -322,6 +327,22 @@ function formatDateRange(dateRange: AiInsightDateRange | null): string {
   }
 
   return `${formatDate(dateRange.start)} đến ${formatDate(dateRange.end)} (${formatPeriodLabel(dateRange.label)})`;
+}
+
+function formatClarificationField(field: string): string {
+  switch (field) {
+    case "category_slug":
+      return "nhóm chi tiêu";
+    case "date_range":
+      return "khoảng thời gian";
+    case "spending_scope":
+    case "query_scope":
+      return "loại câu hỏi";
+    case "intent":
+      return "yêu cầu";
+    default:
+      return "thông tin cần làm rõ";
+  }
 }
 
 function formatDate(value: string): string {

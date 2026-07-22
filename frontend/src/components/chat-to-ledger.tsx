@@ -28,6 +28,7 @@ import {
   routeChatIntent,
 } from "@/lib/insight-router";
 import type { RoutedChatIntent } from "@/lib/insight-router";
+import { formatCategoryLabel } from "@/lib/categories";
 import { formatVnd } from "@/lib/money";
 
 type ChatToLedgerProps = {
@@ -221,7 +222,7 @@ export function ChatToLedger({
       setSuccess(
         `Đã tạo giao dịch: ${amountPrefix}${formatVnd(
           transaction.amount_minor,
-        )} cho ${transaction.category_slug}.`,
+        )} cho ${formatCategoryLabel(transaction.category_slug)}.`,
       );
       setMessage("");
       setActiveParseResult(null);

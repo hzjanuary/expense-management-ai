@@ -112,6 +112,7 @@ class AiQueryDateRangeResponse(BaseModel):
 
 class AiQuerySpendingResponse(BaseModel):
     intent: str
+    spending_scope: str | None
     category_slug: str | None
     currency: str
     date_range: AiQueryDateRangeResponse | None

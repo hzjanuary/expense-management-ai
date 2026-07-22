@@ -20,6 +20,11 @@ class Confidence(StrEnum):
     LOW = "low"
 
 
+class SpendingScope(StrEnum):
+    TOTAL = "total"
+    CATEGORY = "category"
+
+
 class TransactionParseRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -58,6 +63,7 @@ class TransactionParseResult(BaseModel):
     occurred_at_text: str | None = None
     occurred_at_iso: str | None = None
     date_range_label: str | None = None
+    spending_scope: SpendingScope | None = None
     needs_confirmation: bool
     confidence: Confidence
     missing_fields: list[str] = Field(default_factory=list)

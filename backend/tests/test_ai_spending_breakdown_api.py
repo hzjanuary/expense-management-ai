@@ -241,7 +241,7 @@ def test_spending_breakdown_returns_db_grounded_top_category(
                 "percentage": 36.84,
             },
         ],
-        "answer": "Tuần này bạn chi nhiều nhất cho food: 180.000₫.",
+        "answer": "Tuần này bạn chi nhiều nhất cho Ăn uống: 180.000₫.",
         "needs_clarification": False,
         "clarification": None,
     }

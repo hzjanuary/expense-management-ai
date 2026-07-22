@@ -53,6 +53,10 @@ describe("insight chat UI", () => {
     expect(await screen.findByRole("heading", { name: "Chi tiêu theo danh mục" })).toBeInTheDocument();
     expect(await findTextContaining("35.000")).toBeInTheDocument();
 
+    await submitMessage("Tháng này tôi đã chi tổng cộng bao nhiêu?");
+    expect(await screen.findByRole("heading", { name: "Tổng chi tiêu" })).toBeInTheDocument();
+    expect(await findTextContaining("155.000")).toBeInTheDocument();
+
     await submitMessage("Còn bao nhiêu tiền ăn tháng này?");
     expect(await screen.findByRole("heading", { name: "Ngân sách còn lại" })).toBeInTheDocument();
     expect(await findTextContaining("1.965.000")).toBeInTheDocument();
@@ -61,11 +65,42 @@ describe("insight chat UI", () => {
     expect(await screen.findByRole("heading", { name: "Chi nhiều nhất" })).toBeInTheDocument();
     expect(screen.getByText("63.16%")).toBeInTheDocument();
 
-    expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(1);
+    expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(2);
     expect(countExactCalls(fetchMock, "/api/ai/query-budget-remaining")).toBe(1);
     expect(countExactCalls(fetchMock, "/api/ai/query-spending-breakdown")).toBe(1);
     expect(countCalls(fetchMock, "/api/ai/confirm")).toBe(0);
     expect(countCalls(fetchMock, "/api/transactions")).toBe(0);
+  });
+
+  it("routes natural total and category spending variants", async () => {
+    const fetchMock = mockInsightFetch();
+
+    render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+    await submitMessage("Tôi đã tiêu bao nhiêu trong tháng này?");
+    expect(await screen.findByRole("heading", { name: "Tổng chi tiêu" })).toBeInTheDocument();
+
+    await submitMessage("Tiền cà phê tháng này là bao nhiêu?");
+    expect(await screen.findByRole("heading", { name: "Chi tiêu theo danh mục" })).toBeInTheDocument();
+
+    await submitMessage("Tôi đã chi bao nhiêu tiền xăng tháng này?");
+    expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(3);
+    expect(countCalls(fetchMock, "/api/ai/parse")).toBe(0);
+  });
+
+  it("explicit spending selection accepts total spending questions", async () => {
+    mockInsightFetch();
+
+    render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+    await userEvent.selectOptions(
+      screen.getByLabelText("Loại yêu cầu"),
+      "query_spending",
+    );
+    await submitMessage("Tháng này tôi đã chi tổng cộng bao nhiêu?");
+
+    expect(await screen.findByRole("heading", { name: "Tổng chi tiêu" })).toBeInTheDocument();
+    expect(await findTextContaining("155.000")).toBeInTheDocument();
   });
 
   it("shows supported examples for unknown input without calling a financial endpoint", async () => {
@@ -158,6 +193,10 @@ describe("insight chat UI", () => {
     expect(
       await screen.findByText("Bạn muốn hỏi chi tiêu cho danh mục nào?"),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/category_slug|date_range|spending_scope|query_scope/),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/nhóm chi tiêu/)).toBeInTheDocument();
     expect(screen.queryByText("0\u00a0₫")).not.toBeInTheDocument();
 
     await submitMessage("Tháng này tôi ăn uống hết bao nhiêu?");
@@ -233,10 +272,17 @@ async function submitMessage(message: string) {
 }
 
 function mockInsightFetch() {
-  return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+  return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
     const url = String(input);
     if (url === "/api/ai/query-spending") {
-      return Promise.resolve(jsonResponse(spendingResponse));
+      const body = getRequestBody(init);
+      return Promise.resolve(
+        jsonResponse(
+          isTotalSpendingTestMessage(body.message)
+            ? totalSpendingResponse
+            : spendingResponse,
+        ),
+      );
     }
     if (url === "/api/ai/query-budget-remaining") {
       return Promise.resolve(jsonResponse(budgetResponse));
@@ -248,6 +294,22 @@ function mockInsightFetch() {
   });
 }
 
+function isTotalSpendingTestMessage(message: string): boolean {
+  return (
+    message.includes("tổng") ||
+    message.includes("trong tháng này") ||
+    message.includes("hết bao nhiêu tiền")
+  );
+}
+
+function getRequestBody(init: RequestInit | undefined): { message: string } {
+  if (typeof init?.body !== "string") {
+    return { message: "" };
+  }
+  const parsed = JSON.parse(init.body) as { message?: unknown };
+  return { message: typeof parsed.message === "string" ? parsed.message : "" };
+}
+
 const dateRange = {
   start: "2026-07-01T00:00:00+07:00",
   end: "2026-08-01T00:00:00+07:00",
@@ -256,18 +318,29 @@ const dateRange = {
 
 const spendingResponse = {
   intent: "query_spending",
+  spending_scope: "category",
   category_slug: "food",
   currency: "VND",
   date_range: dateRange,
   amount_minor: 35000,
   transaction_count: 1,
-  answer: "Tháng này bạn đã chi 35.000₫ cho food.",
+  answer: "Tháng này bạn đã chi 35.000₫ cho Ăn uống.",
   needs_clarification: false,
   clarification: null,
 };
 
+const totalSpendingResponse = {
+  ...spendingResponse,
+  spending_scope: "total",
+  category_slug: null,
+  amount_minor: 155000,
+  transaction_count: 4,
+  answer: "Tháng này bạn đã chi tổng cộng 155.000₫.",
+};
+
 const spendingClarificationResponse = {
   intent: "query_spending",
+  spending_scope: null,
   category_slug: null,
   currency: "VND",
   date_range: null,
@@ -291,7 +364,7 @@ const budgetResponse = {
   remaining_minor: 1965000,
   is_over_budget: false,
   transaction_count: 1,
-  answer: "Tháng này bạn còn 1.965.000₫ cho food.",
+  answer: "Tháng này bạn còn 1.965.000₫ cho Ăn uống.",
   needs_clarification: false,
   clarification: null,
 };
@@ -301,7 +374,7 @@ const noBudgetResponse = {
   budget_minor: null,
   remaining_minor: null,
   is_over_budget: null,
-  answer: "Bạn chưa thiết lập ngân sách cho food tháng này.",
+  answer: "Bạn chưa thiết lập ngân sách cho Ăn uống tháng này.",
 };
 
 const breakdownResponse = {
@@ -334,7 +407,7 @@ const breakdownResponse = {
       percentage: 36.84,
     },
   ],
-  answer: "Tuần này bạn chi nhiều nhất cho food: 180.000₫.",
+  answer: "Tuần này bạn chi nhiều nhất cho Ăn uống: 180.000₫.",
   needs_clarification: false,
   clarification: null,
 };

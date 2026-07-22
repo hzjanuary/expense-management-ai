@@ -11,6 +11,7 @@ from app.ai.errors import (
 from app.ai.schemas import (
     Confidence,
     LlmProviderStatus,
+    SpendingScope,
     SupportedIntent,
     TransactionParseRequest,
     TransactionParseResult,
@@ -137,18 +138,37 @@ class FakeLlmProvider:
                 missing_fields=["category_slug"],
             )
 
-        if _is_food_spending_query_sample(request.message):
+        if _is_total_spending_query_sample(request.message):
             return TransactionParseResult(
                 intent=SupportedIntent.QUERY_SPENDING,
                 transaction_type=None,
                 amount_minor=None,
                 currency=request.default_currency,
-                category_slug="food",
+                category_slug=None,
                 description=None,
                 merchant=None,
                 occurred_at_text=None,
                 occurred_at_iso=None,
                 date_range_label="this_month",
+                spending_scope=SpendingScope.TOTAL,
+                needs_confirmation=False,
+                confidence=Confidence.HIGH,
+                missing_fields=[],
+            )
+
+        if _is_category_spending_query_sample(request.message):
+            return TransactionParseResult(
+                intent=SupportedIntent.QUERY_SPENDING,
+                transaction_type=None,
+                amount_minor=None,
+                currency=request.default_currency,
+                category_slug=_sample_category_slug(request.message),
+                description=None,
+                merchant=None,
+                occurred_at_text=None,
+                occurred_at_iso=None,
+                date_range_label="this_month",
+                spending_scope=SpendingScope.CATEGORY,
                 needs_confirmation=False,
                 confidence=Confidence.HIGH,
                 missing_fields=[],
@@ -159,6 +179,7 @@ class FakeLlmProvider:
                 intent=SupportedIntent.QUERY_SPENDING,
                 currency=request.default_currency,
                 date_range_label="this_month",
+                spending_scope=SpendingScope.CATEGORY,
                 needs_confirmation=True,
                 confidence=Confidence.LOW,
                 missing_fields=["category_slug"],
@@ -217,15 +238,49 @@ def _is_missing_category_sample(message: str) -> bool:
     return "tiêu" in normalized and "35k" in normalized and "ăn trưa" not in normalized
 
 
-def _is_food_spending_query_sample(message: str) -> bool:
+def _is_total_spending_query_sample(message: str) -> bool:
     normalized = message.casefold()
     return (
         "tháng này" in normalized
         and "bao nhiêu" in normalized
         and (
-            "ăn uống" in normalized or "ăn ngoài" in normalized or "food" in normalized
+            "tổng" in normalized
+            or "tổng cộng" in normalized
+            or "trong tháng này" in normalized
+            or "hết bao nhiêu tiền" in normalized
         )
     )
+
+
+def _is_category_spending_query_sample(message: str) -> bool:
+    normalized = message.casefold()
+    return (
+        "tháng này" in normalized
+        and "bao nhiêu" in normalized
+        and (
+            "ăn uống" in normalized
+            or "ăn ngoài" in normalized
+            or "food" in normalized
+            or "cà phê" in normalized
+            or "cafe" in normalized
+            or "coffee" in normalized
+            or "xăng" in normalized
+            or "taxi" in normalized
+            or "transport" in normalized
+            or "thuốc" in normalized
+        )
+    )
+
+
+def _sample_category_slug(message: str) -> str:
+    normalized = message.casefold()
+    if "cà phê" in normalized or "cafe" in normalized or "coffee" in normalized:
+        return "coffee"
+    if "xăng" in normalized or "taxi" in normalized or "transport" in normalized:
+        return "transport"
+    if "thuốc" in normalized:
+        return "health"
+    return "food"
 
 
 def _is_missing_query_category_sample(message: str) -> bool:
