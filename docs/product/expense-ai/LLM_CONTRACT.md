@@ -132,7 +132,9 @@ Parse draft API behavior:
 - Returned drafts use `source = "ai_chat"`.
 - Confirmable create-transaction drafts are persisted locally from US-304 onward.
 - Unknown or unsupported input is returned without a confirmable draft.
-- Relative date text such as `hôm nay` may remain unresolved; the API returns `occurred_at = null` until date resolution is implemented.
+- Supported relative date phrases such as `hôm nay`, `sáng nay`, `trưa nay`,
+  `chiều nay`, `tối nay`, `vừa rồi`, `hôm qua`, `sáng qua`, and `tối qua`
+  are normalized deterministically by the backend using the request timezone.
 - The parse API must not call transaction creation command handlers.
 - The parse API must not create transactions or update account balances.
 - Unknown or unsupported input returns `intent = "unknown"`, low confidence, `needs_confirmation = true`, and no draft.
@@ -200,11 +202,42 @@ The system must support common Vietnamese shorthand:
 | `35k` | 35000 |
 | `35 nghìn` | 35000 |
 | `35 ngàn` | 35000 |
+| `35.000` | 35000 |
+| `35 000` | 35000 |
 | `1tr` | 1000000 |
 | `1 triệu` | 1000000 |
 | `1m` | 1000000 |
+| `1.5 triệu` | 1500000 |
+| `1,5 triệu` | 1500000 |
+
+Full-message recovery must not confuse times such as `7h` or quantities such
+as `2 ly` with money. If multiple plausible transaction amounts remain, the
+backend asks for clarification instead of choosing one.
 
 LLM output may extract the phrase, but final normalization must be deterministic in application code.
+
+## Colloquial Transaction Recovery
+
+- Ollama structured extraction remains the primary parser.
+- After provider output, the backend may conservatively recover
+  `create_transaction` when the original message clearly contains one positive
+  money amount plus spending/purchase/payment/transport language or income
+  language.
+- Recovery may fill missing transaction type, amount, category, description,
+  currency, and supported relative date fields.
+- Recovery must not convert questions, hypotheticals, budget setup, balance
+  statements, or analytical spending queries into transaction drafts.
+- Category aliases and item phrases are resolved by backend-owned deterministic
+  category normalization. Unknown items are not silently mapped to `other`.
+- Descriptions are concise and neutral; informal pronouns such as `tao`, `tui`,
+  or `mình`, filler words, and amount text are not stored as the description.
+- Examples:
+  - `hôm nay tao ăn hộp cơm gà 28k` -> expense, `28000`, `food`, `Cơm gà`.
+  - `trưa nay làm tô phở 45k` -> expense, `45000`, `food`, `Phở`.
+  - `sáng uống ly cà phê sữa 25 nghìn` -> expense, `25000`, `coffee`, `Cà phê sữa`.
+  - `đổ 100k xăng` -> expense, `100000`, `transport`, `Đổ xăng`.
+  - `hôm nay nhận lương 15 triệu` -> income, `15000000`, `salary`, `Lương`.
+  - `Cơm gà 28k có đắt không?` -> `unknown`; this is not a transaction draft.
 
 ## Spending Query Rules
 

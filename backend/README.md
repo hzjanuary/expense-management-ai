@@ -122,7 +122,7 @@ Settings are loaded from environment variables with the `POCKET_LEDGER_` prefix.
 | default account opening balance | `POCKET_LEDGER_DEFAULT_ACCOUNT_OPENING_BALANCE_MINOR` | `0` |
 | Ollama enabled | `POCKET_LEDGER_OLLAMA_ENABLED` | `false` |
 | Ollama base URL | `POCKET_LEDGER_OLLAMA_BASE_URL` | `http://127.0.0.1:11434` |
-| Ollama model | `POCKET_LEDGER_OLLAMA_MODEL` | `qwen2.5:3b` |
+| Ollama model | `POCKET_LEDGER_OLLAMA_MODEL` | `qwen3:4b-instruct` |
 | Ollama timeout seconds | `POCKET_LEDGER_OLLAMA_TIMEOUT_SECONDS` | `10` |
 | AI draft TTL seconds | `POCKET_LEDGER_AI_DRAFT_TTL_SECONDS` | `900` |
 | export max rows | `POCKET_LEDGER_EXPORT_MAX_ROWS` | `10000` |
@@ -228,8 +228,13 @@ Parse a draft without mutating the ledger:
 ```bash
 curl -i -X POST http://127.0.0.1:8000/api/v1/ai/parse \
   -H 'Content-Type: application/json' \
-  -d '{"message": "Hôm nay tôi tiêu 35k vào ăn trưa"}'
+  -d '{"message": "hôm nay tao ăn hộp cơm gà 28k"}'
 ```
+
+Colloquial transaction parsing still returns only a pending draft. The backend
+normalizes high-confidence money text, category aliases, concise descriptions,
+and supported relative dates; confirmation remains a separate explicit API
+call.
 
 Confirm a stored AI draft:
 

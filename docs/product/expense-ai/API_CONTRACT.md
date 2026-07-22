@@ -356,9 +356,26 @@ Rules:
 - Empty messages and invalid default currencies are rejected with `422`.
 - Provider output is validated against money, currency, transaction type, and category rules before a draft is returned.
 - Invalid provider output returns a safe API error and does not expose raw model output.
-- For US-303, relative date text such as `hôm nay` is not resolved; `occurred_at` may be `null`.
+- Supported relative date text such as `hôm nay`, `sáng nay`, `trưa nay`,
+  `chiều nay`, `tối nay`, `vừa rồi`, `hôm qua`, `sáng qua`, and `tối qua`
+  is resolved deterministically by the backend using the request timezone.
+  If no supported date phrase is present, `occurred_at` may be `null` and
+  confirmation time is used later.
 - From US-304 onward, confirmable create-transaction responses include `draft_id`.
 - From US-305 onward, ambiguous or low-confidence responses include `clarification`.
+- From TASK-AI-002 onward, provider `unknown` or partial create-transaction
+  output may be recovered into a pending draft only when the original message
+  has one unambiguous positive money amount and clear purchase/spending/payment,
+  transport, or income language.
+- Recovery supports colloquial examples such as `hôm nay tao ăn hộp cơm gà 28k`,
+  `trưa nay làm tô phở 45k`, `sáng uống ly cà phê sữa 25 nghìn`,
+  `đổ 100k xăng`, `đi Grab hết 42k`, `mua vỉ thuốc 60k`,
+  `tối qua xem phim hết 150k`, and `hôm nay nhận lương 15 triệu`.
+- Recovery does not convert questions, hypothetical statements, budget setup,
+  balance statements, or analytical spending queries into transaction drafts.
+- Supported money text includes `28k`, `28 K`, `28 nghìn`, `28 ngàn`,
+  `28.000`, `28 000`, `1tr`, `1 triệu`, `1m`, `1.5 triệu`, `1,5 triệu`,
+  and `15 triệu`.
 - Missing amount asks for amount.
 - Missing or invalid category asks for category.
 - Category/type mismatch asks for category and does not persist a confirmable draft.

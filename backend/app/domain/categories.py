@@ -20,6 +20,12 @@ class CategoryDefinition:
         return self.type.value == transaction_type.value
 
 
+@dataclass(frozen=True, slots=True)
+class CategoryAliasMatch:
+    slug: str
+    alias: str
+
+
 DEFAULT_EXPENSE_CATEGORIES: tuple[CategoryDefinition, ...] = (
     CategoryDefinition(slug="food", name="Food", type=CategoryType.EXPENSE),
     CategoryDefinition(slug="coffee", name="Coffee", type=CategoryType.EXPENSE),
@@ -62,13 +68,30 @@ EXPENSE_CATEGORY_ALIASES: dict[str, tuple[str, ...]] = {
         "ăn sáng",
         "ăn trưa",
         "ăn tối",
+        "bữa sáng",
+        "bữa trưa",
+        "bữa tối",
+        "cơm gà",
+        "cơm tấm",
         "cơm",
+        "phở",
+        "bún",
+        "bánh mì",
+        "hủ tiếu",
+        "mì",
         "nhà hàng",
         "ăn ngoài",
         "ẩm thực",
         "food",
     ),
-    "coffee": ("cà phê", "cafe", "coffee", "trà sữa"),
+    "coffee": (
+        "cà phê sữa",
+        "bạc xỉu",
+        "trà sữa",
+        "cà phê",
+        "cafe",
+        "coffee",
+    ),
     "transport": (
         "đi lại",
         "di chuyển",
@@ -77,14 +100,32 @@ EXPENSE_CATEGORY_ALIASES: dict[str, tuple[str, ...]] = {
         "taxi",
         "grab",
         "xe buýt",
+        "vé xe",
+        "gửi xe",
         "transport",
     ),
-    "shopping": ("mua sắm", "quần áo", "shopping"),
+    "shopping": ("mua sắm", "quần áo", "giày", "mỹ phẩm", "đồ gia dụng", "shopping"),
     "bills": ("hóa đơn", "tiền điện", "tiền nước", "internet", "điện thoại", "bills"),
     "rent": ("tiền nhà", "thuê nhà", "tiền thuê", "rent"),
-    "health": ("sức khỏe", "thuốc", "khám bệnh", "bệnh viện", "health"),
-    "education": ("giáo dục", "học phí", "sách vở", "khóa học", "education"),
-    "entertainment": ("giải trí", "xem phim", "trò chơi", "game", "entertainment"),
+    "health": (
+        "sức khỏe",
+        "vỉ thuốc",
+        "thuốc",
+        "khám bệnh",
+        "bệnh viện",
+        "nha khoa",
+        "health",
+    ),
+    "education": ("giáo dục", "học phí", "sách vở", "sách", "khóa học", "education"),
+    "entertainment": (
+        "giải trí",
+        "xem phim",
+        "vé phim",
+        "karaoke",
+        "trò chơi",
+        "game",
+        "entertainment",
+    ),
     "other": ("khác", "linh tinh", "other"),
 }
 
@@ -119,10 +160,17 @@ def resolve_expense_category_slug(
     "other"; callers can ask for clarification without distorting totals.
     """
 
-    resolved = _resolve_expense_category_from_text(value)
+    resolved = resolve_expense_category_match(value)
     if resolved is not None:
-        return resolved
-    return _resolve_expense_category_from_text(fallback_text)
+        return resolved.slug
+    fallback_resolved = resolve_expense_category_match(fallback_text)
+    return fallback_resolved.slug if fallback_resolved is not None else None
+
+
+def resolve_expense_category_match(value: str | None) -> CategoryAliasMatch | None:
+    """Resolve a canonical expense category and the matched source phrase."""
+
+    return _resolve_expense_category_from_text(value)
 
 
 def get_category(slug: str) -> CategoryDefinition:
@@ -190,7 +238,7 @@ def map_unknown_income_category(slug: str) -> CategoryDefinition:
     return category
 
 
-def _resolve_expense_category_from_text(value: str | None) -> str | None:
+def _resolve_expense_category_from_text(value: str | None) -> CategoryAliasMatch | None:
     if value is None or not value.strip():
         return None
 
@@ -198,21 +246,21 @@ def _resolve_expense_category_from_text(value: str | None) -> str | None:
     if normalized in _CATEGORIES_BY_SLUG:
         category = _CATEGORIES_BY_SLUG[normalized]
         if category.supports_transaction_type(TransactionType.EXPENSE):
-            return category.slug
+            return CategoryAliasMatch(slug=category.slug, alias=category.slug)
         return None
 
-    matches: list[tuple[int, str]] = []
+    matches: list[tuple[int, int, str, str]] = []
     for priority, slug in enumerate(_EXPENSE_ALIAS_PRIORITY):
-        aliases = tuple(
-            _normalize_category_text(alias) for alias in EXPENSE_CATEGORY_ALIASES[slug]
-        )
-        if any(_contains_normalized_alias(normalized, alias) for alias in aliases):
-            matches.append((priority, slug))
+        for alias in EXPENSE_CATEGORY_ALIASES[slug]:
+            normalized_alias = _normalize_category_text(alias)
+            if _contains_normalized_alias(normalized, normalized_alias):
+                matches.append((priority, -len(normalized_alias), slug, alias))
 
     if not matches:
         return None
     matches.sort()
-    return matches[0][1]
+    _, _, slug, alias = matches[0]
+    return CategoryAliasMatch(slug=slug, alias=alias)
 
 
 def _contains_normalized_alias(value: str, alias: str) -> bool:

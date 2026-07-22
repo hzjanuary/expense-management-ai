@@ -8,6 +8,8 @@ from app.domain.categories import (
     get_category_for_transaction,
     map_unknown_expense_category,
     map_unknown_income_category,
+    resolve_expense_category_match,
+    resolve_expense_category_slug,
 )
 from app.domain.enums import CategoryType, TransactionType
 
@@ -65,6 +67,34 @@ def test_category_lookup_for_matching_transaction_type() -> None:
 
     assert expense.slug == "coffee"
     assert income.slug == "bonus"
+
+
+@pytest.mark.parametrize(
+    ("text", "expected_slug"),
+    [
+        ("ăn uống", "food"),
+        ("hôm nay ăn cơm gà", "food"),
+        ("sáng uống cà phê sữa", "coffee"),
+        ("uống trà sữa", "coffee"),
+        ("đổ xăng", "transport"),
+        ("đi Grab hết tiền", "transport"),
+        ("mua vỉ thuốc", "health"),
+        ("tối qua xem phim", "entertainment"),
+    ],
+)
+def test_expense_category_aliases_resolve_to_canonical_slugs(
+    text: str,
+    expected_slug: str,
+) -> None:
+    assert resolve_expense_category_slug(text) == expected_slug
+
+
+def test_expense_category_alias_match_prefers_specific_aliases() -> None:
+    match = resolve_expense_category_match("uống cà phê sữa")
+
+    assert match is not None
+    assert match.slug == "coffee"
+    assert match.alias == "cà phê sữa"
 
 
 def test_unknown_expense_category_maps_to_other_only_through_helper() -> None:

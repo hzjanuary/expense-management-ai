@@ -3,7 +3,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import fs from "node:fs/promises";
 
 const DEMO_MONTH = "2026-07";
-const DEMO_MESSAGE = "Hôm nay tôi tiêu 35k vào ăn trưa";
+const DEMO_MESSAGE = "hôm nay tao ăn hộp cơm gà 28k";
 const TOTAL_SPENDING_QUERY = "Tháng này tôi đã chi tổng cộng bao nhiêu?";
 const SPENDING_QUERY = "Tháng này tôi ăn uống hết bao nhiêu?";
 const BUDGET_QUERY = "Còn bao nhiêu tiền ăn tháng này?";
@@ -59,7 +59,7 @@ test("complete local-first MVP demo", async ({ page }) => {
   await assistant.getByRole("button", { name: "Gửi" }).click();
   await expect(assistant.getByText("Kiểm tra bản nháp").first()).toBeVisible();
   await expect(assistant.getByText("Chi").first()).toBeVisible();
-  await expectMoney(assistant, "35.000");
+  await expectMoney(assistant, "28.000");
   await expect(assistant.getByText("Ăn uống").first()).toBeVisible();
   await expect(assistant.getByText("Trợ lý AI").first()).toBeVisible();
   await expect(assistant.getByRole("button", { name: "Xác nhận" })).toBeVisible();
@@ -83,24 +83,24 @@ test("complete local-first MVP demo", async ({ page }) => {
 
   await page.getByRole("link", { name: "Tổng quan" }).first().click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expectMoney(page.locator("body"), "965.000");
-  await expectMoney(page.locator("body"), "35.000");
-  await expect(sectionByHeading(page, "Giao dịch gần đây").getByText("ăn trưa"))
+  await expectMoney(page.locator("body"), "972.000");
+  await expectMoney(page.locator("body"), "28.000");
+  await expect(sectionByHeading(page, "Giao dịch gần đây").getByText("Cơm gà"))
     .toBeVisible();
-  await expectMoney(sectionByHeading(page, "Tình trạng ngân sách"), "1.965.000");
+  await expectMoney(sectionByHeading(page, "Tình trạng ngân sách"), "1.972.000");
 
   await page.getByRole("link", { name: "Trợ lý AI" }).first().click();
   await submitChat(page, TOTAL_SPENDING_QUERY);
   const totalSpendingInsight = insightByHeading(page, "Tổng chi tiêu");
   await expect(totalSpendingInsight.getByText("Danh mục")).toHaveCount(0);
-  await expectMoney(totalSpendingInsight, "35.000");
+  await expectMoney(totalSpendingInsight, "28.000");
   await expect(totalSpendingInsight.getByText("Số giao dịch").locator("..")).toContainText("1");
   await expect(totalSpendingInsight.getByText(/tháng này/)).toBeVisible();
 
   await submitChat(page, SPENDING_QUERY);
   const spendingInsight = insightByHeading(page, "Chi tiêu theo danh mục");
   await expect(spendingInsight.getByText("Ăn uống", { exact: true })).toBeVisible();
-  await expectMoney(spendingInsight, "35.000");
+  await expectMoney(spendingInsight, "28.000");
   await expect(spendingInsight.getByText("Số giao dịch").locator("..")).toContainText("1");
   await expect(spendingInsight.getByText(/tháng này/)).toBeVisible();
   await expectNoCriticalOrSeriousA11yViolations(page, "insight result");
@@ -108,14 +108,14 @@ test("complete local-first MVP demo", async ({ page }) => {
   await submitChat(page, BUDGET_QUERY);
   const budgetInsight = insightByHeading(page, "Ngân sách còn lại");
   await expectMoney(budgetInsight, "2.000.000");
-  await expectMoney(budgetInsight, "35.000");
-  await expectMoney(budgetInsight, "1.965.000");
+  await expectMoney(budgetInsight, "28.000");
+  await expectMoney(budgetInsight, "1.972.000");
   await expect(budgetInsight.getByText("Còn trong ngân sách").first()).toBeVisible();
   await expect(budgetInsight.getByText("Số giao dịch").locator("..")).toContainText("1");
 
   await submitChat(page, BREAKDOWN_QUERY);
   const breakdownInsight = insightByHeading(page, "Chi nhiều nhất");
-  await expectMoney(breakdownInsight, "35.000");
+  await expectMoney(breakdownInsight, "28.000");
   await expect(breakdownInsight.getByText("Ăn uống", { exact: true })).toBeVisible();
   await expect(breakdownInsight.getByText("100.00%")).toBeVisible();
   await expect(breakdownInsight.getByText("Số giao dịch").locator("..")).toContainText("1");
@@ -124,14 +124,14 @@ test("complete local-first MVP demo", async ({ page }) => {
   await expect(page).toHaveURL(/\/transactions$/);
   const transactions = sectionByHeading(page, "Giao dịch gần đây");
   const exportPanel = sectionByHeading(page, "Xuất giao dịch");
-  await expect(transactions.getByText("ăn trưa")).toBeVisible();
+  await expect(transactions.getByText("Cơm gà")).toBeVisible();
 
   const csvDownload = await downloadFromExportPanel(exportPanel);
   expect(csvDownload.suggestedFilename()).toMatch(/\.csv$/);
   const csvPath = await csvDownload.path();
   expect(csvPath).not.toBeNull();
   const csv = await fs.readFile(csvPath ?? "", "utf8");
-  expect(csv).toContain("ăn trưa");
+  expect(csv).toContain("Cơm gà");
   expect(csv).toContain("ai_chat");
   expect(csv).not.toContain("raw_user_text");
   expect(csv).not.toContain("parser_confidence");
@@ -146,13 +146,13 @@ test("complete local-first MVP demo", async ({ page }) => {
     transactions: Array<Record<string, unknown>>;
   };
   const exportedTransaction = jsonPayload.transactions.find(
-    (item) => item.description === "ăn trưa",
+    (item) => item.description === "Cơm gà",
   );
   expect(exportedTransaction).toMatchObject({
-    amount_minor: 35000,
+    amount_minor: 28000,
     category_slug: "food",
     currency: "VND",
-    description: "ăn trưa",
+    description: "Cơm gà",
     source: "ai_chat",
     type: "expense",
   });
@@ -161,15 +161,15 @@ test("complete local-first MVP demo", async ({ page }) => {
   expect(exportedTransaction).not.toHaveProperty("parser_confidence");
   expect(exportedTransaction).not.toHaveProperty("provider_name");
 
-  await transactions.getByRole("button", { name: /Xóa giao dịch ăn trưa/ }).click();
+  await transactions.getByRole("button", { name: /Xóa giao dịch Cơm gà/ }).click();
   const deleteDialog = page.getByRole("dialog", { name: "Xóa giao dịch?" });
   await expect(deleteDialog.getByText(/màn hình đang dùng/)).toBeVisible();
   await expect(deleteDialog.getByText(/số dư sẽ được hoàn lại/)).toBeVisible();
   await expectNoCriticalOrSeriousA11yViolations(page, "transaction delete dialog");
   await deleteDialog.getByRole("button", { name: "Hủy" }).click();
-  await expect(transactions.getByText("ăn trưa")).toBeVisible();
+  await expect(transactions.getByText("Cơm gà")).toBeVisible();
 
-  await transactions.getByRole("button", { name: /Xóa giao dịch ăn trưa/ }).click();
+  await transactions.getByRole("button", { name: /Xóa giao dịch Cơm gà/ }).click();
   await page
     .getByRole("dialog", { name: "Xóa giao dịch?" })
     .getByRole("button", { name: "Xóa giao dịch" })

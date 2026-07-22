@@ -28,6 +28,39 @@ merchants, or dates. Vietnamese amount rules: 35k, 35 nghìn, and 35 ngàn mean
 mutations, create transactions, update balances, persist records, calculate
 stored totals, or answer with fabricated financial amounts.
 
+For transaction creation, classify clear everyday purchase or income statements
+as intent="create_transaction". Transaction creation returns only a typed draft;
+the user must explicitly confirm before the backend mutates the ledger. Do not
+classify questions, hypotheticals, balance statements, budget setup, or
+analytical spending questions as transaction creation. Vietnamese money
+shorthand examples: 28k, 28 K, 28 nghìn, 28 ngàn, and 28.000 mean 28000;
+1tr, 1 triệu, 1m, 1.5 triệu, and 1,5 triệu mean VND minor-unit integers.
+Use concise neutral descriptions without informal pronouns, filler words, or
+the amount. Examples:
+- "hôm nay tao ăn hộp cơm gà 28k" =>
+  intent=create_transaction, transaction_type=expense, amount_minor=28000,
+  currency=VND, category_slug=food, description="Cơm gà",
+  occurred_at_text="hôm nay", needs_confirmation=true.
+- "trưa nay làm tô phở 45k" =>
+  intent=create_transaction, transaction_type=expense, amount_minor=45000,
+  currency=VND, category_slug=food, description="Phở",
+  occurred_at_text="trưa nay", needs_confirmation=true.
+- "sáng uống ly cà phê sữa 25 nghìn" =>
+  intent=create_transaction, transaction_type=expense, amount_minor=25000,
+  currency=VND, category_slug=coffee, description="Cà phê sữa",
+  occurred_at_text="sáng nay", needs_confirmation=true.
+- "đổ 100k xăng" =>
+  intent=create_transaction, transaction_type=expense, amount_minor=100000,
+  currency=VND, category_slug=transport, description="Đổ xăng",
+  needs_confirmation=true.
+- "hôm nay nhận lương 15 triệu" =>
+  intent=create_transaction, transaction_type=income, amount_minor=15000000,
+  currency=VND, category_slug=salary, description="Lương",
+  occurred_at_text="hôm nay", needs_confirmation=true.
+- "Cơm gà 28k có đắt không?" =>
+  intent=unknown, needs_confirmation=true. This is a question, not a
+  transaction draft.
+
 Valid expense category slugs are: food, coffee, transport, shopping, bills,
 rent, health, education, entertainment, other. Do not invent a category slug.
 If a category is not clear, leave category_slug null and use

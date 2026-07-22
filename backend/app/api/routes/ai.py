@@ -75,6 +75,7 @@ async def parse_ai_draft(
     request: AiParseRequest,
     provider_dependency: Annotated[object, Depends(get_llm_provider)],
     session: Annotated[AsyncSession, Depends(get_db_session)],
+    now: Annotated[datetime, Depends(get_current_time)],
 ) -> AiParseResponse:
     provider = cast(LlmProvider, provider_dependency)
     try:
@@ -87,6 +88,7 @@ async def parse_ai_draft(
                 default_currency=request.default_currency,
                 timezone=request.timezone,
             ),
+            now=now,
         )
     except LlmProviderUnavailableError as error:
         raise HTTPException(

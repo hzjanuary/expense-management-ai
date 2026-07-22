@@ -556,6 +556,7 @@ function Message({ text, tone }: MessageProps) {
 
 function Clarification({ result }: { result: AiParseResponse }) {
   const fields = result.clarification?.fields ?? result.missing_fields;
+  const friendlyFields = fields.map(formatClarificationField).filter(Boolean);
 
   return (
     <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
@@ -563,13 +564,35 @@ function Clarification({ result }: { result: AiParseResponse }) {
         {result.clarification?.message ??
           "Bản nháp này cần thêm thông tin trước khi xác nhận."}
       </p>
-      {fields.length > 0 ? (
+      {friendlyFields.length > 0 ? (
         <p className="mt-2 text-xs text-amber-800">
-          Cần bổ sung: {fields.join(", ")}
+          Cần bổ sung: {friendlyFields.join(", ")}
         </p>
       ) : null}
     </div>
   );
+}
+
+function formatClarificationField(field: string): string {
+  switch (field) {
+    case "amount_minor":
+      return "số tiền";
+    case "category_slug":
+      return "nhóm chi tiêu";
+    case "transaction_type":
+      return "khoản thu hay khoản chi";
+    case "currency":
+      return "đơn vị tiền";
+    case "description":
+      return "ghi chú";
+    case "occurred_at_iso":
+      return "ngày giao dịch";
+    case "intent":
+    case "missing_fields":
+      return "";
+    default:
+      return "";
+  }
 }
 
 function getSafeErrorMessage(error: unknown, fallback: string): string {

@@ -44,6 +44,60 @@ describe("insight chat UI", () => {
     expect(onConfirmed).toHaveBeenCalledTimes(1);
   });
 
+  it("routes colloquial transaction statements to parse and renders a clean draft", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url === "/api/ai/parse") {
+        return Promise.resolve(jsonResponse(colloquialParseResponse));
+      }
+      return Promise.reject(new Error(`Unexpected URL ${url}`));
+    });
+
+    render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+    await submitMessage("hôm nay tao ăn hộp cơm gà 28k");
+
+    expect(await screen.findByText("Kiểm tra bản nháp")).toBeInTheDocument();
+    expect(screen.getByText("Cơm gà")).toBeInTheDocument();
+    expect(screen.getByText("Ăn uống")).toBeInTheDocument();
+    expect(await findTextContaining("28.000")).toBeInTheDocument();
+    expect(countExactCalls(fetchMock, "/api/ai/parse")).toBe(1);
+    expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(0);
+  });
+
+  it("shows friendly parse clarifications without internal field names", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({
+        intent: "create_transaction",
+        draft_id: null,
+        draft: null,
+        needs_confirmation: true,
+        confidence: "low",
+        missing_fields: ["category_slug"],
+        clarification: {
+          message: "Khoản này thuộc danh mục nào?",
+          fields: ["category_slug"],
+        },
+      }),
+    );
+
+    render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+    await userEvent.selectOptions(
+      screen.getByLabelText("Loại yêu cầu"),
+      "create_transaction",
+    );
+    await submitMessage("hôm nay mua món lạ 28k");
+
+    expect(
+      (await screen.findAllByText("Khoản này thuộc danh mục nào?")).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(/nhóm chi tiêu/).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByText(/intent|category_slug|amount_minor|transaction_type|occurred_at_iso/),
+    ).not.toBeInTheDocument();
+  });
+
   it("routes canonical spending, budget, and breakdown queries to their endpoints", async () => {
     const fetchMock = mockInsightFetch();
 
@@ -86,6 +140,18 @@ describe("insight chat UI", () => {
     await submitMessage("Tôi đã chi bao nhiêu tiền xăng tháng này?");
     expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(3);
     expect(countCalls(fetchMock, "/api/ai/parse")).toBe(0);
+  });
+
+  it("does not route analytical spending queries to transaction parsing", async () => {
+    const fetchMock = mockInsightFetch();
+
+    render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+    await submitMessage("Tháng này tôi ăn uống hết bao nhiêu?");
+
+    expect(await screen.findByRole("heading", { name: "Chi tiêu theo danh mục" })).toBeInTheDocument();
+    expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(1);
+    expect(countExactCalls(fetchMock, "/api/ai/parse")).toBe(0);
   });
 
   it("explicit spending selection accepts total spending questions", async () => {
@@ -438,6 +504,24 @@ const parseResponse = {
   confidence: "high",
   missing_fields: [],
   clarification: null,
+};
+
+const colloquialParseResponse = {
+  ...parseResponse,
+  draft_id: "draft-colloquial-1",
+  draft: {
+    ...parseResponse.draft,
+    amount_minor: 28000,
+    category_slug: "food",
+    description: "Cơm gà",
+    occurred_at: "2026-07-22T12:30:00+07:00",
+  },
+  needs_confirmation: true,
+  confidence: "medium",
+  clarification: {
+    message: "Mình hiểu giao dịch này nhưng cần bạn xác nhận trước khi ghi sổ.",
+    fields: [],
+  },
 };
 
 const confirmResponse = {

@@ -115,8 +115,9 @@ function isSpendingBreakdownMessage(normalized: string): boolean {
 
 function isCreateTransactionMessage(normalized: string): boolean {
   return (
-    normalized.includes("tieu") &&
-    includesAny(normalized, ["35k", "an trua", "hom nay"])
+    hasMoneySignal(normalized) &&
+    hasTransactionStatementSignal(normalized) &&
+    !hasNonTransactionQuestionSignal(normalized)
   );
 }
 
@@ -194,6 +195,59 @@ function hasCategorySignal(normalized: string): boolean {
     "khac",
     "linh tinh",
   ]);
+}
+
+function hasMoneySignal(normalized: string): boolean {
+  return /(^|\s)\d+(?:[.,]\d+)?\s*(k|nghin|ngan|tr|trieu|m)\b/.test(normalized) ||
+    /(^|\s)\d{1,3}([ .]\d{3})+($|\s)/.test(normalized);
+}
+
+function hasTransactionStatementSignal(normalized: string): boolean {
+  return includesAny(normalized, [
+    "an",
+    "uong",
+    "mua",
+    "tra",
+    "thanh toan",
+    "dong tien",
+    "do xang",
+    "xang",
+    "di grab",
+    "grab",
+    "bat taxi",
+    "taxi",
+    "xem phim",
+    "thue",
+    "het",
+    "ton",
+    "chi",
+    "tieu",
+    "lam to",
+    "quat ly",
+    "nhan luong",
+    "duoc tra luong",
+    "nhan thuong",
+    "duoc thuong",
+    "nhan tien",
+    "duoc cho",
+    "tien ve",
+    "thu nhap",
+  ]);
+}
+
+function hasNonTransactionQuestionSignal(normalized: string): boolean {
+  return (
+    normalized.includes("?") ||
+    includesAny(normalized, [
+      "bao nhieu",
+      "co dat khong",
+      "toi con",
+      "ngan sach",
+      "neu ",
+      "moi ngay",
+      "thi sao",
+    ])
+  );
 }
 
 function includesAny(value: string, needles: string[]): boolean {

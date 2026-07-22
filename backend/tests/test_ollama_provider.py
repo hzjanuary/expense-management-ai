@@ -190,6 +190,19 @@ def test_ollama_prompt_documents_spending_scopes_and_examples() -> None:
     assert "Tháng này tôi uống cà phê hết bao nhiêu?" in SYSTEM_PROMPT
 
 
+def test_ollama_prompt_documents_colloquial_transaction_examples() -> None:
+    assert "clear everyday purchase or income statements" in SYSTEM_PROMPT
+    assert "the user must explicitly confirm" in SYSTEM_PROMPT
+    assert "questions, hypotheticals, balance statements, budget setup" in SYSTEM_PROMPT
+    assert "hôm nay tao ăn hộp cơm gà 28k" in SYSTEM_PROMPT
+    assert "trưa nay làm tô phở 45k" in SYSTEM_PROMPT
+    assert "sáng uống ly cà phê sữa 25 nghìn" in SYSTEM_PROMPT
+    assert "đổ 100k xăng" in SYSTEM_PROMPT
+    assert "hôm nay nhận lương 15 triệu" in SYSTEM_PROMPT
+    assert "Cơm gà 28k có đắt không?" in SYSTEM_PROMPT
+    assert 'description="Cơm gà"' in SYSTEM_PROMPT
+
+
 @pytest.mark.anyio
 async def test_ollama_successful_parse_validates_integer_amount_and_currency() -> None:
     async with make_client(

@@ -1,7 +1,10 @@
 import json
+import re
+import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +24,13 @@ from app.application.transactions import (
 from app.core.config import get_settings
 from app.db.models import AiTransactionDraftModel, TransactionModel
 from app.db.repositories import create_ai_transaction_draft, get_ai_transaction_draft
-from app.domain.categories import CategoryValidationError, get_category_for_transaction
+from app.domain.categories import (
+    CategoryAliasMatch,
+    CategoryValidationError,
+    get_category_for_transaction,
+    resolve_expense_category_match,
+    resolve_expense_category_slug,
+)
 from app.domain.enums import TransactionType
 from app.domain.money import Money, MoneyValidationError
 
@@ -93,6 +102,13 @@ class ConfirmAiDraftResult:
     account_balance_minor: int
 
 
+@dataclass(frozen=True, slots=True)
+class ParsedMoneyCandidate:
+    amount_minor: int
+    start: int
+    end: int
+
+
 async def parse_ai_transaction_draft(
     session: AsyncSession,
     provider: LlmProvider,
@@ -107,6 +123,12 @@ async def parse_ai_transaction_draft(
         timezone=command.timezone,
     )
     provider_result = await provider.parse_transaction_text(request)
+    current_time = now or _utc_now()
+    provider_result = _recover_create_transaction_result(
+        provider_result,
+        command,
+        now=current_time,
+    )
 
     if provider_result.intent is not SupportedIntent.CREATE_TRANSACTION:
         missing_fields = _normalize_missing_fields(provider_result.missing_fields)
@@ -140,7 +162,6 @@ async def parse_ai_transaction_draft(
 
     draft = _validate_create_transaction_draft(provider_result)
     provider_name, model_name = _provider_identity(provider)
-    current_time = now or _utc_now()
     settings = get_settings()
     expires_at = current_time + timedelta(seconds=settings.ai_draft_ttl_seconds)
 
@@ -249,6 +270,410 @@ def _validate_create_transaction_draft(
         merchant=result.merchant,
         occurred_at=_parse_occurred_at(result.occurred_at_iso),
     )
+
+
+def _recover_create_transaction_result(
+    result: TransactionParseResult,
+    command: AiParseCommand,
+    *,
+    now: datetime,
+) -> TransactionParseResult:
+    if result.intent not in {
+        SupportedIntent.UNKNOWN,
+        SupportedIntent.CREATE_TRANSACTION,
+    }:
+        return result
+
+    message = command.message
+    normalized = _normalize_vietnamese_text(message)
+    if _is_non_transaction_message(normalized):
+        return result
+
+    money_candidates = _extract_money_candidates(message)
+    has_provider_amount = result.amount_minor is not None and result.amount_minor > 0
+    recovered_type_for_amount = _recover_transaction_type(normalized)
+    if (
+        not has_provider_amount
+        and len(money_candidates) > 1
+        and recovered_type_for_amount
+    ):
+        return result.model_copy(
+            update={
+                "intent": SupportedIntent.CREATE_TRANSACTION,
+                "transaction_type": recovered_type_for_amount,
+                "currency": result.currency or command.default_currency,
+                "needs_confirmation": True,
+                "confidence": Confidence.LOW,
+                "missing_fields": ["amount_minor"],
+            }
+        )
+    if not has_provider_amount and len(money_candidates) != 1:
+        return result
+    if not has_provider_amount and money_candidates[0].amount_minor <= 0:
+        return result
+
+    transaction_type = result.transaction_type
+    if transaction_type is None:
+        transaction_type = recovered_type_for_amount
+    if transaction_type is None:
+        return result
+
+    category_slug = result.category_slug
+    if transaction_type == TransactionType.EXPENSE.value:
+        original_category_slug = category_slug
+        category_slug = _recover_expense_category_slug(category_slug, message)
+        if category_slug is None and _has_expense_signal(normalized):
+            # Keep create intent so the existing clarification path asks for a category.
+            category_slug = None
+    elif transaction_type == TransactionType.INCOME.value:
+        category_slug = _recover_income_category_slug(category_slug, normalized)
+
+    description = result.description
+    if description is None or not description.strip():
+        description = _recover_description(transaction_type, message)
+    elif (
+        result.intent is SupportedIntent.CREATE_TRANSACTION
+        and not result.missing_fields
+        and transaction_type == TransactionType.EXPENSE.value
+        and original_category_slug == category_slug
+    ):
+        description = description.strip()
+    else:
+        description = _clean_description(description)
+
+    occurred_at_iso = result.occurred_at_iso
+    occurred_at_text = result.occurred_at_text
+    recovered_date = _recover_occurred_at(message, command.timezone, now=now)
+    if occurred_at_iso is None and recovered_date is not None:
+        occurred_at_iso = recovered_date.isoformat()
+        occurred_at_text = _recover_occurred_at_text(message) or occurred_at_text
+
+    amount_minor = result.amount_minor
+    if amount_minor is None and len(money_candidates) == 1:
+        amount_minor = money_candidates[0].amount_minor
+
+    if result.intent is SupportedIntent.UNKNOWN and transaction_type is None:
+        return result
+
+    recovered_fields = [
+        field
+        for field in _normalize_missing_fields(result.missing_fields)
+        if field != "intent"
+    ]
+    for field, value in (
+        ("transaction_type", transaction_type),
+        ("amount_minor", amount_minor),
+        ("currency", result.currency or command.default_currency),
+        ("category_slug", category_slug),
+        ("description", description),
+    ):
+        if value is not None and not (isinstance(value, str) and not value.strip()):
+            recovered_fields = [
+                existing for existing in recovered_fields if existing != field
+            ]
+
+    update = {
+        "intent": SupportedIntent.CREATE_TRANSACTION,
+        "transaction_type": transaction_type,
+        "amount_minor": amount_minor,
+        "currency": result.currency or command.default_currency,
+        "category_slug": category_slug,
+        "description": description,
+        "occurred_at_text": occurred_at_text,
+        "occurred_at_iso": occurred_at_iso,
+        "missing_fields": recovered_fields,
+    }
+    changed = (
+        result.intent is not SupportedIntent.CREATE_TRANSACTION
+        or transaction_type != result.transaction_type
+        or amount_minor != result.amount_minor
+        or (result.currency or command.default_currency) != result.currency
+        or category_slug != result.category_slug
+        or description != result.description
+        or occurred_at_iso != result.occurred_at_iso
+        or recovered_fields != result.missing_fields
+    )
+    if not changed:
+        return result
+
+    return result.model_copy(
+        update={
+            **update,
+            "needs_confirmation": (
+                result.needs_confirmation
+                or result.intent is SupportedIntent.UNKNOWN
+                or bool(result.missing_fields)
+            ),
+            "confidence": (
+                result.confidence
+                if result.intent is SupportedIntent.CREATE_TRANSACTION
+                else Confidence.MEDIUM
+            ),
+        }
+    )
+
+
+def _recover_transaction_type(normalized: str) -> str | None:
+    if _has_income_signal(normalized):
+        return TransactionType.INCOME.value
+    if _has_expense_signal(normalized):
+        return TransactionType.EXPENSE.value
+    return None
+
+
+def _recover_expense_category_slug(
+    provider_value: str | None,
+    message: str,
+) -> str | None:
+    if provider_value is not None and provider_value.strip():
+        return resolve_expense_category_slug(provider_value)
+    return resolve_expense_category_slug(None, fallback_text=message)
+
+
+def _recover_income_category_slug(
+    provider_value: str | None,
+    normalized_message: str,
+) -> str | None:
+    if provider_value in {"salary", "bonus", "gift", "other_income"}:
+        return provider_value
+    if any(
+        signal in normalized_message for signal in ("nhan luong", "tra luong", "luong")
+    ):
+        return "salary"
+    if any(
+        signal in normalized_message
+        for signal in ("nhan thuong", "duoc thuong", "thuong")
+    ):
+        return "bonus"
+    if any(signal in normalized_message for signal in ("duoc cho", "qua tang")):
+        return "gift"
+    return provider_value
+
+
+def _recover_description(transaction_type: str | None, message: str) -> str | None:
+    normalized = _normalize_vietnamese_text(message)
+    if transaction_type == TransactionType.INCOME.value:
+        if "luong" in normalized:
+            return "Lương"
+        if "thuong" in normalized:
+            return "Thưởng"
+        if "duoc cho" in normalized:
+            return "Tiền được cho"
+        return "Thu nhập"
+
+    match = resolve_expense_category_match(message)
+    if match is None:
+        return None
+    return _description_from_category_match(match, normalized)
+
+
+def _description_from_category_match(
+    match: CategoryAliasMatch,
+    normalized_message: str,
+) -> str:
+    if match.slug == "transport" and (
+        "do xang" in normalized_message
+        or ("do" in normalized_message and "xang" in normalized_message)
+    ):
+        return "Đổ xăng"
+    if match.slug == "transport" and "grab" in normalized_message:
+        return "Grab"
+    if match.slug == "health" and "thuoc" in normalized_message:
+        return "Thuốc"
+    if match.slug == "entertainment" and "xem phim" in normalized_message:
+        return "Xem phim"
+    return _title_case_vietnamese(match.alias)
+
+
+def _clean_description(value: str) -> str:
+    cleaned = re.sub(
+        r"\b\d+(?:[.,]\d+)?\s*(?:k|nghin|ngan|tr|trieu|m)\b",
+        "",
+        value,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" .,-")
+    return _title_case_vietnamese(cleaned) if cleaned else value.strip()
+
+
+def _title_case_vietnamese(value: str) -> str:
+    lowered = value.strip().lower()
+    if not lowered:
+        return value
+    return lowered[0].upper() + lowered[1:]
+
+
+def _recover_occurred_at(
+    message: str,
+    timezone: str,
+    *,
+    now: datetime,
+) -> datetime | None:
+    label = _recover_occurred_at_text(message)
+    if label is None:
+        return None
+    try:
+        zone = ZoneInfo(timezone)
+    except ZoneInfoNotFoundError:
+        zone = ZoneInfo("Asia/Ho_Chi_Minh")
+
+    local_now = now.astimezone(zone)
+    if "qua" in _normalize_vietnamese_text(label):
+        local_now = local_now - timedelta(days=1)
+    return local_now.astimezone(UTC)
+
+
+def _recover_occurred_at_text(message: str) -> str | None:
+    normalized = _normalize_vietnamese_text(message)
+    for phrase in (
+        "sang nay",
+        "trua nay",
+        "chieu nay",
+        "toi nay",
+        "hom nay",
+        "vua roi",
+        "sang qua",
+        "toi qua",
+        "hom qua",
+    ):
+        if phrase in normalized:
+            return (
+                phrase.replace("sang", "sáng")
+                .replace("trua", "trưa")
+                .replace("chieu", "chiều")
+                .replace("toi", "tối")
+                .replace("hom", "hôm")
+                .replace("vua", "vừa")
+            )
+    return None
+
+
+def _extract_money_candidates(message: str) -> list[ParsedMoneyCandidate]:
+    candidates: list[ParsedMoneyCandidate] = []
+    normalized = _normalize_vietnamese_text(message, keep_numeric_separators=True)
+
+    patterns = (
+        (
+            re.compile(
+                r"(?<![\w])(?P<number>\d+(?:[,.]\d+)?)\s*(?P<unit>trieu|tr|m)\b"
+            ),
+            1_000_000,
+        ),
+        (re.compile(r"(?<![\w])(?P<number>\d+)\s*(?P<unit>k|nghin|ngan)\b"), 1_000),
+        (re.compile(r"(?<![\w])(?P<number>\d{1,3}(?:[ .]\d{3})+)(?!\w)"), 1),
+    )
+    for pattern, multiplier in patterns:
+        for match in pattern.finditer(normalized):
+            if _is_time_token(normalized, match.start(), match.end()):
+                continue
+            if multiplier == 1_000_000:
+                number_text = match.group("number").replace(" ", "").replace(",", ".")
+                amount = int(float(number_text) * multiplier)
+            elif multiplier == 1:
+                number_text = match.group("number").replace(" ", "").replace(".", "")
+                amount = int(number_text)
+            else:
+                number_text = match.group("number").replace(" ", "").replace(".", "")
+                amount = int(number_text) * multiplier
+            if amount > 0:
+                candidates.append(
+                    ParsedMoneyCandidate(
+                        amount_minor=amount,
+                        start=match.start(),
+                        end=match.end(),
+                    )
+                )
+
+    candidates.sort(key=lambda candidate: (candidate.start, candidate.end))
+    deduped: list[ParsedMoneyCandidate] = []
+    seen_spans: set[tuple[int, int]] = set()
+    for candidate in candidates:
+        span = (candidate.start, candidate.end)
+        if span not in seen_spans:
+            seen_spans.add(span)
+            deduped.append(candidate)
+    return deduped
+
+
+def _is_time_token(value: str, start: int, end: int) -> bool:
+    suffix = value[end : end + 1]
+    prefix = value[max(0, start - 1) : start]
+    return suffix == "h" or prefix == "h"
+
+
+def _has_expense_signal(normalized: str) -> bool:
+    return any(
+        signal in normalized
+        for signal in (
+            " an",
+            "an ",
+            "uong",
+            "mua",
+            "tra",
+            "thanh toan",
+            "dong tien",
+            "do xang",
+            "xang",
+            "di grab",
+            "grab",
+            "bat taxi",
+            "taxi",
+            "xem phim",
+            "thue",
+            "het",
+            "ton",
+            "chi",
+            "tieu",
+            "lam to",
+            "quat ly",
+        )
+    )
+
+
+def _has_income_signal(normalized: str) -> bool:
+    return any(
+        signal in normalized
+        for signal in (
+            "nhan luong",
+            "duoc tra luong",
+            "nhan thuong",
+            "duoc thuong",
+            "nhan tien",
+            "duoc cho",
+            "tien ve",
+            "thu nhap",
+        )
+    )
+
+
+def _is_non_transaction_message(normalized: str) -> bool:
+    if "?" in normalized:
+        return True
+    return any(
+        signal in normalized
+        for signal in (
+            "co dat khong",
+            "con ",
+            "ngan sach",
+            "bao nhieu",
+            "neu ",
+            "moi ngay",
+            "thi sao",
+        )
+    )
+
+
+def _normalize_vietnamese_text(
+    value: str,
+    *,
+    keep_numeric_separators: bool = False,
+) -> str:
+    normalized = unicodedata.normalize("NFD", value.strip().casefold())
+    without_marks = "".join(
+        character for character in normalized if unicodedata.category(character) != "Mn"
+    ).replace("đ", "d")
+    allowed = r"[^a-z0-9,.?\s]+" if keep_numeric_separators else r"[^a-z0-9?\s]+"
+    return re.sub(r"\s+", " ", re.sub(allowed, " ", without_marks)).strip()
 
 
 def _clarification_for_create_transaction_result(
