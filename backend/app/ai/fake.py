@@ -85,6 +85,11 @@ class FakeLlmProvider:
             )
 
         if _is_spending_breakdown_query_sample(request.message):
+            date_range_label = (
+                "this_month"
+                if "tháng này" in request.message.casefold()
+                else "this_week"
+            )
             return TransactionParseResult(
                 intent=SupportedIntent.SPENDING_BREAKDOWN,
                 transaction_type=None,
@@ -95,7 +100,7 @@ class FakeLlmProvider:
                 merchant=None,
                 occurred_at_text=None,
                 occurred_at_iso=None,
-                date_range_label="this_week",
+                date_range_label=date_range_label,
                 needs_confirmation=False,
                 confidence=Confidence.HIGH,
                 missing_fields=[],
@@ -290,9 +295,12 @@ def _is_missing_query_category_sample(message: str) -> bool:
 
 def _is_spending_breakdown_query_sample(message: str) -> bool:
     normalized = message.casefold()
-    return "tuần này" in normalized and (
+    return ("tuần này" in normalized or "tháng này" in normalized) and (
         "tiêu nhiều nhất" in normalized
         or "chi nhiều nhất" in normalized
+        or "chi tiêu ở mục nào là nhiều nhất" in normalized
+        or "nhóm nào" in normalized
+        or "danh mục" in normalized
         or "top chi tiêu" in normalized
     )
 

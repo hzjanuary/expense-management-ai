@@ -13,6 +13,7 @@ import { InsightResult } from "@/components/insight-result";
 import { Button, panelClassName, textareaClassName } from "@/components/ui";
 import {
   AiApiError,
+  cancelAiDraft,
   confirmAiDraft,
   parseAiMessage,
   queryBudgetRemainingInsight,
@@ -90,7 +91,7 @@ export function ChatToLedger({
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
-  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
   const lastSubmissionRef = useRef<{
     intent: SupportedChatIntent;
     message: string;
@@ -145,7 +146,10 @@ export function ChatToLedger({
       return;
     }
 
-    abortControllerRef.current?.abort();
+    if (isSubmitting) {
+      return;
+    }
+
     const controller = new AbortController();
     abortControllerRef.current = controller;
     const requestSequence = requestSequenceRef.current + 1;
@@ -156,10 +160,10 @@ export function ChatToLedger({
       intent: intentSelection,
       message: trimmedMessage,
     };
+    setSelectedIntent("auto");
     setError(null);
     setSuccess(null);
     setIsSubmitting(true);
-    setPendingMessage(trimmedMessage);
     setMessage("");
     window.requestAnimationFrame(() => textareaRef.current?.focus());
 
@@ -171,7 +175,6 @@ export function ChatToLedger({
         message: trimmedMessage,
       });
       setIsSubmitting(false);
-      setPendingMessage(null);
       return;
     }
 
@@ -234,8 +237,10 @@ export function ChatToLedger({
       });
     } finally {
       if (requestSequenceRef.current === requestSequence) {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
         setIsSubmitting(false);
-        setPendingMessage(null);
       }
     }
   }
@@ -258,10 +263,10 @@ export function ChatToLedger({
     try {
       const result = await confirmAiDraft(activeDraftEntry.parseResult.draft_id);
       const transaction = result.transaction;
-      const amountPrefix = transaction.type === "expense" ? "−" : "+";
       setSuccess(
-        `Đã tạo giao dịch: ${amountPrefix}${formatVnd(
+        `Đã tạo giao dịch: ${formatVnd(
           transaction.amount_minor,
+          { sign: transaction.type === "expense" ? "negative" : "positive" },
         )} cho ${formatCategoryLabel(transaction.category_slug)}.`,
       );
       setMessage("");
@@ -274,9 +279,29 @@ export function ChatToLedger({
     }
   }
 
-  function handleCancel() {
-    setActiveDraftEntryId(null);
+  async function handleCancel() {
+    const activeDraftEntry = entries.find(
+      (entry): entry is Extract<ChatEntry, { intent: "create_transaction" }> =>
+        entry.intent === "create_transaction" && entry.id === activeDraftEntryId,
+    );
+
+    if (!activeDraftEntry?.parseResult.draft_id) {
+      setActiveDraftEntryId(null);
+      setError(null);
+      return;
+    }
+
     setError(null);
+    setSuccess(null);
+    setIsCancelling(true);
+    try {
+      await cancelAiDraft(activeDraftEntry.parseResult.draft_id);
+      setActiveDraftEntryId(null);
+    } catch (caughtError) {
+      setError(getSafeErrorMessage(caughtError, "Không hủy được bản nháp."));
+    } finally {
+      setIsCancelling(false);
+    }
   }
 
   function handleQuickAction(intent: SupportedChatIntent, example: string) {
@@ -286,7 +311,13 @@ export function ChatToLedger({
   }
 
   function handleTextareaKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== "Enter" || event.shiftKey || isSubmitting || isConfirming) {
+    if (
+      event.key !== "Enter" ||
+      event.shiftKey ||
+      isSubmitting ||
+      isConfirming ||
+      isCancelling
+    ) {
       return;
     }
 
@@ -321,10 +352,7 @@ export function ChatToLedger({
     textareaRef.current?.focus();
   }
 
-  const isDuplicatePendingSubmit =
-    isSubmitting && pendingMessage === message.trim();
-  const isBlockedPendingSubmit =
-    isSubmitting && (message.trim().length === 0 || isDuplicatePendingSubmit);
+  const isBlockedPendingSubmit = isSubmitting;
   const containerClassName =
     layout === "workspace"
       ? "flex min-h-0 flex-1 flex-col"
@@ -387,9 +415,10 @@ export function ChatToLedger({
                 activeDraftEntryId={activeDraftEntryId}
                 entry={entry}
                 isConfirming={isConfirming}
+                isCancelling={isCancelling}
                 isSubmitting={isSubmitting}
                 key={entry.id}
-                onCancelDraft={handleCancel}
+                onCancelDraft={() => void handleCancel()}
                 onClarificationAction={handleClarificationAction}
                 onConfirmDraft={() => void handleConfirm()}
                 onRetry={handleRetry}
@@ -400,7 +429,7 @@ export function ChatToLedger({
       </div>
 
       <form className={composerClassName} onSubmit={handleSubmit}>
-        <div className="grid gap-3 rounded-lg border border-ledger-line bg-white p-3 shadow-soft lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="grid gap-3 rounded-lg border border-ledger-line bg-ledger-panel p-3 shadow-soft lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <label className="grid gap-2">
             <span className="sr-only">
               Tin nhắn
@@ -418,11 +447,11 @@ export function ChatToLedger({
           </label>
           <Button
             className="w-full lg:w-auto"
-            disabled={isConfirming || isBlockedPendingSubmit}
+            disabled={isConfirming || isCancelling || isBlockedPendingSubmit}
             size="large"
             type="submit"
           >
-            {isBlockedPendingSubmit ? "Đang gửi" : "Gửi"}
+            {isSubmitting ? "Đang gửi" : "Gửi"}
           </Button>
         </div>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -471,6 +500,7 @@ function ChatEntryView({
   activeDraftEntryId,
   entry,
   isConfirming,
+  isCancelling,
   isSubmitting,
   onCancelDraft,
   onClarificationAction,
@@ -480,6 +510,7 @@ function ChatEntryView({
   activeDraftEntryId: number | null;
   entry: ChatEntry;
   isConfirming: boolean;
+  isCancelling: boolean;
   isSubmitting: boolean;
   onCancelDraft: () => void;
   onClarificationAction: (label: string) => void;
@@ -496,7 +527,7 @@ function ChatEntryView({
       ) : null}
       {entry.intent === "error" ? (
         <ProviderUnavailable
-          disabled={isSubmitting || isConfirming}
+          disabled={isSubmitting || isConfirming || isCancelling}
           message={entry.error}
           onRetry={onRetry}
         />
@@ -534,6 +565,7 @@ function ChatEntryView({
           confidence={entry.parseResult.confidence}
           draft={entry.parseResult.draft}
           isConfirming={isConfirming}
+          isCancelling={isCancelling}
           onCancel={onCancelDraft}
           onConfirm={onConfirmDraft}
         />
@@ -589,10 +621,10 @@ type MessageProps = {
 function Message({ text, tone }: MessageProps) {
   const toneClassName =
     tone === "error"
-      ? "border-rose-200 bg-rose-50 text-rose-700"
+      ? "border-ledger-danger bg-ledger-danger-soft text-ledger-danger"
       : tone === "success"
         ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-        : "border-ledger-line bg-white text-ledger-ink";
+        : "border-ledger-line bg-ledger-panel text-ledger-ink";
 
   return (
     <div className={`rounded-md border px-4 py-3 text-sm ${toneClassName}`}>
@@ -616,11 +648,11 @@ function Clarification({
   const showCategoryActions = friendlyFields.includes("nhóm chi tiêu");
 
   return (
-    <div className="max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-amber-950">
+    <div className="max-w-2xl rounded-lg border border-ledger-warning bg-ledger-warning-soft px-4 py-4 text-ledger-ink">
       <p className="text-sm font-semibold">{title}</p>
       <p className="mt-2 text-sm leading-6">{message}</p>
       {friendlyFields.length > 0 ? (
-        <p className="mt-2 text-xs text-amber-800">
+        <p className="mt-2 text-xs text-ledger-warning">
           Thông tin cần rõ hơn: {friendlyFields.join(", ")}
         </p>
       ) : null}
@@ -654,7 +686,7 @@ function ProviderUnavailable({
 }) {
   return (
     <div
-      className="max-w-2xl rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-rose-950"
+      className="max-w-2xl rounded-lg border border-ledger-danger bg-ledger-danger-soft px-5 py-4 text-ledger-ink"
       role="alert"
     >
       <p className="text-base font-semibold">Trợ lý chưa sẵn sàng</p>
@@ -664,7 +696,7 @@ function ProviderUnavailable({
           Thử lại
         </Button>
         <a
-          className="inline-flex h-10 items-center justify-center rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition-colors hover:bg-ledger-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+          className="inline-flex h-10 items-center justify-center rounded-md border border-ledger-line bg-ledger-panel px-4 text-sm font-semibold text-ledger-ink transition-colors hover:bg-ledger-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-focus"
           href="/settings"
         >
           Mở Cài đặt

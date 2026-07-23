@@ -79,6 +79,18 @@ class AiConfirmResponse(BaseModel):
     account_balance_minor: int
 
 
+class AiCancelRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    draft_id: str = Field(min_length=1)
+
+
+class AiCancelResponse(BaseModel):
+    draft_id: str
+    status: str
+    cancelled: bool
+
+
 class AiQuerySpendingRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

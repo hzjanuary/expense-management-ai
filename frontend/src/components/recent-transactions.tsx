@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TransactionDeleteDialog } from "@/components/transaction-delete-dialog";
 import { Button, panelClassName } from "@/components/ui";
@@ -47,24 +47,46 @@ export function RecentTransactions({
   const [localRefreshSignal, setLocalRefreshSignal] = useState(0);
   const [transactionToDelete, setTransactionToDelete] =
     useState<TransactionListItem | null>(null);
+  const returnFocusAfterDeleteRef = useRef<(() => void) | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
+  const requestSequenceRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const loadTransactions = useCallback(async () => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const requestSequence = requestSequenceRef.current + 1;
+    requestSequenceRef.current = requestSequence;
     setState((current) => (current === "loaded" ? current : "loading"));
     try {
-      const result = await fetchRecentTransactions(filters);
+      const result = await fetchRecentTransactions(filters, controller.signal);
+      if (requestSequenceRef.current !== requestSequence) {
+        return;
+      }
       setTransactions(result.items);
       setTotal(result.total);
       setState("loaded");
-    } catch {
+    } catch (caughtError) {
+      if (isAbortError(caughtError)) {
+        return;
+      }
+      if (requestSequenceRef.current !== requestSequence) {
+        return;
+      }
       setState("error");
+    } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   }, [filters]);
 
   useEffect(() => {
     void loadTransactions();
+    return () => abortControllerRef.current?.abort();
   }, [loadTransactions, localRefreshSignal, refreshSignal]);
 
   async function handleConfirmDelete() {
@@ -83,6 +105,8 @@ export function RecentTransactions({
         return;
       }
       setTransactionToDelete(null);
+      returnFocusAfterDeleteRef.current?.();
+      returnFocusAfterDeleteRef.current = null;
       setDeleteNotice("Đã xóa giao dịch khỏi các màn hình đang dùng.");
       setLocalRefreshSignal((currentValue) => currentValue + 1);
       onTransactionDeleted?.();
@@ -96,6 +120,8 @@ export function RecentTransactions({
         (caughtError.status === 404 || caughtError.status === 409)
       ) {
         setTransactionToDelete(null);
+        returnFocusAfterDeleteRef.current?.();
+        returnFocusAfterDeleteRef.current = null;
         setDeleteNotice(message);
         setLocalRefreshSignal((currentValue) => currentValue + 1);
         onTransactionDeleted?.();
@@ -115,7 +141,7 @@ export function RecentTransactions({
       : panelClassName;
   const listClassName =
     presentation === "ledger"
-      ? "mt-4 overflow-visible rounded-lg border border-ledger-line bg-white shadow-soft"
+      ? "mt-4 overflow-visible rounded-lg border border-ledger-line bg-ledger-panel shadow-soft"
       : "mt-4 overflow-visible rounded-md border border-ledger-line";
 
   return (
@@ -157,9 +183,10 @@ export function RecentTransactions({
                   onDeleteRequested={
                     hideDeleteActions
                       ? undefined
-                      : (selectedTransaction) => {
+                      : (selectedTransaction, returnFocus) => {
                           setDeleteNotice(null);
                           setDeleteError(null);
+                          returnFocusAfterDeleteRef.current = returnFocus;
                           setTransactionToDelete(selectedTransaction);
                         }
                   }
@@ -187,6 +214,8 @@ export function RecentTransactions({
           onCancel={() => {
             if (!isDeleting) {
               setTransactionToDelete(null);
+              returnFocusAfterDeleteRef.current?.();
+              returnFocusAfterDeleteRef.current = null;
               setDeleteError(null);
             }
           }}
@@ -200,7 +229,7 @@ export function RecentTransactions({
 
 function LoadingState() {
   return (
-    <div className="grid gap-3 bg-white p-4">
+    <div className="grid gap-3 bg-ledger-panel p-4">
       <p className="text-sm font-medium text-ledger-ink">
         Đang tải giao dịch gần đây...
       </p>
@@ -218,7 +247,7 @@ function EmptyState({
   onClearFilters?: () => void;
 }) {
   return (
-    <div className="grid min-h-48 place-items-center bg-white p-6 text-center">
+    <div className="grid min-h-48 place-items-center bg-ledger-panel p-6 text-center">
       <div className="max-w-sm">
       <div
         aria-hidden="true"
@@ -245,7 +274,7 @@ function EmptyState({
         </Button>
       ) : (
         <Link
-          className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition-colors hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+          className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-ledger-line bg-ledger-panel px-4 text-sm font-semibold text-ledger-ink transition-colors hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-focus"
           href="/assistant"
         >
           Mở Trợ lý
@@ -258,8 +287,8 @@ function EmptyState({
 
 function ErrorState() {
   return (
-    <div className="bg-white p-4">
-      <p className="text-sm font-medium text-rose-700">
+    <div className="bg-ledger-panel p-4">
+      <p className="text-sm font-medium text-ledger-danger">
         Chưa tải được giao dịch.
       </p>
       <p className="mt-1 text-sm text-ledger-muted">
@@ -271,6 +300,13 @@ function ErrorState() {
 
 function hasActiveFilters(filters: TransactionListFilters | undefined): boolean {
   return Boolean(filters?.category || filters?.type || filters?.q);
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    error instanceof DOMException &&
+    (error.name === "AbortError" || error.code === DOMException.ABORT_ERR)
+  );
 }
 
 function getDeleteErrorMessage(error: DataManagementApiError): string {

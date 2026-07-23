@@ -16,6 +16,8 @@ or multi-user banking platform.
   ledger.
 - Multi-page frontend with overview, transactions, budgets, assistant, and
   settings pages.
+- Persisted appearance setting with system mode, the existing light green
+  theme, and a black-purple dark theme.
 - Live dashboard overview for account balance, monthly income, monthly expense,
   budget progress, recent transaction preview, and quick actions.
 - Monthly total budgets and expense-category budgets.
@@ -38,8 +40,9 @@ Money is stored and transported as integer minor units, such as VND dong amounts
 and the frontend does not calculate authoritative balances or budget totals.
 
 Data remains local by default. The production-like Compose runtime starts with
-Ollama disabled, so AI requests return a safe provider-unavailable response until
-a local provider is explicitly enabled. Clearing AI history removes locally
+Ollama disabled and publishes the frontend and backend only on `127.0.0.1`, so
+AI requests return a safe provider-unavailable response until a local provider is
+explicitly enabled. Clearing AI history removes locally
 stored AI draft/history rows, including raw prompt text and provider metadata,
 but it does not delete confirmed ledger transactions. Soft deletion keeps the
 transaction row stored locally, sets `deleted_at`, excludes it from active views,
@@ -108,6 +111,9 @@ Expected local URLs:
 - Frontend: `http://127.0.0.1:3000`
 - Backend API: `http://127.0.0.1:8010`
 - Health check: `http://127.0.0.1:8010/health`
+
+The default Compose runtime binds these published ports to localhost only. The
+frontend still reaches the backend over Docker's internal network.
 
 Basic checks:
 
@@ -210,7 +216,8 @@ Hôm nay tôi tiêu 35k vào ăn trưa
 ```
 
 The app shows a typed draft for review. The ledger changes only after you
-explicitly confirm the draft.
+explicitly confirm the draft. Cancelling a draft marks the local AI draft as
+cancelled and does not change transactions, balances, or budgets.
 
 ### Configure A Budget
 
@@ -257,6 +264,12 @@ without reversing the balance twice.
 Open `http://127.0.0.1:3000/settings` and use the privacy action to clear
 locally stored AI draft/history records. Confirmed transactions, account
 balances, budgets, exports, and active ledger views remain intact.
+
+### Choose Appearance
+
+Open `http://127.0.0.1:3000/settings` and choose `Theo hệ thống`, `Sáng`, or
+`Tím đen`. The choice is stored in this browser only and does not call the
+backend or change financial data.
 
 ## Development Without Docker
 
@@ -378,6 +391,10 @@ The Compose backend stores SQLite data at `/app/data/pocket_ledger.db` inside a
 named Docker volume. `docker compose down` stops the stack and preserves that
 volume. `docker compose down -v` removes the volume and deletes local ledger
 data.
+
+Month-based dashboard, transaction, export, budget, and AI insight reads use the
+configured product timezone, which defaults to `Asia/Ho_Chi_Minh`, before
+querying UTC timestamp ranges.
 
 There is no automatic backup in this MVP. Export CSV or JSON before destructive
 local resets if you need to keep a copy of transaction data.

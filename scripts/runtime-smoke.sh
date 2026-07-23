@@ -40,6 +40,26 @@ wait_for_url "http://127.0.0.1:8010/health" "backend health"
 wait_for_url "http://127.0.0.1:3000/dashboard" "frontend dashboard"
 wait_for_url "http://127.0.0.1:3000/api/transactions" "frontend transaction proxy"
 
+assert_loopback_binding() {
+  local service="$1"
+  local private_port="$2"
+  local published
+
+  published="$(docker compose port "$service" "$private_port")"
+  case "$published" in
+    127.0.0.1:* | localhost:*)
+      echo "$service:$private_port is bound to loopback at $published"
+      ;;
+    *)
+      echo "$service:$private_port is not loopback-bound: $published" >&2
+      exit 1
+      ;;
+  esac
+}
+
+assert_loopback_binding backend 8010
+assert_loopback_binding frontend 3000
+
 docker compose exec -T backend alembic current
 docker compose exec -T backend test -f /app/data/pocket_ledger.db
 

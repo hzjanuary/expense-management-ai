@@ -84,7 +84,7 @@ function QuickAction({
 }) {
   return (
     <Link
-      className="inline-flex min-h-9 items-center justify-center rounded-md border border-ledger-line bg-white px-3 text-center text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+      className="inline-flex min-h-9 items-center justify-center rounded-md border border-ledger-line bg-ledger-panel px-3 text-center text-sm font-semibold text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-focus"
       href={href}
     >
       {label}

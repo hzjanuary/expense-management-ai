@@ -13,6 +13,8 @@ from app.ai.errors import (
 from app.ai.factory import get_llm_provider
 from app.ai.providers import LlmProvider
 from app.api.schemas.ai import (
+    AiCancelRequest,
+    AiCancelResponse,
     AiClarificationResponse,
     AiClearHistoryResponse,
     AiConfirmedTransactionResponse,
@@ -32,11 +34,14 @@ from app.api.schemas.ai import (
 )
 from app.application.ai_history import clear_ai_history
 from app.application.ai_parse import (
+    AiDraftCancellationError,
     AiDraftConfirmationError,
     AiDraftNotFoundError,
     AiParseCommand,
     AiParseValidationError,
+    CancelAiDraftCommand,
     ConfirmAiDraftCommand,
+    cancel_ai_transaction_draft,
     confirm_ai_transaction_draft,
     parse_ai_transaction_draft,
 )
@@ -172,6 +177,30 @@ async def confirm_ai_draft(
             source=result.transaction.source,
         ),
         account_balance_minor=result.account_balance_minor,
+    )
+
+
+@router.post("/cancel", response_model=AiCancelResponse)
+async def cancel_ai_draft(
+    request: AiCancelRequest,
+    session: Annotated[AsyncSession, Depends(get_db_session)],
+    now: Annotated[datetime, Depends(get_current_time)],
+) -> AiCancelResponse:
+    try:
+        result = await cancel_ai_transaction_draft(
+            session,
+            CancelAiDraftCommand(draft_id=request.draft_id),
+            now=now,
+        )
+    except AiDraftNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except AiDraftCancellationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+    return AiCancelResponse(
+        draft_id=result.draft_id,
+        status=result.status,
+        cancelled=result.cancelled,
     )
 
 

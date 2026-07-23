@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,6 +16,15 @@ const transaction = {
   merchant: null,
   occurred_at: "2026-07-17T12:00:00+07:00",
   source: "manual",
+};
+
+const incomeTransaction = {
+  ...transaction,
+  id: "22222222-2222-4222-8222-222222222222",
+  type: "income",
+  amount_minor: 5000000,
+  category_slug: "salary",
+  description: "Lương tháng 7",
 };
 
 const transactionList = {
@@ -148,6 +157,8 @@ describe("data management UI", () => {
     );
 
     expect(await screen.findByText("US-705 lunch proof")).toBeInTheDocument();
+    expect(await findTextContaining("−35.000 ₫")).toBeInTheDocument();
+    expectNoLegacyMoneyText();
     await openDeleteDialog();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText(/không bị xóa vĩnh viễn/i)).toBeInTheDocument();
@@ -164,6 +175,136 @@ describe("data management UI", () => {
       ),
     ).toHaveLength(1);
     expect(onTransactionDeleted).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the newest transaction-list response when an older request resolves later", async () => {
+    const monthA = createDeferred<Response>();
+    const monthB = createDeferred<Response>();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url.includes("month=2026-06")) {
+        return monthA.promise;
+      }
+      if (url.includes("month=2026-07")) {
+        return monthB.promise;
+      }
+      return Promise.reject(new Error(`Unexpected URL ${url}`));
+    });
+
+    const { rerender } = render(
+      <RecentTransactions
+        filters={{ month: "2026-06" }}
+        refreshSignal={0}
+      />,
+    );
+    rerender(
+      <RecentTransactions
+        filters={{ month: "2026-07" }}
+        refreshSignal={0}
+      />,
+    );
+
+    monthB.resolve(
+      jsonResponse({
+        items: [{ ...transaction, description: "Tháng B" }],
+        limit: 10,
+        offset: 0,
+        total: 1,
+      }),
+    );
+    expect(await screen.findByText("Tháng B")).toBeInTheDocument();
+
+    monthA.resolve(
+      jsonResponse({
+        items: [{ ...transaction, description: "Tháng A" }],
+        limit: 10,
+        offset: 0,
+        total: 1,
+      }),
+    );
+
+    await waitFor(() => expect(screen.queryByText("Tháng A")).not.toBeInTheDocument());
+    expect(screen.getByText("Tháng B")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("aborts the transaction-list request on unmount", async () => {
+    let capturedSignal: AbortSignal | undefined;
+    const slowList = createDeferred<Response>();
+    vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) => {
+      capturedSignal = init?.signal ?? undefined;
+      return slowList.promise;
+    });
+
+    const { unmount } = render(<RecentTransactions refreshSignal={0} />);
+    unmount();
+
+    expect(capturedSignal?.aborted).toBe(true);
+  });
+
+  it("shows Vietnamese labels for income categories and income export filters", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url === "/api/transactions?limit=10&offset=0") {
+        return Promise.resolve(
+          jsonResponse({
+            items: [incomeTransaction],
+            limit: 10,
+            offset: 0,
+            total: 1,
+          }),
+        );
+      }
+      return Promise.reject(new Error(`Unexpected URL ${url}`));
+    });
+
+    render(
+      <>
+        <RecentTransactions refreshSignal={0} />
+        <TransactionExport month="2026-07" />
+      </>,
+    );
+
+    expect(await screen.findByText("Lương tháng 7")).toBeInTheDocument();
+    expect(screen.getByText("Lương")).toBeInTheDocument();
+    expect(await findTextContaining("+5.000.000 ₫")).toBeInTheDocument();
+    await openExportOptions();
+    await userEvent.selectOptions(screen.getByLabelText("Loại"), "income");
+    const categorySelect = screen.getByLabelText("Danh mục");
+    expect(categorySelect).toHaveTextContent("Lương");
+    expect(categorySelect).toHaveTextContent("Thưởng");
+    expect(categorySelect).toHaveTextContent("Quà tặng");
+    expect(categorySelect).toHaveTextContent("Thu nhập khác");
+  });
+
+  it("supports keyboard interaction for overflow menu and delete dialog focus", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+      const url = String(input);
+      if (url === "/api/transactions?limit=10&offset=0") {
+        return Promise.resolve(jsonResponse(transactionList));
+      }
+      return Promise.reject(new Error(`Unexpected URL ${url}`));
+    });
+
+    render(<RecentTransactions refreshSignal={0} />);
+
+    const trigger = await screen.findByRole("button", {
+      name: /Mở menu giao dịch US-705 lunch proof/i,
+    });
+    trigger.focus();
+    await userEvent.keyboard("{Enter}");
+    const menuItem = await screen.findByRole("menuitem", {
+      name: "Xóa giao dịch",
+    });
+    await waitFor(() => expect(menuItem).toHaveFocus());
+
+    await userEvent.keyboard("{Enter}");
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(screen.getByRole("button", { name: "Hủy" })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
   });
 
   it("cancelled soft-delete and network failures preserve the row", async () => {
@@ -371,4 +512,23 @@ async function openDeleteDialog() {
     screen.getByRole("button", { name: /Mở menu giao dịch US-705 lunch proof/i }),
   );
   await userEvent.click(screen.getByRole("menuitem", { name: "Xóa giao dịch" }));
+}
+
+async function findTextContaining(text: string): Promise<HTMLElement> {
+  const matches = await screen.findAllByText((_, element) =>
+    Boolean(
+      element?.textContent?.includes(text) &&
+        Array.from(element.children).every(
+          (child) => !child.textContent?.includes(text),
+        ),
+    ),
+  );
+  return matches[0];
+}
+
+function expectNoLegacyMoneyText() {
+  const text = document.body.textContent ?? "";
+  expect(text).not.toMatch(/\d[\d.]*\s*đ\b/i);
+  expect(text).not.toMatch(/\d[\d.]*\s*VND\b/i);
+  expect(text).not.toMatch(/\d[\d.]*₫/);
 }

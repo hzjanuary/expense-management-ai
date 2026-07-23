@@ -73,7 +73,7 @@ describe("multi-page navigation shell", () => {
     expect(screen.getByRole("button", { name: "Secondary action" }).className)
       .toContain("h-9");
     expect(screen.getByRole("button", { name: "Delete record" }).className)
-      .toContain("bg-rose-700");
+      .toContain("bg-ledger-danger");
   });
 });
 

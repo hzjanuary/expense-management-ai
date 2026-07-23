@@ -100,17 +100,51 @@ function isSpendingBreakdownMessage(normalized: string): boolean {
       "tuan nay muc nao toi tieu nhieu nhat",
       "toi chi nhieu nhat vao dau tuan nay",
       "top chi tieu tuan nay",
+      "cu the co mon nao dat nhat khong",
+      "khoan nao lon nhat",
+      "toi chi nhieu nhat cho thu gi",
+      "giao dich nao ton nhieu tien nhat",
+      "thang nay toi chi tieu o muc nao la nhieu nhat",
+      "thang nay nhom nao toi chi nhieu nhat",
+      "danh muc ton nhieu tien nhat thang nay la gi",
+      "toi tieu nhieu nhat vao dau trong thang hien tai",
+      "tuan nay toi chi nhieu nhat vao muc nao",
     ])
   ) {
     return true;
   }
 
-  return normalized.includes("tuan nay") && includesAny(normalized, [
-    "tieu nhieu nhat",
-    "chi nhieu nhat",
-    "muc nao",
-    "top chi",
-  ]);
+  const asksForLargestSpending =
+    includesAny(normalized, [
+      "dat nhat",
+      "lon nhat",
+      "nhieu nhat",
+      "nhieu tien nhat",
+      "ton nhieu tien nhat",
+      "tieu nhieu tien nhat",
+    ]) &&
+    includesAny(normalized, [
+      "mon nao",
+      "khoan nao",
+      "thu gi",
+      "giao dich nao",
+      "muc nao",
+      "danh muc nao",
+      "danh muc",
+      "nhom nao",
+      "vao dau",
+    ]);
+
+  return (
+    asksForLargestSpending ||
+    (normalized.includes("tuan nay") &&
+      includesAny(normalized, [
+        "tieu nhieu nhat",
+        "chi nhieu nhat",
+        "muc nao",
+        "top chi",
+      ]))
+  );
 }
 
 function isCreateTransactionMessage(normalized: string): boolean {

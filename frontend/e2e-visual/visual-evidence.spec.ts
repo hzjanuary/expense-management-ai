@@ -4,10 +4,12 @@ import path from "node:path";
 
 const OUTPUT_DIR = path.resolve("visual-evidence-output");
 const DEMO_MONTH = "2026-07";
+const THEME_STORAGE_KEY = "pocket-ledger-theme";
 
 test.describe.configure({ mode: "serial" });
 
 test("captures TASK-UX-003B visual evidence", async ({ page }) => {
+  await installVisualApiMocks(page);
   await fs.rm(OUTPUT_DIR, { force: true, recursive: true });
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
 
@@ -38,7 +40,8 @@ test("captures TASK-UX-003B visual evidence", async ({ page }) => {
   await page.goto("/transactions");
   await expect(page.getByRole("heading", { level: 1, name: "Giao dịch" }))
     .toBeVisible();
-  await expect(page.getByText("Chưa có giao dịch")).toBeVisible();
+  await page.getByPlaceholder("Tìm giao dịch").fill("khong-co-giao-dich");
+  await expect(page.getByText("Không có giao dịch phù hợp")).toBeVisible();
   await expect(page.getByText(/Đang tải/)).toHaveCount(0);
   await screenshot(page, "transactions-empty-desktop.png");
 
@@ -65,9 +68,9 @@ test("captures TASK-UX-003B visual evidence", async ({ page }) => {
 
   await page.goto("/budgets");
   await expect(page.getByText("5.000.000 ₫").first()).toBeVisible();
-  await expect(page.getByText("28.000 ₫").first()).toBeVisible();
-  await expect(page.getByText("4.972.000 ₫").first()).toBeVisible();
-  await expect(page.getByText("0,56%")).toBeVisible();
+  await expect(page.getByText("925.000 ₫").first()).toBeVisible();
+  await expect(page.getByText("4.075.000 ₫").first()).toBeVisible();
+  await expect(page.getByText("18,50%")).toBeVisible();
   await expect(page.getByText(/Đang tải/)).toHaveCount(0);
   await screenshot(page, "budgets-desktop.png");
 
@@ -109,7 +112,9 @@ test("captures TASK-UX-003B visual evidence", async ({ page }) => {
 
   await page.goto("/dashboard");
   await expect(page.getByText("Số dư hiện tại")).toBeVisible();
-  await expect(page.getByText(/^972\.000\s₫$/)).toBeVisible();
+  await expect(
+    page.getByRole("article").getByText(/^4\.075\.000\s₫$/).first(),
+  ).toBeVisible();
   await expect(page.getByText(/Đang tải/)).toHaveCount(0);
   await screenshot(page, "dashboard-desktop.png");
 
@@ -142,6 +147,21 @@ test("captures TASK-UX-003B visual evidence", async ({ page }) => {
   await screenshot(page, "settings-desktop.png");
 });
 
+test("captures TASK-UX-004 light and dark theme evidence", async ({ page }) => {
+  await installVisualApiMocks(page);
+  await fs.mkdir(OUTPUT_DIR, { recursive: true });
+
+  await setVisualTheme(page, "light");
+  await seedPopulatedLedger(page);
+  await captureThemeRouteSet(page, "light");
+  await captureAssistantMonthlyBreakdown(page, "light");
+
+  await setVisualTheme(page, "dark");
+  await seedPopulatedLedger(page);
+  await captureThemeRouteSet(page, "dark");
+  await captureDarkStateDetails(page);
+});
+
 async function setupBudget(page: Page) {
   await page.goto("/budgets");
   await page.getByLabel("Tháng đang xem").fill(DEMO_MONTH);
@@ -149,11 +169,341 @@ async function setupBudget(page: Page) {
   await expect(budgetSetup.getByLabel(/Ngân sách tháng/)).toBeVisible();
   await budgetSetup.getByLabel(/Ngân sách tháng/).fill("5000000");
   await budgetSetup.getByRole("button", { name: "Thêm danh mục" }).click();
-  await budgetSetup.getByRole("combobox", { name: "Danh mục" }).first()
+  await budgetSetup.getByRole("combobox", { name: "Danh mục" }).last()
     .selectOption("food");
-  await budgetSetup.getByLabel("Ngân sách (VND)", { exact: true }).fill("2000000");
+  await budgetSetup.getByLabel("Ngân sách danh mục", { exact: true }).last()
+    .fill("2000000");
   await budgetSetup.getByRole("button", { name: "Lưu ngân sách" }).click();
   await expect(budgetSetup.getByText("Đã lưu ngân sách.")).toBeVisible();
+}
+
+async function seedPopulatedLedger(page: Page) {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/transactions");
+  if (await page.getByText("Cơm gà").count()) {
+    return;
+  }
+  await setupBudget(page);
+  await page.goto("/assistant");
+  await submitAssistant(page, "hôm nay tao ăn hộp cơm gà 28k");
+  await expect(page.getByText("Bản nháp giao dịch").first()).toBeVisible();
+  await page.getByRole("button", { name: "Xác nhận" }).click();
+  await expect(page.getByText(/Đã tạo giao dịch:/)).toBeVisible();
+}
+
+async function setVisualTheme(page: Page, theme: "light" | "dark") {
+  await page.addInitScript(
+    ([key, mode]) => {
+      window.localStorage.setItem(key, mode);
+    },
+    [THEME_STORAGE_KEY, theme] as const,
+  );
+  await page.goto("/dashboard");
+  await page.evaluate(
+    ([key, mode]) => {
+      window.localStorage.setItem(key, mode);
+      document.documentElement.dataset.theme = mode;
+      document.documentElement.dataset.themeMode = mode;
+      document.documentElement.style.colorScheme = mode;
+    },
+    [THEME_STORAGE_KEY, theme] as const,
+  );
+}
+
+async function captureThemeRouteSet(page: Page, theme: "light" | "dark") {
+  const routes = [
+    { path: "/dashboard", heading: "Tổng quan", name: "dashboard" },
+    { path: "/transactions", heading: "Giao dịch", name: "transactions" },
+    { path: "/budgets", heading: "Ngân sách", name: "budgets" },
+    { path: "/assistant", heading: "Trợ lý", name: "assistant" },
+    { path: "/settings", heading: "Cài đặt", name: "settings" },
+  ];
+
+  for (const route of routes) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(route.path);
+    await expect(page.getByRole("heading", { level: 1, name: route.heading }))
+      .toBeVisible();
+    await expect(page.getByText(/Đang tải/)).toHaveCount(0);
+    await assertLocalizedRenderedText(page);
+    await screenshot(page, `theme-${theme}-${route.name}-desktop.png`);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(route.path);
+    await expect(page.getByRole("heading", { level: 1, name: route.heading }))
+      .toBeVisible();
+    await expect(page.getByText(/Đang tải/)).toHaveCount(0);
+    await assertLocalizedRenderedText(page);
+    await screenshot(page, `theme-${theme}-${route.name}-mobile.png`);
+  }
+}
+
+async function captureDarkStateDetails(page: Page) {
+  await setVisualTheme(page, "dark");
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  await page.goto("/assistant");
+  await submitAssistant(page, "hôm nay tao ăn hộp cơm gà 28k");
+  await expect(page.getByText("Bản nháp giao dịch").first()).toBeVisible();
+  await screenshot(page, "theme-dark-assistant-draft-desktop.png");
+
+  await captureAssistantMonthlyBreakdown(page, "dark");
+
+  await page.getByRole("button", { name: "Cuộc trò chuyện mới" }).click();
+  await submitAssistant(page, "Tôi còn 100k");
+  await expect(page.getByText(/Mình chưa chắc đây có phải một giao dịch không/))
+    .toBeVisible();
+  await screenshot(page, "theme-dark-assistant-clarification-desktop.png");
+
+  await page.getByRole("button", { name: "Cuộc trò chuyện mới" }).click();
+  const unavailableHandler = async (route: Route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      status: 503,
+      body: JSON.stringify({
+        error: "Trợ lý AI chưa sẵn sàng. Hãy kiểm tra Ollama trong phần Cài đặt.",
+      }),
+    });
+  };
+  await page.route("**/api/ai/parse", unavailableHandler);
+  await submitAssistant(page, "hôm nay tao ăn hộp cơm gà 28k");
+  await expect(page.getByText("Trợ lý chưa sẵn sàng")).toBeVisible();
+  await screenshot(page, "theme-dark-assistant-provider-unavailable-desktop.png");
+  await page.unroute("**/api/ai/parse", unavailableHandler);
+
+  await page.goto("/transactions");
+  await expect(sectionByHeading(page, "Danh sách giao dịch").getByText("Cơm gà"))
+    .toBeVisible();
+  await openTransactionMenu(page, "Cơm gà");
+  await page.getByRole("menuitem", { name: "Xóa giao dịch" }).click();
+  await expect(page.getByRole("dialog", { name: "Xóa giao dịch?" }))
+    .toBeVisible();
+  await screenshot(page, "theme-dark-delete-dialog-desktop.png");
+  await page.getByRole("dialog", { name: "Xóa giao dịch?" })
+    .getByRole("button", { name: "Hủy" })
+    .click();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/transactions");
+  await page.getByRole("button", { name: "Bộ lọc" }).click();
+  await expect(page.getByRole("dialog", { name: "Bộ lọc giao dịch" }))
+    .toBeVisible();
+  await screenshot(page, "theme-dark-filter-sheet-mobile.png");
+}
+
+async function captureAssistantMonthlyBreakdown(
+  page: Page,
+  theme: "light" | "dark",
+) {
+  await setVisualTheme(page, theme);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/assistant");
+  if (await page.getByRole("button", { name: "Cuộc trò chuyện mới" }).count()) {
+    await page.getByRole("button", { name: "Cuộc trò chuyện mới" }).click();
+  }
+  await submitAssistant(page, "tháng này tôi chi tiêu ở mục nào là nhiều nhất vậy?");
+  const result = insightByHeading(page, "Chi nhiều nhất");
+  await expect(result.getByText("4.075.000 ₫", { exact: true }).first())
+    .toBeVisible();
+  await expect(page.getByText("Tháng 7, 2026")).toBeVisible();
+  await expect(page.getByText("98,16%")).toBeVisible();
+  await assertLocalizedRenderedText(page, { expectedAmount: "4.075.000 ₫" });
+  await screenshot(page, `theme-${theme}-assistant-monthly-breakdown-desktop.png`);
+}
+
+async function installVisualApiMocks(page: Page) {
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+  let hasBudget = false;
+  let hasTransaction = false;
+  const transaction = {
+    id: "visual-tx-1",
+    type: "expense",
+    amount_minor: 28000,
+    currency: "VND",
+    category_slug: "food",
+    description: "Cơm gà",
+    merchant: null,
+    occurred_at: "2026-07-22T12:30:00+07:00",
+    source: "ai_chat",
+  };
+
+  await page.route("**/api/dashboard/summary**", async (route) => {
+    await fulfillJson(route, {
+      currency: "VND",
+      total_balance_minor: hasTransaction ? 4075000 : 4000000,
+      monthly_income_minor: 0,
+      monthly_expense_minor: hasTransaction ? 75000 : 0,
+      category_breakdown: hasTransaction
+        ? [
+            {
+              category_slug: "food",
+              type: "expense",
+              amount_minor: 75000,
+            },
+          ]
+        : [],
+    });
+  });
+
+  await page.route("**/api/transactions?**", async (route) => {
+    const url = new URL(route.request().url());
+    const isEmptySearch = url.searchParams.get("q") === "khong-co-giao-dich";
+    await fulfillJson(route, {
+      items: hasTransaction && !isEmptySearch ? [transaction] : [],
+      limit: Number(url.searchParams.get("limit") ?? "10"),
+      offset: Number(url.searchParams.get("offset") ?? "0"),
+      total: hasTransaction && !isEmptySearch ? 1 : 0,
+    });
+  });
+
+  await page.route("**/api/budgets/monthly/2026/7/remaining**", async (route) => {
+    if (!hasBudget) {
+      await fulfillJson(route, { error: "No budget configured" }, 404);
+      return;
+    }
+    await fulfillJson(route, {
+      year: 2026,
+      month: 7,
+      currency: "VND",
+      total_budget_minor: 5000000,
+      total_expense_minor: hasTransaction ? 925000 : 0,
+      total_remaining_minor: hasTransaction ? 4075000 : 5000000,
+      categories: [
+        {
+          category_slug: "food",
+          budget_minor: 2000000,
+          spent_minor: hasTransaction ? 75000 : 0,
+          remaining_minor: hasTransaction ? 1925000 : 2000000,
+          is_over_budget: false,
+        },
+      ],
+    });
+  });
+
+  await page.route("**/api/budgets/monthly/2026/7?**", async (route) => {
+    if (!hasBudget) {
+      await fulfillJson(route, { error: "No budget configured" }, 404);
+      return;
+    }
+    await fulfillJson(route, budgetSetupResponse());
+  });
+
+  await page.route("**/api/budgets/monthly/2026/7", async (route) => {
+    if (route.request().method() !== "PUT") {
+      await route.fallback();
+      return;
+    }
+    hasBudget = true;
+    await fulfillJson(route, budgetSetupResponse());
+  });
+
+  await page.route("**/api/ai/parse", async (route) => {
+    await fulfillJson(route, {
+      intent: "create_transaction",
+      draft_id: "visual-draft-1",
+      draft: transaction,
+      needs_confirmation: true,
+      confidence: "medium",
+      missing_fields: [],
+      clarification: {
+        message: "Mình hiểu giao dịch này nhưng cần bạn xác nhận trước khi ghi sổ.",
+        fields: [],
+      },
+    });
+  });
+
+  await page.route("**/api/ai/confirm", async (route) => {
+    hasTransaction = true;
+    await fulfillJson(route, {
+      transaction,
+      account_balance_minor: 972000,
+    });
+  });
+
+  await page.route("**/api/ai/query-spending", async (route) => {
+    await fulfillJson(route, {
+      intent: "query_spending",
+      spending_scope: "total",
+      category_slug: null,
+      currency: "VND",
+      date_range: {
+        start: "2026-06-30T17:00:00Z",
+        end: "2026-07-31T17:00:00Z",
+        label: "this_month",
+      },
+      amount_minor: hasTransaction ? 28000 : 0,
+      transaction_count: hasTransaction ? 1 : 0,
+      answer: "Tháng này bạn đã chi tổng cộng 28.000 ₫.",
+      needs_clarification: false,
+      clarification: null,
+    });
+  });
+
+  await page.route("**/api/ai/query-spending-breakdown", async (route) => {
+    await fulfillJson(route, {
+      intent: "spending_breakdown",
+      currency: "VND",
+      date_range: {
+        start: "2026-06-30T17:00:00Z",
+        end: "2026-07-31T17:00:00Z",
+        label: "this_month",
+      },
+      total_expense_minor: hasTransaction ? 4151000 : 0,
+      transaction_count: hasTransaction ? 3 : 0,
+      top_category: hasTransaction
+        ? {
+            category_slug: "food",
+            amount_minor: 4075000,
+            transaction_count: 2,
+            percentage: 98.16,
+          }
+        : null,
+      breakdown: hasTransaction
+        ? [
+            {
+              category_slug: "food",
+              amount_minor: 4075000,
+              transaction_count: 2,
+              percentage: 98.16,
+            },
+            {
+              category_slug: "coffee",
+              amount_minor: 76000,
+              transaction_count: 1,
+              percentage: 1.84,
+            },
+          ]
+        : [],
+      answer: hasTransaction
+        ? "Tháng này bạn chi nhiều nhất cho nhóm Ăn uống: 4.075.000 ₫."
+        : "Bạn chưa có khoản chi nào trong tháng này.",
+      needs_clarification: false,
+      clarification: null,
+    });
+  });
+
+  function budgetSetupResponse() {
+    return {
+      year: 2026,
+      month: 7,
+      currency: "VND",
+      total_budget_minor: 5000000,
+      category_budgets: [
+        {
+          category_slug: "food",
+          budget_minor: 2000000,
+        },
+      ],
+    };
+  }
+}
+
+async function fulfillJson(route: Route, body: unknown, status = 200) {
+  await route.fulfill({
+    contentType: "application/json",
+    status,
+    body: JSON.stringify(body),
+  });
 }
 
 async function submitAssistant(page: Page, message: string) {
@@ -183,10 +533,26 @@ function insightByHeading(page: Page, heading: string): Locator {
 }
 
 async function screenshot(page: Page, filename: string) {
+  await assertLocalizedRenderedText(page);
   await page.screenshot({
     fullPage: false,
     path: path.join(OUTPUT_DIR, filename),
   });
+}
+
+async function assertLocalizedRenderedText(
+  page: Page,
+  options: { expectedAmount?: string } = {},
+) {
+  const text = await page.locator("body").innerText();
+  if (options.expectedAmount) {
+    expect(text).toContain(options.expectedAmount);
+  }
+  expect(text).not.toMatch(/\d[\d.]*\s*đ\b/i);
+  expect(text).not.toContain("VND");
+  expect(text).not.toContain("July 2026");
+  expect(text).not.toContain("2026-07");
+  expect(text).not.toMatch(/\d+\.\d+%/);
 }
 
 async function captureSharedStateComposite(page: Page) {

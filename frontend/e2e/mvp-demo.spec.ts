@@ -43,7 +43,7 @@ test("complete local-first MVP demo", async ({ page }) => {
   await budgetSetup.getByRole("combobox", { name: "Danh mục" }).first().selectOption(
     "food",
   );
-  await budgetSetup.getByLabel("Ngân sách (VND)", { exact: true }).fill("2000000");
+  await budgetSetup.getByLabel("Ngân sách danh mục", { exact: true }).fill("2000000");
   await budgetSetup.getByRole("button", { name: "Lưu ngân sách" }).click();
   await expect(budgetSetup.getByText("Đã lưu ngân sách.")).toBeVisible();
   await expectMoney(budgetStatus, "5.000.000");
@@ -97,14 +97,14 @@ test("complete local-first MVP demo", async ({ page }) => {
   await expect(totalSpendingInsight.getByText("Danh mục")).toHaveCount(0);
   await expectMoney(totalSpendingInsight, "28.000");
   await expect(totalSpendingInsight.getByText("Số giao dịch").locator("..")).toContainText("1");
-  await expect(totalSpendingInsight.getByText(/tháng này/)).toBeVisible();
+  await expect(totalSpendingInsight.getByText("Tháng 7, 2026")).toBeVisible();
 
   await submitChat(page, SPENDING_QUERY);
   const spendingInsight = insightByHeading(page, "Chi tiêu theo danh mục");
   await expect(spendingInsight.getByText("Ăn uống", { exact: true })).toBeVisible();
   await expectMoney(spendingInsight, "28.000");
   await expect(spendingInsight.getByText("Số giao dịch").locator("..")).toContainText("1");
-  await expect(spendingInsight.getByText(/tháng này/)).toBeVisible();
+  await expect(spendingInsight.getByText("Tháng 7, 2026")).toBeVisible();
   await expectNoCriticalOrSeriousA11yViolations(page, "insight result");
 
   await submitChat(page, BUDGET_QUERY);
@@ -119,7 +119,7 @@ test("complete local-first MVP demo", async ({ page }) => {
   const breakdownInsight = insightByHeading(page, "Chi nhiều nhất");
   await expectMoney(breakdownInsight, "28.000");
   await expect(breakdownInsight.getByText("Ăn uống", { exact: true })).toBeVisible();
-  await expect(breakdownInsight.getByText("100.00%")).toBeVisible();
+  await expect(breakdownInsight.getByText("100,00%")).toBeVisible();
   await expect(breakdownInsight.getByText("Số giao dịch").locator("..")).toContainText("1");
 
   await page.getByRole("link", { name: "Giao dịch" }).first().click();

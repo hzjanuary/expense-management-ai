@@ -242,7 +242,7 @@ export function BudgetSetupForm({
           {errors.form ? <FormMessage message={errors.form} tone="error" /> : null}
 
           <label className="grid gap-2 text-sm font-medium text-ledger-ink">
-            <span>Ngân sách tháng ({currency})</span>
+            <span>Ngân sách tháng</span>
             <input
               aria-describedby="total-budget-help total-budget-error"
               className={inputLargeClassName}
@@ -255,10 +255,10 @@ export function BudgetSetupForm({
               value={totalBudgetMinor}
             />
             <span className="text-xs text-ledger-muted" id="total-budget-help">
-              Chỉ nhập số nguyên VND. Xem trước: {totalPreview ?? "chưa có"}.
+              Chỉ nhập số tiền nguyên. Xem trước: {totalPreview ?? "chưa có"}.
             </span>
             {errors.total_budget_minor ? (
-              <span className="text-sm text-rose-700" id="total-budget-error">
+              <span className="text-sm text-ledger-danger" id="total-budget-error">
                 {errors.total_budget_minor}
               </span>
             ) : null}
@@ -285,7 +285,7 @@ export function BudgetSetupForm({
             </div>
 
             {categoryRows.length === 0 ? (
-              <div className="rounded-md border border-ledger-line bg-white p-4 text-sm text-ledger-muted">
+              <div className="rounded-md border border-ledger-line bg-ledger-panel p-4 text-sm text-ledger-muted">
                 Chưa có ngân sách danh mục. Bạn có thể lưu ngân sách tháng
                 trước rồi bổ sung sau.
               </div>
@@ -293,7 +293,7 @@ export function BudgetSetupForm({
               <ul className="grid gap-3">
                 {categoryRows.map((row, index) => (
                   <li
-                    className="rounded-md border border-ledger-line bg-white p-4"
+                    className="rounded-md border border-ledger-line bg-ledger-panel p-4"
                     key={row.id}
                   >
                     <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start">
@@ -322,7 +322,7 @@ export function BudgetSetupForm({
                       </label>
 
                       <label className="grid gap-2 text-sm font-medium text-ledger-ink">
-                        <span>Ngân sách ({currency})</span>
+                        <span>Ngân sách danh mục</span>
                         <input
                           aria-describedby={`${row.id}-error`}
                           className={inputLargeClassName}
@@ -347,7 +347,7 @@ export function BudgetSetupForm({
                       </Button>
                     </div>
                     {errors.categories?.[row.id] ? (
-                      <p className="mt-2 text-sm text-rose-700" id={`${row.id}-error`}>
+                      <p className="mt-2 text-sm text-ledger-danger" id={`${row.id}-error`}>
                         {errors.categories[row.id]}
                       </p>
                     ) : null}
@@ -407,7 +407,7 @@ export function validateBudgetSetupDraft(
   const totalBudgetMinor = parsePlainInteger(draft.total_budget_minor);
 
   if (totalBudgetMinor === null) {
-    errors.total_budget_minor = "Nhập số VND nguyên, không dùng dấu phẩy hoặc số lẻ.";
+    errors.total_budget_minor = "Nhập số tiền nguyên, không dùng dấu phẩy hoặc số lẻ.";
   }
 
   const seenCategories = new Set<string>();
@@ -428,7 +428,7 @@ export function validateBudgetSetupDraft(
       continue;
     }
     if (budgetMinor === null) {
-      categoryErrors[row.id] = "Nhập số VND nguyên cho danh mục này.";
+      categoryErrors[row.id] = "Nhập số tiền nguyên cho danh mục này.";
       continue;
     }
 
@@ -509,10 +509,10 @@ function FormMessage({
 }) {
   const className =
     tone === "error"
-      ? "border-rose-200 bg-rose-50 text-rose-700"
+      ? "border-ledger-danger bg-ledger-danger-soft text-ledger-danger"
       : tone === "success"
         ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-        : "border-ledger-line bg-white text-ledger-muted";
+        : "border-ledger-line bg-ledger-panel text-ledger-muted";
 
   return (
     <div

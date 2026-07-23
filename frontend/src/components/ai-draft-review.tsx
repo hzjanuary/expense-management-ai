@@ -6,6 +6,7 @@ import { Button } from "@/components/ui";
 type AiDraftReviewProps = {
   confidence?: string;
   draft: AiTransactionDraft;
+  isCancelling?: boolean;
   isConfirming: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -13,12 +14,13 @@ type AiDraftReviewProps = {
 
 export function AiDraftReview({
   draft,
+  isCancelling = false,
   isConfirming,
   onCancel,
   onConfirm,
 }: AiDraftReviewProps) {
   return (
-    <div className="rounded-lg border border-ledger-line bg-white p-3 shadow-soft sm:p-5">
+    <div className="rounded-lg border border-ledger-line bg-ledger-panel p-3 shadow-soft sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-ledger-muted">
@@ -34,7 +36,7 @@ export function AiDraftReview({
             {draft.description}
           </p>
         </div>
-        <span className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 sm:px-3">
+        <span className="shrink-0 rounded-md border border-ledger-warning bg-ledger-warning-soft px-2 py-1 text-xs font-semibold text-ledger-warning sm:px-3">
           Chưa được lưu
         </span>
       </div>
@@ -59,7 +61,7 @@ export function AiDraftReview({
       <div className="mt-3 flex items-center gap-2 sm:mt-5">
         <Button
           className="flex-1 sm:flex-none"
-          disabled={isConfirming}
+          disabled={isConfirming || isCancelling}
           onClick={onConfirm}
           type="button"
           variant="primary"
@@ -68,12 +70,12 @@ export function AiDraftReview({
         </Button>
         <Button
           className="shrink-0"
-          disabled={isConfirming}
+          disabled={isConfirming || isCancelling}
           onClick={onCancel}
           type="button"
           variant="ghost"
         >
-          Hủy
+          {isCancelling ? "Đang hủy" : "Hủy"}
         </Button>
       </div>
     </div>

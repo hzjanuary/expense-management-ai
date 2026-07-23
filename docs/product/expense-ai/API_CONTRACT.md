@@ -104,6 +104,9 @@ Response:
 Rules:
 
 - Supports month filter.
+- Month filters use the configured product timezone
+  (`POCKET_LEDGER_DEFAULT_TIMEZONE`, default `Asia/Ho_Chi_Minh`) and are
+  converted to UTC half-open ranges before querying stored timestamps.
 - Supports category filter.
 - Supports type filter.
 - Supports description and merchant search.
@@ -189,6 +192,8 @@ Rules:
 
 - Export is user-triggered only.
 - Export reuses transaction list filter validation and text search behavior.
+- Export month filters use the same configured product timezone boundaries as
+  transaction listing.
 - Export returns all matching rows up to `POCKET_LEDGER_EXPORT_MAX_ROWS`.
 - If matches exceed `POCKET_LEDGER_EXPORT_MAX_ROWS`, the API returns `413` and does not silently truncate.
 - Export order matches transaction listing order: `occurred_at DESC`, `created_at DESC`, `id DESC`.
@@ -429,6 +434,41 @@ Rules:
 - Duplicate confirmation returns `422`.
 - Missing drafts return `404`.
 
+## Cancel AI Draft
+
+```http
+POST /api/v1/ai/cancel
+```
+
+Request:
+
+```json
+{
+  "draft_id": "uuid"
+}
+```
+
+Response:
+
+```json
+{
+  "draft_id": "uuid",
+  "status": "cancelled",
+  "cancelled": true
+}
+```
+
+Rules:
+
+- Only locally stored AI drafts are affected.
+- Pending drafts are marked `cancelled` inside a database transaction.
+- Repeated cancellation of an already-cancelled draft is idempotent success.
+- Confirmed and expired drafts return `422`.
+- Missing drafts return `404`.
+- Cancellation never creates a ledger transaction, updates account balance,
+  updates budgets, or calls an LLM provider.
+- Cancelled drafts cannot later be confirmed.
+
 ## Dashboard Summary
 
 ```http
@@ -463,7 +503,8 @@ Rules:
 - `month=YYYY-MM` is required.
 - Invalid month format is rejected.
 - `total_balance_minor` is computed from account current balances.
-- Monthly income and expense values are computed from non-deleted transactions.
+- Monthly income and expense values are computed from non-deleted transactions
+  in the configured product timezone month.
 - Category totals are grouped by category slug and transaction type for the requested month.
 - Category breakdown is ordered by type, amount descending, then category slug.
 - No dashboard totals are stored.
@@ -572,7 +613,8 @@ Rules:
 
 - Missing budget setup returns `404`.
 - Invalid year, month, or currency is rejected with `422`.
-- `spent_minor` is computed from non-deleted expense transactions in the selected month.
+- `spent_minor` is computed from non-deleted expense transactions in the
+  selected month using the configured product timezone boundaries.
 - Income transactions, soft-deleted transactions, and transactions outside the selected month do not count as spending.
 - `remaining_minor = budget_minor - spent_minor`.
 - `is_over_budget = spent_minor > budget_minor`.
@@ -609,13 +651,13 @@ Response:
   "category_slug": "food",
   "currency": "VND",
   "date_range": {
-    "start": "2026-07-01T00:00:00+07:00",
-    "end": "2026-08-01T00:00:00+07:00",
+    "start": "2026-06-30T17:00:00Z",
+    "end": "2026-07-31T17:00:00Z",
     "label": "this_month"
   },
   "amount_minor": 35000,
   "transaction_count": 1,
-  "answer": "Tháng này bạn đã chi 35.000₫ cho Ăn uống.",
+  "answer": "Tháng này bạn đã chi 35.000 ₫ cho Ăn uống.",
   "needs_clarification": false,
   "clarification": null
 }
@@ -630,13 +672,13 @@ Total spending response:
   "category_slug": null,
   "currency": "VND",
   "date_range": {
-    "start": "2026-07-01T00:00:00+07:00",
-    "end": "2026-08-01T00:00:00+07:00",
+    "start": "2026-06-30T17:00:00Z",
+    "end": "2026-07-31T17:00:00Z",
     "label": "this_month"
   },
   "amount_minor": 155000,
   "transaction_count": 4,
-  "answer": "Tháng này bạn đã chi tổng cộng 155.000₫.",
+  "answer": "Tháng này bạn đã chi tổng cộng 155.000 ₫.",
   "needs_clarification": false,
   "clarification": null
 }
@@ -670,7 +712,9 @@ Rules:
 - The provider must not answer or invent totals.
 - The API computes `amount_minor` and `transaction_count` from persisted ledger records.
 - US-501 supports `date_range.label = "this_month"`.
-- `this_month` uses the request timezone and spans the first instant of the current month inclusive to the first instant of the next month exclusive.
+- `this_month` uses the request timezone, converts the product-local first
+  instant of the current month and next month to UTC, and queries the half-open
+  range `[start, end)`.
 - For category scope, category must resolve to a valid expense category.
 - Deterministic backend category alias normalization accepts canonical slugs and common Vietnamese labels such as `ăn uống` -> `food`, `ẩm thực` -> `food`, `cà phê` -> `coffee`, and `xăng` -> `transport`.
 - Unknown analytical categories are not silently mapped to `other`; they return clarification.
@@ -713,8 +757,8 @@ Response:
   "category_slug": "food",
   "currency": "VND",
   "date_range": {
-    "start": "2026-07-01T00:00:00+07:00",
-    "end": "2026-08-01T00:00:00+07:00",
+    "start": "2026-06-30T17:00:00Z",
+    "end": "2026-07-31T17:00:00Z",
     "label": "this_month"
   },
   "budget_minor": 2000000,
@@ -722,7 +766,7 @@ Response:
   "remaining_minor": 1965000,
   "is_over_budget": false,
   "transaction_count": 1,
-  "answer": "Tháng này bạn còn 1.965.000₫ cho food.",
+  "answer": "Tháng này bạn còn 1.965.000 ₫ cho Ăn uống.",
   "needs_clarification": false,
   "clarification": null
 }
@@ -736,8 +780,8 @@ No-budget response:
   "category_slug": "food",
   "currency": "VND",
   "date_range": {
-    "start": "2026-07-01T00:00:00+07:00",
-    "end": "2026-08-01T00:00:00+07:00",
+    "start": "2026-06-30T17:00:00Z",
+    "end": "2026-07-31T17:00:00Z",
     "label": "this_month"
   },
   "budget_minor": null,
@@ -745,7 +789,7 @@ No-budget response:
   "remaining_minor": null,
   "is_over_budget": null,
   "transaction_count": 1,
-  "answer": "Bạn chưa thiết lập ngân sách cho food tháng này.",
+  "answer": "Bạn chưa thiết lập ngân sách cho Ăn uống tháng này.",
   "needs_clarification": false,
   "clarification": null
 }
@@ -757,7 +801,9 @@ Rules:
 - The provider must not answer or invent budget totals.
 - The API computes `spent_minor`, `remaining_minor`, `is_over_budget`, and `transaction_count` from configured budget and ledger records.
 - US-502 supports `date_range.label = "this_month"`.
-- `this_month` uses the request timezone and spans the first instant of the current month inclusive to the first instant of the next month exclusive.
+- `this_month` uses the request timezone, converts the product-local first
+  instant of the current month and next month to UTC, and queries the half-open
+  range `[start, end)`.
 - Category must be a valid expense category.
 - Income categories, unknown categories, and unsupported date ranges return a safe clarification response.
 - Missing budget setup returns `200` with `budget_minor = null`, `remaining_minor = null`, and an explicit no-budget answer.
@@ -793,8 +839,8 @@ Response:
   "intent": "spending_breakdown",
   "currency": "VND",
   "date_range": {
-    "start": "2026-07-13T00:00:00+07:00",
-    "end": "2026-07-20T00:00:00+07:00",
+    "start": "2026-07-12T17:00:00Z",
+    "end": "2026-07-19T17:00:00Z",
     "label": "this_week"
   },
   "total_expense_minor": 285000,
@@ -819,7 +865,7 @@ Response:
       "percentage": 36.84
     }
   ],
-  "answer": "Tuần này bạn chi nhiều nhất cho food: 180.000₫.",
+  "answer": "Tuần này bạn chi nhiều nhất cho nhóm Ăn uống: 180.000 ₫.",
   "needs_clarification": false,
   "clarification": null
 }
@@ -832,8 +878,8 @@ No-expense response:
   "intent": "spending_breakdown",
   "currency": "VND",
   "date_range": {
-    "start": "2026-07-13T00:00:00+07:00",
-    "end": "2026-07-20T00:00:00+07:00",
+    "start": "2026-07-12T17:00:00Z",
+    "end": "2026-07-19T17:00:00Z",
     "label": "this_week"
   },
   "total_expense_minor": 0,
@@ -851,8 +897,13 @@ Rules:
 - The provider may classify intent, currency, and date range.
 - The provider must not answer, invent category totals, or choose the top category.
 - The API computes `total_expense_minor`, `transaction_count`, `top_category`, and `breakdown` from persisted ledger records.
-- US-503 supports `date_range.label = "this_week"`.
+- US-503 supports `date_range.label = "this_week"` and
+  `date_range.label = "this_month"`.
 - `this_week` uses the request timezone with Monday as the inclusive start and the next Monday as the exclusive end.
+- `this_month` uses the request timezone with the first local day as the
+  inclusive start and the next local month as the exclusive end.
+- Spending breakdown answers describe the top category or group. They must not
+  claim to identify the most expensive individual transaction.
 - The endpoint groups only non-deleted expense transactions matching currency and date range.
 - Income transactions, out-of-range transactions, soft-deleted transactions, and other currencies do not count.
 - Breakdown entries are ordered by amount descending, transaction count descending, then category slug ascending.

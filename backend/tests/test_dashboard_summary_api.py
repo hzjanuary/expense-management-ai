@@ -50,7 +50,7 @@ async def seed_dashboard_transactions(
         amount_minor=99_000,
         category_slug="shopping",
         description="outside selected month",
-        occurred_at=datetime(2026, 6, 30, 20, 0, tzinfo=UTC),
+        occurred_at=datetime(2026, 6, 30, 12, 0, tzinfo=UTC),
     )
     await seed_transaction(
         session_factory,

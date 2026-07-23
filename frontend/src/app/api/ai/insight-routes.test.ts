@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { POST as queryBudgetRemaining } from "@/app/api/ai/query-budget-remaining/route";
 import { POST as querySpending } from "@/app/api/ai/query-spending/route";
 import { POST as querySpendingBreakdown } from "@/app/api/ai/query-spending-breakdown/route";
+import { POST as cancelDraft } from "@/app/api/ai/cancel/route";
 
 describe("AI insight proxy routes", () => {
   afterEach(() => {
@@ -118,6 +119,54 @@ describe("AI insight proxy routes", () => {
       error: "AI provider returned an invalid insight response.",
     });
   });
+
+  it("cancel proxy forwards only draft ID and preserves safe statuses", async () => {
+    process.env.BACKEND_INTERNAL_URL = "http://backend:8010";
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        jsonResponse({
+          draft_id: "draft-1",
+          status: "cancelled",
+          cancelled: true,
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ detail: "missing" }, { status: 404 }))
+      .mockResolvedValueOnce(jsonResponse({ detail: "confirmed" }, { status: 422 }));
+
+    const success = await cancelDraft(
+      request("http://frontend.test/api/ai/cancel", {
+        draft_id: "draft-1",
+        raw_user_text: "must not forward",
+      }),
+    );
+    const forwarded = fetchMock.mock.calls[0]?.[1];
+
+    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
+      "http://backend:8010/api/v1/ai/cancel",
+    );
+    expect(JSON.parse(String(forwarded?.body))).toEqual({
+      draft_id: "draft-1",
+    });
+    expect(success.status).toBe(200);
+    expect(success.headers.get("Cache-Control")).toBe("no-store");
+
+    const missing = await cancelDraft(
+      request("http://frontend.test/api/ai/cancel", { draft_id: "missing" }),
+    );
+    const invalid = await cancelDraft(
+      request("http://frontend.test/api/ai/cancel", { draft_id: "confirmed" }),
+    );
+
+    expect(missing.status).toBe(404);
+    await expect(missing.json()).resolves.toEqual({
+      error: "AI draft was not found. Parse the message again before cancelling.",
+    });
+    expect(invalid.status).toBe(422);
+    await expect(invalid.json()).resolves.toEqual({
+      error: "AI draft could not be cancelled. It may already be confirmed or expired.",
+    });
+  });
 });
 
 async function expectStatusAndSafeError(
@@ -158,7 +207,7 @@ const spendingResponse = {
   date_range: dateRange,
   amount_minor: 35000,
   transaction_count: 1,
-  answer: "Tháng này bạn đã chi 35.000₫ cho Ăn uống.",
+  answer: "Tháng này bạn đã chi 35.000 ₫ cho Ăn uống.",
   needs_clarification: false,
   clarification: null,
 };
@@ -173,7 +222,7 @@ const budgetResponse = {
   remaining_minor: 1965000,
   is_over_budget: false,
   transaction_count: 1,
-  answer: "Tháng này bạn còn 1.965.000₫ cho Ăn uống.",
+  answer: "Tháng này bạn còn 1.965.000 ₫ cho Ăn uống.",
   needs_clarification: false,
   clarification: null,
 };
@@ -202,7 +251,7 @@ const breakdownResponse = {
       percentage: 63.16,
     },
   ],
-  answer: "Tuần này bạn chi nhiều nhất cho Ăn uống: 180.000₫.",
+  answer: "Tuần này bạn chi nhiều nhất cho nhóm Ăn uống: 180.000 ₫.",
   needs_clarification: false,
   clarification: null,
 };

@@ -10,15 +10,15 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const baseButtonClassName =
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold tracking-normal transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold tracking-normal transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-focus disabled:pointer-events-none disabled:opacity-50";
 
 const buttonVariants: Record<ButtonVariant, string> = {
   danger:
-    "bg-rose-700 text-white hover:bg-rose-800 border border-rose-700",
+    "bg-ledger-danger text-white hover:bg-ledger-danger border border-ledger-danger",
   ghost:
     "border border-transparent bg-transparent text-ledger-ink hover:bg-ledger-wash",
   outline:
-    "border border-ledger-line bg-white text-ledger-ink hover:border-ledger-accent hover:text-ledger-accent",
+    "border border-ledger-line bg-ledger-panel text-ledger-ink hover:border-ledger-accent hover:text-ledger-accent",
   primary:
     "border border-ledger-accent bg-ledger-accent text-white hover:bg-ledger-accent-strong hover:border-ledger-accent-strong",
   secondary:
@@ -80,19 +80,19 @@ export const panelClassName =
   "rounded-lg border border-ledger-line bg-ledger-panel p-5 shadow-soft";
 
 export const subtlePanelClassName =
-  "rounded-md border border-ledger-line bg-white p-4";
+  "rounded-md border border-ledger-line bg-ledger-panel p-4";
 
 export const inputClassName =
-  "h-10 rounded-md border border-ledger-line bg-white px-3 text-sm text-ledger-ink placeholder:text-ledger-muted focus:border-ledger-accent focus:ring-ledger-accent";
+  "h-10 rounded-md border border-ledger-line bg-ledger-panel px-3 text-sm text-ledger-ink placeholder:text-ledger-muted focus:border-ledger-focus focus:ring-ledger-focus";
 
 export const inputLargeClassName =
-  "h-11 rounded-md border-ledger-line bg-white text-ledger-ink placeholder:text-ledger-muted focus:border-ledger-accent focus:ring-ledger-accent";
+  "h-11 rounded-md border-ledger-line bg-ledger-panel text-ledger-ink placeholder:text-ledger-muted focus:border-ledger-focus focus:ring-ledger-focus";
 
 export const selectClassName =
-  "h-10 rounded-md border border-ledger-line bg-white px-3 text-sm text-ledger-ink focus:border-ledger-accent focus:ring-ledger-accent";
+  "h-10 rounded-md border border-ledger-line bg-ledger-panel px-3 text-sm text-ledger-ink focus:border-ledger-focus focus:ring-ledger-focus";
 
 export const selectLargeClassName =
-  "h-11 rounded-md border-ledger-line bg-white text-sm text-ledger-ink focus:border-ledger-accent focus:ring-ledger-accent";
+  "h-11 rounded-md border-ledger-line bg-ledger-panel text-sm text-ledger-ink focus:border-ledger-focus focus:ring-ledger-focus";
 
 export const textareaClassName =
-  "min-h-24 resize-y rounded-md border-ledger-line bg-white text-ledger-ink placeholder:text-ledger-muted focus:border-ledger-accent focus:ring-ledger-accent";
+  "min-h-24 resize-y rounded-md border-ledger-line bg-ledger-panel text-ledger-ink placeholder:text-ledger-muted focus:border-ledger-focus focus:ring-ledger-focus";

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     environment: Environment = "local"
     log_level: LogLevel = "INFO"
     default_currency: str = Field(default="VND", min_length=3, max_length=3)
+    default_timezone: str = Field(default="Asia/Ho_Chi_Minh", min_length=1)
     database_url: str = "sqlite+aiosqlite:///./data/pocket_ledger.db"
     default_account_name: str = Field(default="Cash Wallet", min_length=1)
     default_account_opening_balance_minor: int = Field(default=0, ge=0)

@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from app.db.repositories import (
     get_total_account_balance_minor,
 )
 from app.domain.enums import TransactionType
+from app.domain.time_ranges import TimeRangeValidationError, month_range_utc
 
 
 class DashboardValidationError(ValueError):
@@ -94,9 +95,7 @@ def _parse_month_range(value: str) -> tuple[datetime, datetime]:
     if month < 1 or month > 12:
         raise DashboardValidationError("month must use YYYY-MM format")
 
-    next_year = year + 1 if month == 12 else year
-    next_month = 1 if month == 12 else month + 1
-    return (
-        datetime(year, month, 1, tzinfo=UTC),
-        datetime(next_year, next_month, 1, tzinfo=UTC),
-    )
+    try:
+        return month_range_utc(year, month, get_settings().default_timezone)
+    except TimeRangeValidationError as error:
+        raise DashboardValidationError(str(error)) from error

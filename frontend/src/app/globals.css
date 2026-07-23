@@ -4,6 +4,58 @@
 
 :root {
   color-scheme: light;
+  --ledger-wash: 247 250 247;
+  --ledger-panel: 255 255 255;
+  --ledger-panel-elevated: 255 255 255;
+  --ledger-subtle: 239 246 241;
+  --ledger-ink: 17 24 21;
+  --ledger-text-secondary: 64 77 68;
+  --ledger-muted: 102 115 107;
+  --ledger-line: 223 232 225;
+  --ledger-border-strong: 196 213 201;
+  --ledger-accent: 36 118 74;
+  --ledger-accent-strong: 24 90 55;
+  --ledger-accent-soft: 231 243 236;
+  --ledger-focus: 36 118 74;
+  --ledger-success: 22 163 74;
+  --ledger-success-soft: 220 252 231;
+  --ledger-warning: 180 83 9;
+  --ledger-warning-soft: 255 251 235;
+  --ledger-danger: 190 18 60;
+  --ledger-danger-soft: 255 241 242;
+  --ledger-overlay: 17 24 21;
+  --ledger-skeleton: 223 232 225;
+  --ledger-code: 247 250 247;
+  --shadow-soft: 0 10px 30px rgba(17, 24, 21, 0.06);
+  --shadow-dialog: 0 24px 70px rgba(17, 24, 21, 0.18);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --ledger-wash: 9 8 13;
+  --ledger-panel: 17 16 24;
+  --ledger-panel-elevated: 24 21 34;
+  --ledger-subtle: 33 26 47;
+  --ledger-ink: 245 242 250;
+  --ledger-text-secondary: 183 175 195;
+  --ledger-muted: 142 134 155;
+  --ledger-line: 51 43 64;
+  --ledger-border-strong: 74 61 92;
+  --ledger-accent: 168 85 247;
+  --ledger-accent-strong: 147 51 234;
+  --ledger-accent-soft: 43 27 61;
+  --ledger-focus: 192 132 252;
+  --ledger-success: 52 211 153;
+  --ledger-success-soft: 11 54 42;
+  --ledger-warning: 251 191 36;
+  --ledger-warning-soft: 56 44 18;
+  --ledger-danger: 251 113 133;
+  --ledger-danger-soft: 63 27 39;
+  --ledger-overlay: 0 0 0;
+  --ledger-skeleton: 51 43 64;
+  --ledger-code: 24 21 34;
+  --shadow-soft: 0 14px 36px rgba(0, 0, 0, 0.28);
+  --shadow-dialog: 0 28px 80px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -12,15 +64,15 @@
 
 html {
   min-height: 100%;
-  background: #f7faf7;
+  background: rgb(var(--ledger-wash));
   font-feature-settings: "tnum" 1, "ss01" 1;
 }
 
 body {
   min-height: 100%;
   margin: 0;
-  color: #17201b;
-  background: #f7faf7;
+  color: rgb(var(--ledger-ink));
+  background: rgb(var(--ledger-wash));
 }
 
 button,
@@ -28,6 +80,31 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+input,
+select,
+textarea {
+  color-scheme: inherit;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: rgb(var(--ledger-ink));
+  box-shadow: 0 0 0 1000px rgb(var(--ledger-panel)) inset;
+  caret-color: rgb(var(--ledger-ink));
+}
+
+::selection {
+  background: rgb(var(--ledger-accent-soft));
+  color: rgb(var(--ledger-ink));
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -47,6 +47,10 @@ class AiDraftConfirmationError(ValueError):
     """Raised when an AI draft cannot be confirmed."""
 
 
+class AiDraftCancellationError(ValueError):
+    """Raised when an AI draft cannot be cancelled."""
+
+
 class AiDraftStatus(StrEnum):
     PENDING = "pending"
     CONFIRMED = "confirmed"
@@ -100,6 +104,18 @@ class ConfirmAiDraftCommand:
 class ConfirmAiDraftResult:
     transaction: TransactionModel
     account_balance_minor: int
+
+
+@dataclass(frozen=True, slots=True)
+class CancelAiDraftCommand:
+    draft_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class CancelAiDraftResult:
+    draft_id: str
+    status: str
+    cancelled: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,6 +260,43 @@ async def confirm_ai_transaction_draft(
     if expired_draft:
         raise AiDraftConfirmationError("AI draft is expired")
     raise AiDraftConfirmationError("AI draft could not be confirmed")
+
+
+async def cancel_ai_transaction_draft(
+    session: AsyncSession,
+    command: CancelAiDraftCommand,
+    *,
+    now: datetime | None = None,
+) -> CancelAiDraftResult:
+    current_time = now or _utc_now()
+
+    async with session.begin():
+        draft = await get_ai_transaction_draft(session, command.draft_id)
+        if draft is None:
+            raise AiDraftNotFoundError("AI draft not found")
+
+        if draft.status == AiDraftStatus.CANCELLED.value:
+            return CancelAiDraftResult(
+                draft_id=draft.id,
+                status=draft.status,
+                cancelled=True,
+            )
+
+        if draft.status == AiDraftStatus.CONFIRMED.value:
+            raise AiDraftCancellationError("confirmed AI draft cannot be cancelled")
+        if draft.status == AiDraftStatus.EXPIRED.value:
+            raise AiDraftCancellationError("expired AI draft cannot be cancelled")
+        if draft.status != AiDraftStatus.PENDING.value:
+            raise AiDraftCancellationError("AI draft is not pending")
+
+        draft.status = AiDraftStatus.CANCELLED.value
+        draft.updated_at = current_time
+        await session.flush()
+        return CancelAiDraftResult(
+            draft_id=draft.id,
+            status=draft.status,
+            cancelled=True,
+        )
 
 
 def _validate_create_transaction_draft(

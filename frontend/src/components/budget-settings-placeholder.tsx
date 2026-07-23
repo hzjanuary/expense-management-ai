@@ -28,7 +28,7 @@ export function BudgetSettingsPlaceholder() {
         </div>
         {categoryBudgets.map((item) => (
           <div
-            className="flex items-center justify-between rounded-md border border-ledger-line bg-white px-4 py-3"
+            className="flex items-center justify-between rounded-md border border-ledger-line bg-ledger-panel px-4 py-3"
             key={item.category}
           >
             <span className="text-sm font-medium text-ledger-ink">

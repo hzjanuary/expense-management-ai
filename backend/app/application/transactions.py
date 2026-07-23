@@ -1,6 +1,6 @@
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,7 @@ from app.domain.categories import (
 )
 from app.domain.enums import TransactionType
 from app.domain.money import Money, MoneyValidationError
+from app.domain.time_ranges import TimeRangeValidationError, month_range_utc
 
 
 class TransactionValidationError(ValueError):
@@ -259,12 +260,10 @@ def _parse_month_range(value: str | None) -> tuple[datetime | None, datetime | N
     if month < 1 or month > 12:
         raise TransactionValidationError("month must use YYYY-MM format")
 
-    next_year = year + 1 if month == 12 else year
-    next_month = 1 if month == 12 else month + 1
-    return (
-        datetime(year, month, 1, tzinfo=UTC),
-        datetime(next_year, next_month, 1, tzinfo=UTC),
-    )
+    try:
+        return month_range_utc(year, month, get_settings().default_timezone)
+    except TimeRangeValidationError as error:
+        raise TransactionValidationError(str(error)) from error
 
 
 def _parse_category_filter(value: str | None) -> str | None:

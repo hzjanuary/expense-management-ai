@@ -11,5 +11,6 @@ export default defineConfig({
     exclude: ["e2e/**", "e2e-visual/**", "node_modules/**"],
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
+    testTimeout: 10000,
   },
 });

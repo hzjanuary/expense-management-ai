@@ -39,6 +39,7 @@ export class TransactionApiError extends Error {
 
 export async function fetchRecentTransactions(
   filters: TransactionListFilters = {},
+  signal?: AbortSignal,
 ): Promise<TransactionListResponse> {
   const params = new URLSearchParams();
   params.set("limit", String(filters.limit ?? 10));
@@ -50,6 +51,7 @@ export async function fetchRecentTransactions(
 
   const response = await fetch(`/api/transactions?${params.toString()}`, {
     cache: "no-store",
+    signal,
   });
 
   if (!response.ok) {

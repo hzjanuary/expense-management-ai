@@ -8,7 +8,7 @@ import {
   type DashboardSummaryResponse,
 } from "@/lib/dashboard";
 import { formatCategoryLabel } from "@/lib/categories";
-import { formatVnd } from "@/lib/money";
+import { formatMonthDisplayLabel, formatVnd } from "@/lib/money";
 
 type LoadState = "idle" | "loading" | "loaded" | "error";
 
@@ -68,19 +68,19 @@ export function DashboardSummary({
     return (
       <section
         aria-live="polite"
-        className="rounded-lg border border-rose-200 bg-rose-50 p-5 shadow-soft"
+        className="rounded-lg border border-ledger-danger bg-ledger-danger-soft p-5 shadow-soft"
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-rose-800">
+            <h2 className="text-lg font-semibold text-ledger-danger">
               Chưa tải được tổng quan
             </h2>
-            <p className="mt-1 text-sm text-rose-700">
+            <p className="mt-1 text-sm text-ledger-danger">
               {error ?? "Không tải được số liệu tổng quan."}
             </p>
           </div>
           <button
-            className="h-10 rounded-md border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-700 transition hover:border-rose-400"
+            className="h-10 rounded-md border border-ledger-danger bg-ledger-panel px-4 text-sm font-semibold text-ledger-danger transition hover:border-ledger-danger"
             onClick={() => void loadSummary()}
             type="button"
           >
@@ -97,7 +97,7 @@ export function DashboardSummary({
 
   return (
     <section aria-live="polite">
-      <article className="rounded-lg border border-ledger-line bg-white p-6 shadow-soft">
+      <article className="rounded-lg border border-ledger-line bg-ledger-panel p-6 shadow-soft">
         <p className="text-sm font-semibold text-ledger-muted">
           Số dư hiện tại
         </p>
@@ -107,15 +107,13 @@ export function DashboardSummary({
         <div className="mt-6 grid gap-4 border-t border-ledger-line pt-5 sm:grid-cols-2">
           <SummarySubValue
             label="Thu tháng này"
-            prefix="+"
             tone="income"
-            value={formatVnd(summary.monthly_income_minor)}
+            value={formatVnd(summary.monthly_income_minor, { sign: "positive" })}
           />
           <SummarySubValue
             label="Chi tháng này"
-            prefix="−"
             tone="expense"
-            value={formatVnd(summary.monthly_expense_minor)}
+            value={formatVnd(summary.monthly_expense_minor, { sign: "negative" })}
           />
         </div>
       </article>
@@ -167,7 +165,7 @@ export function DashboardCategoryBreakdown({
             Chi tiêu theo danh mục
           </h2>
           <p className="mt-1 text-sm text-ledger-muted">
-            Các khoản chi trong {month}.
+            Các khoản chi trong {formatMonthDisplayLabel(month)}.
           </p>
         </div>
         {state === "loaded" ? (
@@ -184,7 +182,7 @@ export function DashboardCategoryBreakdown({
         </div>
       ) : null}
       {state === "error" ? (
-        <p className="mt-4 text-sm text-rose-700">
+        <p className="mt-4 text-sm text-ledger-danger">
           Chưa tải được chi tiêu theo danh mục.
         </p>
       ) : null}
@@ -216,23 +214,20 @@ export function DashboardCategoryBreakdown({
 
 function SummarySubValue({
   label,
-  prefix,
   tone,
   value,
 }: {
   label: string;
-  prefix: "+" | "−";
   tone: "expense" | "income";
   value: string;
 }) {
-  const toneClass = tone === "income" ? "text-ledger-accent" : "text-rose-700";
+  const toneClass = tone === "income" ? "text-ledger-accent" : "text-ledger-danger";
 
   return (
     <div>
       <p className="text-sm font-medium text-ledger-muted">{label}</p>
       <p className={`mt-1 text-2xl font-semibold tabular-nums ${toneClass}`}>
         <span className="sr-only">{tone === "income" ? "Khoản thu" : "Khoản chi"}</span>
-        {prefix}
         {value}
       </p>
     </div>
@@ -245,9 +240,9 @@ function SummaryLoading({ month }: { month: string }) {
       aria-live="polite"
       role="status"
     >
-      <article className="rounded-lg border border-ledger-line bg-white p-6 shadow-soft">
+      <article className="rounded-lg border border-ledger-line bg-ledger-panel p-6 shadow-soft">
         <p className="text-sm font-medium text-ledger-muted">
-          Đang tải số liệu {month}...
+          Đang tải số liệu {formatMonthDisplayLabel(month)}...
         </p>
         <div className="mt-4 h-12 w-64 max-w-full rounded bg-ledger-line" />
         <div className="mt-6 grid gap-4 sm:grid-cols-2">

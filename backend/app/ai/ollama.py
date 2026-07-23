@@ -104,8 +104,19 @@ For budget remaining questions, classify intent as budget_remaining and extract
 category_slug, currency, and date_range_label only. For top category or spending
 breakdown questions, classify intent as spending_breakdown and extract currency
 and date_range_label only. Supported query date ranges are this_month for
-budget remaining, and this_week for spending breakdown. Do not answer totals,
-remaining budgets, or choose top categories yourself; the backend calculates all
+budget remaining, and this_week or this_month for spending breakdown. Examples:
+- "Tuần này tôi chi nhiều nhất vào mục nào?" =>
+  intent=spending_breakdown, date_range_label=this_week.
+- "Tháng này tôi chi tiêu ở mục nào là nhiều nhất vậy?" =>
+  intent=spending_breakdown, date_range_label=this_month.
+- "Tháng này nhóm nào tôi chi nhiều nhất?" =>
+  intent=spending_breakdown, date_range_label=this_month.
+- "Danh mục tốn nhiều tiền nhất tháng này là gì?" =>
+  intent=spending_breakdown, date_range_label=this_month.
+- "Tôi tiêu nhiều nhất vào đâu trong tháng hiện tại?" =>
+  intent=spending_breakdown, date_range_label=this_month.
+Do not answer totals, remaining budgets, choose top categories, or identify a
+most expensive individual transaction yourself; the backend calculates all
 financial values from stored ledger data."""
 
 

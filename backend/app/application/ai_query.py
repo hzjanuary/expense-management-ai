@@ -1,7 +1,7 @@
 import re
 import unicodedata
 from dataclasses import dataclass
-from datetime import datetime, time, timedelta
+from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,6 +23,11 @@ from app.domain.categories import (
 )
 from app.domain.enums import TransactionType
 from app.domain.money import MoneyValidationError, normalize_currency
+from app.domain.time_ranges import (
+    TimeRangeValidationError,
+    month_range_utc,
+    week_range_utc,
+)
 
 
 class SpendingQueryValidationError(ValueError):
@@ -303,10 +308,11 @@ async def answer_budget_remaining_query(
         range_start=date_range.start,
         range_end=date_range.end,
     )
+    period_year, period_month = _current_local_year_month(command.timezone, now=now)
     budget_period = await get_budget_period(
         session,
-        year=date_range.start.year,
-        month=date_range.start.month,
+        year=period_year,
+        month=period_month,
         currency=currency,
     )
     category_budget = None
@@ -376,7 +382,13 @@ async def answer_spending_breakdown_query(
     )
     provider_result = await provider.parse_transaction_text(request)
 
-    if provider_result.intent is not SupportedIntent.SPENDING_BREAKDOWN:
+    deterministic_breakdown = _classify_deterministic_spending_breakdown_query(
+        command.message
+    )
+    if (
+        provider_result.intent is not SupportedIntent.SPENDING_BREAKDOWN
+        and deterministic_breakdown is None
+    ):
         return _breakdown_clarification_result(
             intent=provider_result.intent.value,
             currency=currency,
@@ -387,7 +399,14 @@ async def answer_spending_breakdown_query(
             ),
         )
 
-    if provider_result.date_range_label != "this_week":
+    date_range_label = _resolve_breakdown_date_range_label(
+        provider_result.date_range_label,
+        command.message,
+    )
+    if date_range_label is None and deterministic_breakdown is not None:
+        date_range_label = deterministic_breakdown
+
+    if date_range_label not in {"this_week", "this_month"}:
         return _breakdown_clarification_result(
             intent=SupportedIntent.SPENDING_BREAKDOWN.value,
             currency=currency,
@@ -395,7 +414,7 @@ async def answer_spending_breakdown_query(
             message="Bạn muốn xem nhóm chi tiêu trong khoảng thời gian nào?",
         )
 
-    date_range = _this_week_range(command.timezone, now=now)
+    date_range = _insight_date_range(date_range_label, command.timezone, now=now)
     rows = await get_expense_breakdown_by_category(
         session,
         currency=currency,
@@ -415,7 +434,10 @@ async def answer_spending_breakdown_query(
             transaction_count=0,
             top_category=None,
             breakdown=[],
-            answer="Bạn chưa có khoản chi nào trong tuần này.",
+            answer=(
+                "Bạn chưa có khoản chi nào trong "
+                f"{_format_period_phrase(date_range.label)}."
+            ),
             needs_clarification=False,
             clarification=None,
         )
@@ -439,7 +461,8 @@ async def answer_spending_breakdown_query(
         top_category=top_category,
         breakdown=breakdown,
         answer=(
-            "Tuần này bạn chi nhiều nhất cho "
+            f"{_format_period_phrase(date_range.label).capitalize()} "
+            "bạn chi nhiều nhất cho nhóm "
             f"{get_category_display_name(top_category.category_slug)}: "
             f"{_format_vnd(top_category.amount_minor)}."
         ),
@@ -517,6 +540,29 @@ def _resolve_this_month_label(date_range_label: str | None, message: str) -> str
         return date_range_label
     if _mentions_this_month(message):
         return "this_month"
+    return None
+
+
+def _resolve_breakdown_date_range_label(
+    date_range_label: str | None,
+    message: str,
+) -> str | None:
+    if date_range_label is not None:
+        return date_range_label
+    if _mentions_this_month(message):
+        return "this_month"
+    if _mentions_this_week(message):
+        return "this_week"
+    return date_range_label
+
+
+def _classify_deterministic_spending_breakdown_query(message: str) -> str | None:
+    if not _looks_like_spending_breakdown_query(message):
+        return None
+    if _mentions_this_month(message):
+        return "this_month"
+    if _mentions_this_week(message):
+        return "this_week"
     return None
 
 
@@ -636,6 +682,65 @@ def _mentions_this_month(message: str) -> bool:
     )
 
 
+def _mentions_this_week(message: str) -> bool:
+    normalized = _normalize_query_text(message)
+    return any(
+        token in normalized
+        for token in (
+            "tuan nay",
+            "trong tuan nay",
+            "tuan hien tai",
+            "trong tuan hien tai",
+            "this week",
+            "current week",
+        )
+    )
+
+
+def _looks_like_spending_breakdown_query(message: str) -> bool:
+    normalized = _normalize_query_text(message)
+    has_time = _mentions_this_month(message) or _mentions_this_week(message)
+    has_spending = any(
+        token in normalized
+        for token in (
+            "chi",
+            "chi tieu",
+            "tieu",
+            "ton",
+            "ton tien",
+            "ton nhieu tien",
+            "khoan chi",
+            "chi phi",
+        )
+    )
+    has_largest = any(
+        token in normalized
+        for token in (
+            "nhieu nhat",
+            "la nhieu nhat",
+            "dat nhat",
+            "lon nhat",
+            "ton nhieu tien nhat",
+            "top",
+            "hang dau",
+        )
+    )
+    has_category_target = any(
+        token in normalized
+        for token in (
+            "muc nao",
+            "nhom nao",
+            "danh muc",
+            "danh muc nao",
+            "vao dau",
+            "cho thu gi",
+            "khoan nao",
+            "mon nao",
+        )
+    )
+    return has_time and has_spending and has_largest and has_category_target
+
+
 def _normalize_query_text(value: str) -> str:
     normalized = unicodedata.normalize("NFD", value.strip().casefold())
     without_marks = "".join(
@@ -656,16 +761,19 @@ def _this_month_range(timezone: str, *, now: datetime | None) -> DateRange:
         if current.tzinfo is not None
         else current.replace(tzinfo=zone)
     )
-    start = current.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    if start.month == 12:
-        end = start.replace(year=start.year + 1, month=1)
-    else:
-        end = start.replace(month=start.month + 1)
+    try:
+        start, end = month_range_utc(current.year, current.month, timezone)
+    except TimeRangeValidationError as error:
+        raise SpendingQueryValidationError(str(error)) from error
 
     return DateRange(start=start, end=end, label="this_month")
 
 
-def _this_week_range(timezone: str, *, now: datetime | None) -> DateRange:
+def _current_local_year_month(
+    timezone: str,
+    *,
+    now: datetime | None,
+) -> tuple[int, int]:
     try:
         zone = ZoneInfo(timezone)
     except ZoneInfoNotFoundError as error:
@@ -677,11 +785,43 @@ def _this_week_range(timezone: str, *, now: datetime | None) -> DateRange:
         if current.tzinfo is not None
         else current.replace(tzinfo=zone)
     )
-    week_start_date = current.date() - timedelta(days=current.weekday())
-    start = datetime.combine(week_start_date, time.min, tzinfo=zone)
-    end = start + timedelta(days=7)
+    return current.year, current.month
+
+
+def _this_week_range(timezone: str, *, now: datetime | None) -> DateRange:
+    try:
+        zone = ZoneInfo(timezone)
+    except ZoneInfoNotFoundError as error:
+        raise SpendingQueryValidationError("timezone is invalid") from error
+
+    current = now or datetime.now(zone)
+    try:
+        start, end = week_range_utc(current, timezone)
+    except TimeRangeValidationError as error:
+        raise SpendingQueryValidationError(str(error)) from error
 
     return DateRange(start=start, end=end, label="this_week")
+
+
+def _insight_date_range(
+    date_range_label: str,
+    timezone: str,
+    *,
+    now: datetime | None,
+) -> DateRange:
+    if date_range_label == "this_month":
+        return _this_month_range(timezone, now=now)
+    if date_range_label == "this_week":
+        return _this_week_range(timezone, now=now)
+    raise SpendingQueryValidationError("unsupported date range")
+
+
+def _format_period_phrase(date_range_label: str) -> str:
+    if date_range_label == "this_month":
+        return "tháng này"
+    if date_range_label == "this_week":
+        return "tuần này"
+    return "khoảng thời gian này"
 
 
 def _clarification_result(
@@ -750,4 +890,5 @@ def _breakdown_clarification_result(
 
 
 def _format_vnd(amount_minor: int) -> str:
-    return f"{amount_minor:,.0f}".replace(",", ".") + "₫"
+    sign = "−" if amount_minor < 0 else ""
+    return sign + f"{abs(amount_minor):,.0f}".replace(",", ".") + " ₫"

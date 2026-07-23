@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AssistantWorkspace } from "@/components/assistant/assistant-workspace";
 import { BudgetsClient } from "@/components/budgets-client";
 import { SettingsClient } from "@/components/settings-client";
+import { ThemeProvider } from "@/components/theme-provider";
 import { TransactionsClient } from "@/components/transactions-client";
 
 describe("separated post-MVP pages", () => {
@@ -82,8 +83,13 @@ describe("separated post-MVP pages", () => {
   });
 
   it("settings shows safe Ollama guidance and AI history privacy controls", () => {
-    render(<SettingsClient />);
+    render(
+      <ThemeProvider>
+        <SettingsClient />
+      </ThemeProvider>,
+    );
 
+    expect(screen.getByRole("radiogroup", { name: "Giao diện" })).toBeInTheDocument();
     expect(screen.getAllByText(/qwen3:4b-instruct/).length).toBeGreaterThan(0);
     expect(screen.getByText(/không tự tải model/i)).toBeInTheDocument();
     expect(screen.getByText("Lịch sử AI")).toBeInTheDocument();
@@ -141,7 +147,7 @@ const spendingResponse = {
   },
   amount_minor: 35000,
   transaction_count: 1,
-  answer: "Tháng này bạn đã chi 35.000₫ cho Ăn uống.",
+  answer: "Tháng này bạn đã chi 35.000 ₫ cho Ăn uống.",
   needs_clarification: false,
   clarification: null,
 };
