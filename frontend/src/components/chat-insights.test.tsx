@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -62,8 +62,9 @@ describe("insight chat UI", () => {
     expect(await screen.findByText("Bản nháp giao dịch")).toBeInTheDocument();
     expectTextBefore("hôm nay tao ăn hộp cơm gà 28k", "Bản nháp giao dịch");
     expect(screen.getByText("Cơm gà")).toBeInTheDocument();
-    expect(screen.getByText("Ăn uống")).toBeInTheDocument();
-    expect(await findTextContaining("28.000")).toBeInTheDocument();
+    expect(screen.getAllByText("Ăn uống").length).toBeGreaterThan(0);
+    expect(await findTextContaining("28.000 ₫")).toBeInTheDocument();
+    expectNoLegacyMoneyText();
     expect(countExactCalls(fetchMock, "/api/ai/parse")).toBe(1);
     expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(0);
   });
@@ -105,19 +106,21 @@ describe("insight chat UI", () => {
     await submitMessage("Tháng này tôi ăn uống hết bao nhiêu?");
     expect(await screen.findByRole("heading", { name: "Chi tiêu theo danh mục" })).toBeInTheDocument();
     expectTextBefore("Tháng này tôi ăn uống hết bao nhiêu?", "Chi tiêu theo danh mục");
-    expect(await findTextContaining("35.000")).toBeInTheDocument();
+    expect(await findTextContaining("35.000 ₫")).toBeInTheDocument();
 
     await submitMessage("Tháng này tôi đã chi tổng cộng bao nhiêu?");
     expect(await screen.findByRole("heading", { name: "Tổng chi tiêu" })).toBeInTheDocument();
-    expect(await findTextContaining("155.000")).toBeInTheDocument();
+    expect(await findTextContaining("155.000 ₫")).toBeInTheDocument();
 
     await submitMessage("Còn bao nhiêu tiền ăn tháng này?");
     expect(await screen.findByRole("heading", { name: "Ngân sách còn lại" })).toBeInTheDocument();
-    expect(await findTextContaining("1.965.000")).toBeInTheDocument();
+    expect(await findTextContaining("1.965.000 ₫")).toBeInTheDocument();
 
     await submitMessage("Tuần này tôi tiêu nhiều nhất vào mục nào?");
     expect(await screen.findByRole("heading", { name: "Chi nhiều nhất" })).toBeInTheDocument();
-    expect(screen.getByText("63.16%")).toBeInTheDocument();
+    expect(screen.getByText("63,16%")).toBeInTheDocument();
+    expect(await findTextContaining("180.000 ₫")).toBeInTheDocument();
+    expectNoLegacyMoneyText();
 
     expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(2);
     expect(countExactCalls(fetchMock, "/api/ai/query-budget-remaining")).toBe(1);
@@ -162,9 +165,26 @@ describe("insight chat UI", () => {
     await submitMessage("Tháng này tôi đã chi tổng cộng bao nhiêu?");
 
     expect(await screen.findByRole("heading", { name: "Tổng chi tiêu" })).toBeInTheDocument();
-    expect(await findTextContaining("155.000")).toBeInTheDocument();
-    expect(screen.getByText("tháng 7 năm 2026")).toBeInTheDocument();
+    expect(await findTextContaining("155.000 ₫")).toBeInTheDocument();
+    expect(screen.getByText("Tháng 7, 2026")).toBeInTheDocument();
     expect(screen.queryByText(/1 thg 8|01\/08\/2026/)).not.toBeInTheDocument();
+    expectNoLegacyMoneyText();
+  });
+
+  it("normalizes legacy backend answer money text before rendering", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({
+        ...spendingResponse,
+        answer: "Tháng này bạn đã chi 35.000đ cho Ăn uống.",
+      }),
+    );
+
+    render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+    await submitMessage("Tháng này tôi ăn uống hết bao nhiêu?");
+
+    expect(await findTextContaining("35.000 ₫")).toBeInTheDocument();
+    expectNoLegacyMoneyText();
   });
 
   it("routes aggregate wallet-decrease wording as a total spending query", async () => {
@@ -202,6 +222,64 @@ describe("insight chat UI", () => {
 
     expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(4);
     expect(countCalls(fetchMock, "/api/ai/parse")).toBe(0);
+  });
+
+  it.each([
+    "cụ thể có món nào đắt nhất không?",
+    "khoản nào lớn nhất?",
+    "tôi chi nhiều nhất cho thứ gì?",
+    "giao dịch nào tốn nhiều tiền nhất?",
+  ])(
+    "routes analytical follow-up %s to category breakdown without creating a draft",
+    async (followUp) => {
+      const fetchMock = mockInsightFetch();
+
+      render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+      await submitMessage("Tháng này tôi đã chi tổng cộng bao nhiêu?");
+      expect(
+        await screen.findByRole("heading", { name: "Tổng chi tiêu" }),
+      ).toBeInTheDocument();
+
+      await submitMessage(followUp);
+
+      expect(
+        await screen.findByRole("heading", { name: "Chi nhiều nhất" }),
+      ).toBeInTheDocument();
+      expect(await findTextContaining("180.000 ₫")).toBeInTheDocument();
+      expect(countExactCalls(fetchMock, "/api/ai/query-spending")).toBe(1);
+      expect(countExactCalls(fetchMock, "/api/ai/query-spending-breakdown")).toBe(1);
+      expect(countExactCalls(fetchMock, "/api/ai/parse")).toBe(0);
+      expect(countExactCalls(fetchMock, "/api/ai/confirm")).toBe(0);
+      expect(countCalls(fetchMock, "/api/transactions")).toBe(0);
+      expect(screen.queryByText("Bản nháp giao dịch")).not.toBeInTheDocument();
+      expectNoLegacyMoneyText();
+    },
+  );
+
+  it("routes monthly top-category wording to spending breakdown without clarification", async () => {
+    const fetchMock = mockInsightFetch();
+
+    render(<ChatToLedger onTransactionConfirmed={vi.fn()} />);
+
+    await submitMessage("tháng này tôi chi tiêu ở mục nào là nhiều nhất vậy?");
+
+    expect(
+      await screen.findByRole("heading", { name: "Chi nhiều nhất" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Tháng 7, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Ăn uống")).toBeInTheDocument();
+    expect(screen.getByText((_, element) => element?.textContent === "50,70%"))
+      .toBeInTheDocument();
+    expect(await findTextContaining("355.000 ₫")).toBeInTheDocument();
+    expect(await findTextContaining("180.000 ₫")).toBeInTheDocument();
+    expect(screen.queryByText("Cần thêm thông tin")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/category_slug|date_range|spending_scope|query_scope/),
+    ).not.toBeInTheDocument();
+    expect(countExactCalls(fetchMock, "/api/ai/query-spending-breakdown")).toBe(1);
+    expect(countExactCalls(fetchMock, "/api/ai/parse")).toBe(0);
+    expectNoLegacyMoneyText();
   });
 
   it("shows supported examples for unknown input without calling a financial endpoint", async () => {
@@ -368,11 +446,13 @@ describe("insight chat UI", () => {
     expect(
       await screen.findByText("Bạn muốn hỏi chi tiêu cho danh mục nào?"),
     ).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Bạn muốn hỏi chi tiêu cho danh mục nào?"),
+    ).toHaveLength(1);
     expectTextBefore("Tháng này tôi ăn uống hết bao nhiêu?", "Cần thêm thông tin");
     expect(
       screen.queryByText(/category_slug|date_range|spending_scope|query_scope/),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/nhóm chi tiêu/)).toBeInTheDocument();
     expect(screen.queryByText("0\u00a0₫")).not.toBeInTheDocument();
 
     await submitMessage("Tháng này tôi ăn uống hết bao nhiêu?");
@@ -439,8 +519,7 @@ describe("insight chat UI", () => {
 
 async function submitMessage(message: string) {
   const input = screen.getByLabelText("Chat to ledger message");
-  await userEvent.clear(input);
-  await userEvent.type(input, message);
+  fireEvent.change(input, { target: { value: message } });
   await userEvent.click(screen.getByRole("button", { name: "Gửi" }));
 }
 
@@ -469,7 +548,14 @@ function mockInsightFetch() {
       return Promise.resolve(jsonResponse(budgetResponse));
     }
     if (url === "/api/ai/query-spending-breakdown") {
-      return Promise.resolve(jsonResponse(breakdownResponse));
+      const body = getRequestBody(init);
+      return Promise.resolve(
+        jsonResponse(
+          isMonthlyBreakdownTestMessage(body.message)
+            ? monthlyBreakdownResponse
+            : breakdownResponse,
+        ),
+      );
     }
     return Promise.reject(new Error(`Unexpected URL ${url}`));
   });
@@ -495,7 +581,14 @@ function mockAllChatEndpoints() {
       return Promise.resolve(jsonResponse(budgetResponse));
     }
     if (url === "/api/ai/query-spending-breakdown") {
-      return Promise.resolve(jsonResponse(breakdownResponse));
+      const body = getRequestBody(init);
+      return Promise.resolve(
+        jsonResponse(
+          isMonthlyBreakdownTestMessage(body.message)
+            ? monthlyBreakdownResponse
+            : breakdownResponse,
+        ),
+      );
     }
     return Promise.reject(new Error(`Unexpected URL ${url}`));
   });
@@ -520,6 +613,16 @@ function isTotalSpendingTestMessage(message: string): boolean {
   );
 }
 
+function isMonthlyBreakdownTestMessage(message: string): boolean {
+  const normalized = message
+    .toLocaleLowerCase("vi-VN")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d");
+
+  return normalized.includes("thang nay") || normalized.includes("thang hien tai");
+}
+
 function getRequestBody(init: RequestInit | undefined): { message: string } {
   if (typeof init?.body !== "string") {
     return { message: "" };
@@ -542,7 +645,7 @@ const spendingResponse = {
   date_range: dateRange,
   amount_minor: 35000,
   transaction_count: 1,
-  answer: "Tháng này bạn đã chi 35.000₫ cho Ăn uống.",
+  answer: "Tháng này bạn đã chi 35.000 ₫ cho Ăn uống.",
   needs_clarification: false,
   clarification: null,
 };
@@ -553,7 +656,7 @@ const totalSpendingResponse = {
   category_slug: null,
   amount_minor: 155000,
   transaction_count: 4,
-  answer: "Tháng này bạn đã chi tổng cộng 155.000₫.",
+  answer: "Tháng này bạn đã chi tổng cộng 155.000 ₫.",
 };
 
 const spendingClarificationResponse = {
@@ -582,7 +685,7 @@ const budgetResponse = {
   remaining_minor: 1965000,
   is_over_budget: false,
   transaction_count: 1,
-  answer: "Tháng này bạn còn 1.965.000₫ cho Ăn uống.",
+  answer: "Tháng này bạn còn 1.965.000 ₫ cho Ăn uống.",
   needs_clarification: false,
   clarification: null,
 };
@@ -625,9 +728,43 @@ const breakdownResponse = {
       percentage: 36.84,
     },
   ],
-  answer: "Tuần này bạn chi nhiều nhất cho Ăn uống: 180.000₫.",
+  answer: "Tuần này bạn chi nhiều nhất cho nhóm Ăn uống: 180.000 ₫.",
   needs_clarification: false,
   clarification: null,
+};
+
+const monthlyBreakdownResponse = {
+  ...breakdownResponse,
+  date_range: dateRange,
+  total_expense_minor: 355000,
+  transaction_count: 6,
+  top_category: {
+    category_slug: "food",
+    amount_minor: 180000,
+    transaction_count: 3,
+    percentage: 50.7,
+  },
+  breakdown: [
+    {
+      category_slug: "food",
+      amount_minor: 180000,
+      transaction_count: 3,
+      percentage: 50.7,
+    },
+    {
+      category_slug: "transport",
+      amount_minor: 105000,
+      transaction_count: 2,
+      percentage: 29.58,
+    },
+    {
+      category_slug: "coffee",
+      amount_minor: 70000,
+      transaction_count: 1,
+      percentage: 19.72,
+    },
+  ],
+  answer: "Tháng này bạn chi nhiều nhất cho nhóm Ăn uống: 180.000 ₫.",
 };
 
 const emptyBreakdownResponse = {
@@ -718,6 +855,13 @@ async function findTextContaining(text: string): Promise<HTMLElement> {
     ),
   );
   return matches[0];
+}
+
+function expectNoLegacyMoneyText() {
+  const text = document.body.textContent ?? "";
+  expect(text).not.toMatch(/\d[\d.]*\s*đ\b/i);
+  expect(text).not.toMatch(/\d[\d.]*\s*VND\b/i);
+  expect(text).not.toMatch(/\d[\d.]*₫/);
 }
 
 function jsonResponse(payload: unknown, init: ResponseInit = {}): Response {

@@ -67,6 +67,7 @@ describe("live dashboard data", () => {
     expect(await findExactText("4.965.000 ₫")).toBeInTheDocument();
     expect(await screen.findByText("Chi tiêu theo danh mục")).toBeInTheDocument();
     expect(screen.getAllByText("Còn trong ngân sách").length).toBeGreaterThan(0);
+    expectNoLegacyMoneyText();
   });
 
   it("does not show fake zero values while the summary is loading", () => {
@@ -74,7 +75,7 @@ describe("live dashboard data", () => {
 
     render(<DashboardSummary month="2026-07" refreshSignal={0} />);
 
-    expect(screen.getAllByText(/Đang tải số liệu 2026-07/i)).toHaveLength(1);
+    expect(screen.getAllByText(/Đang tải số liệu Tháng 7, 2026/i)).toHaveLength(1);
     expect(screen.queryByText(formatVnd(0))).not.toBeInTheDocument();
   });
 
@@ -260,6 +261,13 @@ function createDeferred<T>() {
   });
 
   return { promise, reject, resolve };
+}
+
+function expectNoLegacyMoneyText() {
+  const text = document.body.textContent ?? "";
+  expect(text).not.toMatch(/\d[\d.]*\s*đ\b/i);
+  expect(text).not.toMatch(/\d[\d.]*\s*VND\b/i);
+  expect(text).not.toMatch(/\d[\d.]*₫/);
 }
 
 async function findExactText(text: string): Promise<HTMLElement> {

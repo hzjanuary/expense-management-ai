@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
@@ -28,5 +28,28 @@ def month_range_utc(
         end_local = datetime(year + 1, 1, 1, tzinfo=zone)
     else:
         end_local = datetime(year, month + 1, 1, tzinfo=zone)
+
+    return start_local.astimezone(UTC), end_local.astimezone(UTC)
+
+
+def week_range_utc(
+    value: datetime,
+    timezone: str,
+) -> tuple[datetime, datetime]:
+    """Return the product-local week containing value as a half-open UTC range."""
+
+    try:
+        zone = ZoneInfo(timezone)
+    except ZoneInfoNotFoundError as error:
+        raise TimeRangeValidationError("timezone is invalid") from error
+
+    current = (
+        value.astimezone(zone)
+        if value.tzinfo is not None
+        else value.replace(tzinfo=zone)
+    )
+    week_start_date = current.date() - timedelta(days=current.weekday())
+    start_local = datetime.combine(week_start_date, time.min, tzinfo=zone)
+    end_local = start_local + timedelta(days=7)
 
     return start_local.astimezone(UTC), end_local.astimezone(UTC)

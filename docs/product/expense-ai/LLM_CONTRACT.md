@@ -277,9 +277,15 @@ LLM output may extract the phrase, but final normalization must be deterministic
 - The LLM may classify a spending breakdown or top-category intent and extract date range.
 - The answer must be computed from local ledger records.
 - The answer must not rely on provider-generated category totals or provider-selected top category.
-- For US-503, query classification uses `intent = "spending_breakdown"`, `currency`, and `date_range_label = "this_week"`.
+- For US-503, query classification uses `intent = "spending_breakdown"`,
+  `currency`, and `date_range_label = "this_week"` or `date_range_label =
+  "this_month"`.
 - `this_week` uses the request timezone with Monday as the inclusive week start and the next Monday as the exclusive end.
+- `this_month` uses the request timezone with the first local day as the
+  inclusive start and the next local month as the exclusive end.
 - Missing or unsupported date ranges should produce clarification rather than a fabricated breakdown.
 - The backend groups non-deleted expense transactions by category, computes category totals and percentages, and chooses the top category deterministically.
 - Top category ordering is amount descending, transaction count descending, then category slug ascending.
 - Income transactions, out-of-range transactions, soft-deleted transactions, and other currencies do not count.
+- The provider must not claim to identify an individual most-expensive
+  transaction; the supported answer is category/group level.

@@ -24,8 +24,8 @@ export function TransactionRow({
   const menuRef = useRef<HTMLDivElement | null>(null);
   const deleteItemRef = useRef<HTMLButtonElement | null>(null);
   const isExpense = transaction.type === "expense";
-  const amountPrefix = isExpense ? "−" : "+";
-  const amountTone = isExpense ? "text-rose-700" : "text-ledger-accent";
+  const amountSign = isExpense ? "negative" : "positive";
+  const amountTone = isExpense ? "text-ledger-danger" : "text-ledger-accent";
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -62,7 +62,7 @@ export function TransactionRow({
   }, [isMenuOpen]);
 
   return (
-    <li className="grid gap-3 bg-white px-4 py-4 transition hover:bg-ledger-wash/60 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    <li className="grid gap-3 bg-ledger-panel px-4 py-4 transition hover:bg-ledger-wash/60 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div className="min-w-0">
         <div className="flex min-w-0 items-start justify-between gap-3 sm:block">
           <p className="min-w-0 text-sm font-semibold leading-5 text-ledger-ink">
@@ -74,8 +74,7 @@ export function TransactionRow({
             <span className="sr-only">
               {isExpense ? "Khoản chi" : "Khoản thu"}
             </span>
-            {amountPrefix}
-            {formatVnd(transaction.amount_minor)}
+            {formatVnd(transaction.amount_minor, { sign: amountSign })}
           </p>
         </div>
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ledger-muted">
@@ -95,8 +94,7 @@ export function TransactionRow({
           <span className="sr-only">
             {isExpense ? "Khoản chi" : "Khoản thu"}
           </span>
-          {amountPrefix}
-          {formatVnd(transaction.amount_minor)}
+          {formatVnd(transaction.amount_minor, { sign: amountSign })}
         </p>
         {onDeleteRequested ? (
           <div className="relative" ref={menuRef}>
@@ -116,11 +114,11 @@ export function TransactionRow({
             </Button>
             {isMenuOpen ? (
               <div
-                className="absolute right-0 top-11 z-20 w-44 rounded-md border border-ledger-line bg-white p-1 shadow-dialog"
+                className="absolute right-0 top-11 z-20 w-44 rounded-md border border-ledger-line bg-ledger-panel p-1 shadow-dialog"
                 role="menu"
               >
                 <button
-                  className="flex min-h-10 w-full items-center rounded px-3 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ledger-accent"
+                  className="flex min-h-10 w-full items-center rounded px-3 text-left text-sm font-semibold text-ledger-danger hover:bg-ledger-danger-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-ledger-focus"
                   onClick={() => {
                     setIsMenuOpen(false);
                     onDeleteRequested(transaction, () =>

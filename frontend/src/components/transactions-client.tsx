@@ -22,6 +22,7 @@ import {
   INCOME_CATEGORY_OPTIONS,
 } from "@/lib/categories";
 import { getCurrentMonthValue } from "@/lib/dashboard";
+import { formatMonthDisplayLabel } from "@/lib/money";
 import type { TransactionType } from "@/lib/transactions";
 
 export function TransactionsClient() {
@@ -214,7 +215,7 @@ function FilterPanel({
         {controls}
       </div>
       <div
-        className="fixed inset-0 z-40 bg-black/30 p-4 md:hidden"
+        className="fixed inset-0 z-40 bg-ledger-overlay/45 p-4 md:hidden"
         onMouseDown={(event) => {
           if (event.target === event.currentTarget) {
             onClose();
@@ -226,7 +227,7 @@ function FilterPanel({
         <div
           aria-label="Bộ lọc giao dịch"
           aria-modal="true"
-          className="mt-16 rounded-lg bg-white p-4 shadow-dialog"
+          className="mt-16 rounded-lg bg-ledger-panel p-4 shadow-dialog"
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.preventDefault();
@@ -306,7 +307,7 @@ function getFilterSummary({
   selectedMonth: string;
   type: TransactionType | "";
 }) {
-  const parts = [`Tháng ${selectedMonth}`];
+  const parts = [formatMonthDisplayLabel(selectedMonth)];
   if (category) {
     parts.push("có lọc danh mục");
   }

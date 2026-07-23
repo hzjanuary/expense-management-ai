@@ -20,7 +20,7 @@ export function AiDraftReview({
   onConfirm,
 }: AiDraftReviewProps) {
   return (
-    <div className="rounded-lg border border-ledger-line bg-white p-3 shadow-soft sm:p-5">
+    <div className="rounded-lg border border-ledger-line bg-ledger-panel p-3 shadow-soft sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-ledger-muted">
@@ -36,7 +36,7 @@ export function AiDraftReview({
             {draft.description}
           </p>
         </div>
-        <span className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 sm:px-3">
+        <span className="shrink-0 rounded-md border border-ledger-warning bg-ledger-warning-soft px-2 py-1 text-xs font-semibold text-ledger-warning sm:px-3">
           Chưa được lưu
         </span>
       </div>

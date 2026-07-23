@@ -157,6 +157,8 @@ describe("data management UI", () => {
     );
 
     expect(await screen.findByText("US-705 lunch proof")).toBeInTheDocument();
+    expect(await findTextContaining("−35.000 ₫")).toBeInTheDocument();
+    expectNoLegacyMoneyText();
     await openDeleteDialog();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText(/không bị xóa vĩnh viễn/i)).toBeInTheDocument();
@@ -265,6 +267,7 @@ describe("data management UI", () => {
 
     expect(await screen.findByText("Lương tháng 7")).toBeInTheDocument();
     expect(screen.getByText("Lương")).toBeInTheDocument();
+    expect(await findTextContaining("+5.000.000 ₫")).toBeInTheDocument();
     await openExportOptions();
     await userEvent.selectOptions(screen.getByLabelText("Loại"), "income");
     const categorySelect = screen.getByLabelText("Danh mục");
@@ -509,4 +512,23 @@ async function openDeleteDialog() {
     screen.getByRole("button", { name: /Mở menu giao dịch US-705 lunch proof/i }),
   );
   await userEvent.click(screen.getByRole("menuitem", { name: "Xóa giao dịch" }));
+}
+
+async function findTextContaining(text: string): Promise<HTMLElement> {
+  const matches = await screen.findAllByText((_, element) =>
+    Boolean(
+      element?.textContent?.includes(text) &&
+        Array.from(element.children).every(
+          (child) => !child.textContent?.includes(text),
+        ),
+    ),
+  );
+  return matches[0];
+}
+
+function expectNoLegacyMoneyText() {
+  const text = document.body.textContent ?? "";
+  expect(text).not.toMatch(/\d[\d.]*\s*đ\b/i);
+  expect(text).not.toMatch(/\d[\d.]*\s*VND\b/i);
+  expect(text).not.toMatch(/\d[\d.]*₫/);
 }

@@ -263,10 +263,10 @@ export function ChatToLedger({
     try {
       const result = await confirmAiDraft(activeDraftEntry.parseResult.draft_id);
       const transaction = result.transaction;
-      const amountPrefix = transaction.type === "expense" ? "−" : "+";
       setSuccess(
-        `Đã tạo giao dịch: ${amountPrefix}${formatVnd(
+        `Đã tạo giao dịch: ${formatVnd(
           transaction.amount_minor,
+          { sign: transaction.type === "expense" ? "negative" : "positive" },
         )} cho ${formatCategoryLabel(transaction.category_slug)}.`,
       );
       setMessage("");
@@ -429,7 +429,7 @@ export function ChatToLedger({
       </div>
 
       <form className={composerClassName} onSubmit={handleSubmit}>
-        <div className="grid gap-3 rounded-lg border border-ledger-line bg-white p-3 shadow-soft lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+        <div className="grid gap-3 rounded-lg border border-ledger-line bg-ledger-panel p-3 shadow-soft lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <label className="grid gap-2">
             <span className="sr-only">
               Tin nhắn
@@ -621,10 +621,10 @@ type MessageProps = {
 function Message({ text, tone }: MessageProps) {
   const toneClassName =
     tone === "error"
-      ? "border-rose-200 bg-rose-50 text-rose-700"
+      ? "border-ledger-danger bg-ledger-danger-soft text-ledger-danger"
       : tone === "success"
         ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-        : "border-ledger-line bg-white text-ledger-ink";
+        : "border-ledger-line bg-ledger-panel text-ledger-ink";
 
   return (
     <div className={`rounded-md border px-4 py-3 text-sm ${toneClassName}`}>
@@ -648,11 +648,11 @@ function Clarification({
   const showCategoryActions = friendlyFields.includes("nhóm chi tiêu");
 
   return (
-    <div className="max-w-2xl rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-amber-950">
+    <div className="max-w-2xl rounded-lg border border-ledger-warning bg-ledger-warning-soft px-4 py-4 text-ledger-ink">
       <p className="text-sm font-semibold">{title}</p>
       <p className="mt-2 text-sm leading-6">{message}</p>
       {friendlyFields.length > 0 ? (
-        <p className="mt-2 text-xs text-amber-800">
+        <p className="mt-2 text-xs text-ledger-warning">
           Thông tin cần rõ hơn: {friendlyFields.join(", ")}
         </p>
       ) : null}
@@ -686,7 +686,7 @@ function ProviderUnavailable({
 }) {
   return (
     <div
-      className="max-w-2xl rounded-lg border border-rose-200 bg-rose-50 px-5 py-4 text-rose-950"
+      className="max-w-2xl rounded-lg border border-ledger-danger bg-ledger-danger-soft px-5 py-4 text-ledger-ink"
       role="alert"
     >
       <p className="text-base font-semibold">Trợ lý chưa sẵn sàng</p>
@@ -696,7 +696,7 @@ function ProviderUnavailable({
           Thử lại
         </Button>
         <a
-          className="inline-flex h-10 items-center justify-center rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition-colors hover:bg-ledger-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+          className="inline-flex h-10 items-center justify-center rounded-md border border-ledger-line bg-ledger-panel px-4 text-sm font-semibold text-ledger-ink transition-colors hover:bg-ledger-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-focus"
           href="/settings"
         >
           Mở Cài đặt

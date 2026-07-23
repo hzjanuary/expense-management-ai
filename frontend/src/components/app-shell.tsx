@@ -17,7 +17,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen bg-ledger-wash text-ledger-ink">
       <a
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-ledger-ink focus:shadow-soft"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-ledger-panel focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-ledger-ink focus:shadow-soft"
         href="#main-content"
       >
         Bỏ qua điều hướng
@@ -42,7 +42,7 @@ export function AppShell({ children }: AppShellProps) {
 
 function DesktopSidebar({ pathname }: { pathname: string }) {
   return (
-    <aside className="fixed inset-y-0 left-0 hidden w-[232px] border-r border-ledger-line bg-white px-4 py-5 lg:block">
+    <aside className="fixed inset-y-0 left-0 hidden w-[232px] border-r border-ledger-line bg-ledger-panel px-4 py-5 lg:block">
       <div className="grid h-full gap-6">
         <BrandLockup />
         <nav aria-label="Điều hướng chính">
@@ -66,7 +66,7 @@ function MobileBottomNavigation({ pathname }: { pathname: string }) {
   return (
     <nav
       aria-label="Điều hướng chính"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-ledger-line bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-soft backdrop-blur lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-ledger-line bg-ledger-panel/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 shadow-soft backdrop-blur lg:hidden"
     >
       <ul className="grid grid-cols-5 gap-1">
         {APP_ROUTES.map((route) => {
@@ -76,7 +76,7 @@ function MobileBottomNavigation({ pathname }: { pathname: string }) {
               <Link
                 aria-current={isActive ? "page" : undefined}
                 className={[
-                  "relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 text-center text-[0.68rem] font-semibold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent",
+                  "relative flex min-h-14 flex-col items-center justify-center gap-1 rounded-md px-1 text-center text-[0.68rem] font-semibold leading-tight focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-focus",
                   isActive
                     ? "bg-ledger-accent-soft text-ledger-accent before:absolute before:top-1 before:h-0.5 before:w-6 before:rounded-full before:bg-ledger-accent"
                     : "text-ledger-muted hover:bg-ledger-wash hover:text-ledger-ink",
@@ -107,10 +107,10 @@ function NavigationLink({
     <Link
       aria-current={isActive ? "page" : undefined}
       className={[
-        "flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent",
+        "flex min-h-10 items-center gap-3 rounded-md border-l-4 px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-focus",
         isActive
-          ? "bg-ledger-accent-soft text-ledger-accent shadow-[inset_3px_0_0_#24764a]"
-          : "text-ledger-muted hover:bg-ledger-wash hover:text-ledger-ink",
+          ? "border-ledger-accent bg-ledger-accent-soft text-ledger-accent"
+          : "border-transparent text-ledger-muted hover:bg-ledger-wash hover:text-ledger-ink",
       ].join(" ")}
       href={route.href}
     >
@@ -136,7 +136,7 @@ function PageHeader({ route }: { route: AppRoute }) {
 function BrandLockup() {
   return (
     <Link
-      className="flex items-center gap-3 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+      className="flex items-center gap-3 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-focus"
       href="/dashboard"
     >
       <span className="grid h-9 w-9 place-items-center rounded-md bg-ledger-accent text-white">

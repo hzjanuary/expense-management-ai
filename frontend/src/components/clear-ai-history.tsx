@@ -71,7 +71,7 @@ export function ClearAiHistory() {
         </p>
       ) : null}
       {error ? (
-        <p className="mt-4 text-sm font-medium text-rose-700" role="alert">
+        <p className="mt-4 text-sm font-medium text-ledger-danger" role="alert">
           {error}
         </p>
       ) : null}
@@ -79,7 +79,7 @@ export function ClearAiHistory() {
       {isConfirming ? (
         <div
           aria-labelledby="clear-ai-history-title"
-          className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-4"
+          className="mt-4 rounded-md border border-ledger-warning bg-ledger-warning-soft p-4"
           role="group"
         >
           <h3

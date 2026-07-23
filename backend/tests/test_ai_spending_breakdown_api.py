@@ -1,4 +1,5 @@
 import asyncio
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -211,12 +212,13 @@ def test_spending_breakdown_returns_db_grounded_top_category(
     response = query_spending_breakdown(client)
 
     assert response.status_code == 200
-    assert response.json() == {
+    payload = response.json()
+    assert payload == {
         "intent": "spending_breakdown",
         "currency": "VND",
         "date_range": {
-            "start": "2026-07-13T00:00:00+07:00",
-            "end": "2026-07-20T00:00:00+07:00",
+            "start": "2026-07-12T17:00:00Z",
+            "end": "2026-07-19T17:00:00Z",
             "label": "this_week",
         },
         "total_expense_minor": 285_000,
@@ -241,10 +243,166 @@ def test_spending_breakdown_returns_db_grounded_top_category(
                 "percentage": 36.84,
             },
         ],
-        "answer": "Tuần này bạn chi nhiều nhất cho Ăn uống: 180.000₫.",
+        "answer": "Tuần này bạn chi nhiều nhất cho nhóm Ăn uống: 180.000 ₫.",
         "needs_clarification": False,
         "clarification": None,
     }
+    assert_uses_display_vnd(payload["answer"])
+
+
+def test_spending_breakdown_monthly_prompt_uses_current_month(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    override_provider(
+        client,
+        StaticBreakdownProvider(result=breakdown_result(date_range_label=None)),
+    )
+    asyncio.run(seed_breakdown_transactions(session_factory))
+
+    response = query_spending_breakdown(
+        client,
+        "tháng này tôi chi tiêu ở mục nào là nhiều nhất vậy?",
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["intent"] == "spending_breakdown"
+    assert payload["date_range"] == {
+        "start": "2026-06-30T17:00:00Z",
+        "end": "2026-07-31T17:00:00Z",
+        "label": "this_month",
+    }
+    assert payload["total_expense_minor"] == 355_000
+    assert payload["transaction_count"] == 6
+    assert payload["top_category"] == {
+        "category_slug": "food",
+        "amount_minor": 180_000,
+        "transaction_count": 3,
+        "percentage": 50.7,
+    }
+    assert payload["needs_clarification"] is False
+    assert payload["clarification"] is None
+    assert payload["answer"] == (
+        "Tháng này bạn chi nhiều nhất cho nhóm Ăn uống: 180.000 ₫."
+    )
+    assert_uses_display_vnd(payload["answer"])
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "tháng này nhóm nào tôi chi nhiều nhất?",
+        "danh mục tốn nhiều tiền nhất tháng này là gì?",
+        "tôi tiêu nhiều nhất vào đâu trong tháng hiện tại?",
+        "tháng này tôi chi tiêu ở mục nào là nhiều nhất?",
+    ],
+)
+def test_spending_breakdown_monthly_paraphrases_use_current_month(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+    message: str,
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    override_provider(
+        client,
+        StaticBreakdownProvider(result=breakdown_result(date_range_label=None)),
+    )
+    asyncio.run(seed_breakdown_transactions(session_factory))
+
+    response = query_spending_breakdown(client, message)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["date_range"]["label"] == "this_month"
+    assert payload["top_category"]["category_slug"] == "food"
+    assert payload["total_expense_minor"] == 355_000
+    assert payload["transaction_count"] == 6
+    assert payload["needs_clarification"] is False
+
+
+def test_spending_breakdown_monthly_range_uses_product_timezone_boundaries(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    override_provider(
+        client,
+        StaticBreakdownProvider(result=breakdown_result(date_range_label=None)),
+    )
+    asyncio.run(seed_cash_account(session_factory))
+    asyncio.run(
+        seed_transaction(
+            session_factory,
+            transaction_id="97300000-0000-0000-0000-000000000001",
+            transaction_type="expense",
+            amount_minor=99_000,
+            category_slug="transport",
+            description="previous local month",
+            occurred_at=datetime(2026, 6, 30, 16, 59, tzinfo=UTC),
+        )
+    )
+    asyncio.run(
+        seed_transaction(
+            session_factory,
+            transaction_id="97300000-0000-0000-0000-000000000002",
+            transaction_type="expense",
+            amount_minor=80_000,
+            category_slug="food",
+            description="first local minute",
+            occurred_at=datetime(2026, 6, 30, 17, 0, tzinfo=UTC),
+        )
+    )
+    asyncio.run(
+        seed_transaction(
+            session_factory,
+            transaction_id="97300000-0000-0000-0000-000000000003",
+            transaction_type="expense",
+            amount_minor=70_000,
+            category_slug="coffee",
+            description="last local day",
+            occurred_at=datetime(2026, 7, 31, 16, 59, tzinfo=UTC),
+        )
+    )
+    asyncio.run(
+        seed_transaction(
+            session_factory,
+            transaction_id="97300000-0000-0000-0000-000000000004",
+            transaction_type="expense",
+            amount_minor=120_000,
+            category_slug="transport",
+            description="next local month",
+            occurred_at=datetime(2026, 7, 31, 17, 0, tzinfo=UTC),
+        )
+    )
+
+    response = query_spending_breakdown(
+        client,
+        "tháng này tôi chi tiêu ở mục nào là nhiều nhất vậy?",
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["date_range"] == {
+        "start": "2026-06-30T17:00:00Z",
+        "end": "2026-07-31T17:00:00Z",
+        "label": "this_month",
+    }
+    assert payload["total_expense_minor"] == 150_000
+    assert payload["transaction_count"] == 2
+    assert [item["category_slug"] for item in payload["breakdown"]] == [
+        "food",
+        "coffee",
+    ]
+
+
+def assert_uses_display_vnd(answer: str | None) -> None:
+    assert answer is not None
+    assert " ₫" in answer
+    assert re.search(r"\d[\d.]*\s₫", answer)
+    assert not re.search(r"\d[\d.]*₫", answer)
+    assert not re.search(r"\d[\d.]*\s*(?:đ|VND)\b", answer, re.IGNORECASE)
 
 
 @pytest.mark.parametrize(
@@ -268,6 +426,7 @@ def test_spending_breakdown_supports_query_variants(
     assert response.status_code == 200
     payload = response.json()
     assert payload["intent"] == "spending_breakdown"
+    assert payload["date_range"]["label"] == "this_week"
     assert payload["top_category"]["category_slug"] == "food"
     assert payload["total_expense_minor"] == 285_000
 
@@ -285,8 +444,8 @@ def test_spending_breakdown_empty_week_returns_safe_zero_answer(
         "intent": "spending_breakdown",
         "currency": "VND",
         "date_range": {
-            "start": "2026-07-13T00:00:00+07:00",
-            "end": "2026-07-20T00:00:00+07:00",
+            "start": "2026-07-12T17:00:00Z",
+            "end": "2026-07-19T17:00:00Z",
             "label": "this_week",
         },
         "total_expense_minor": 0,
@@ -443,7 +602,7 @@ def test_spending_breakdown_unsupported_date_range_returns_clarification(
     override_now(client)
     override_provider(
         client,
-        StaticBreakdownProvider(result=breakdown_result(date_range_label="this_month")),
+        StaticBreakdownProvider(result=breakdown_result(date_range_label="last_month")),
     )
 
     response = query_spending_breakdown(client)
@@ -531,6 +690,46 @@ def test_spending_breakdown_is_read_only(
     response = query_spending_breakdown(client)
 
     assert response.status_code == 200
+    assert asyncio.run(fetch_account(session_factory)).current_balance_minor == (
+        before_balance
+    )
+    assert asyncio.run(count_transactions(session_factory)) == before_transaction_count
+    assert asyncio.run(fetch_transaction_amounts(session_factory)) == (
+        before_transaction_amounts
+    )
+    assert asyncio.run(count_budget_periods(session_factory)) == before_budget_count
+    assert asyncio.run(count_category_budgets(session_factory)) == (
+        before_category_budget_count
+    )
+    assert asyncio.run(count_ai_transaction_drafts(session_factory)) == (
+        before_draft_count
+    )
+
+
+def test_spending_breakdown_monthly_query_is_read_only(
+    transaction_api_client: tuple[TestClient, async_sessionmaker[AsyncSession]],
+) -> None:
+    client, session_factory = transaction_api_client
+    override_now(client)
+    override_provider(
+        client,
+        StaticBreakdownProvider(result=breakdown_result(date_range_label=None)),
+    )
+    asyncio.run(seed_breakdown_transactions(session_factory))
+    before_balance = asyncio.run(fetch_account(session_factory)).current_balance_minor
+    before_transaction_count = asyncio.run(count_transactions(session_factory))
+    before_transaction_amounts = asyncio.run(fetch_transaction_amounts(session_factory))
+    before_budget_count = asyncio.run(count_budget_periods(session_factory))
+    before_category_budget_count = asyncio.run(count_category_budgets(session_factory))
+    before_draft_count = asyncio.run(count_ai_transaction_drafts(session_factory))
+
+    response = query_spending_breakdown(
+        client,
+        "tháng này tôi chi tiêu ở mục nào là nhiều nhất vậy?",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["needs_clarification"] is False
     assert asyncio.run(fetch_account(session_factory)).current_balance_minor == (
         before_balance
     )

@@ -190,6 +190,16 @@ def test_ollama_prompt_documents_spending_scopes_and_examples() -> None:
     assert "Tháng này tôi uống cà phê hết bao nhiêu?" in SYSTEM_PROMPT
 
 
+def test_ollama_prompt_documents_monthly_spending_breakdown() -> None:
+    assert "this_week or this_month for spending breakdown" in SYSTEM_PROMPT
+    assert "Tuần này tôi chi nhiều nhất vào mục nào?" in SYSTEM_PROMPT
+    assert "Tháng này tôi chi tiêu ở mục nào là nhiều nhất vậy?" in SYSTEM_PROMPT
+    assert "Tháng này nhóm nào tôi chi nhiều nhất?" in SYSTEM_PROMPT
+    assert "Danh mục tốn nhiều tiền nhất tháng này là gì?" in SYSTEM_PROMPT
+    assert "Tôi tiêu nhiều nhất vào đâu trong tháng hiện tại?" in SYSTEM_PROMPT
+    assert "most expensive individual transaction" in SYSTEM_PROMPT
+
+
 def test_ollama_prompt_documents_colloquial_transaction_examples() -> None:
     assert "clear everyday purchase or income statements" in SYSTEM_PROMPT
     assert "the user must explicitly confirm" in SYSTEM_PROMPT

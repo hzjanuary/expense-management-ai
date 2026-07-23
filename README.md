@@ -16,6 +16,8 @@ or multi-user banking platform.
   ledger.
 - Multi-page frontend with overview, transactions, budgets, assistant, and
   settings pages.
+- Persisted appearance setting with system mode, the existing light green
+  theme, and a black-purple dark theme.
 - Live dashboard overview for account balance, monthly income, monthly expense,
   budget progress, recent transaction preview, and quick actions.
 - Monthly total budgets and expense-category budgets.
@@ -262,6 +264,12 @@ without reversing the balance twice.
 Open `http://127.0.0.1:3000/settings` and use the privacy action to clear
 locally stored AI draft/history records. Confirmed transactions, account
 balances, budgets, exports, and active ledger views remain intact.
+
+### Choose Appearance
+
+Open `http://127.0.0.1:3000/settings` and choose `Theo hệ thống`, `Sáng`, or
+`Tím đen`. The choice is stored in this browser only and does not call the
+backend or change financial data.
 
 ## Development Without Docker
 

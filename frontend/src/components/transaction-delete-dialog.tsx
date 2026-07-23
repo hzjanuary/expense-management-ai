@@ -44,12 +44,12 @@ export function TransactionDeleteDialog({
   const amountPrefix = transaction.type === "expense" ? "−" : "+";
 
   return (
-    <div className="fixed inset-0 z-50 grid items-end bg-black/40 p-0 sm:place-items-center sm:p-4">
+    <div className="fixed inset-0 z-50 grid items-end bg-ledger-overlay/50 p-0 sm:place-items-center sm:p-4">
       <div
         aria-describedby="delete-transaction-description"
         aria-labelledby="delete-transaction-title"
         aria-modal="true"
-        className="max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-t-xl border border-ledger-line bg-white p-5 shadow-dialog sm:max-w-md sm:rounded-lg"
+        className="max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-t-xl border border-ledger-line bg-ledger-panel p-5 shadow-dialog sm:max-w-md sm:rounded-lg"
         ref={dialogRef}
         role="dialog"
       >
@@ -97,7 +97,7 @@ export function TransactionDeleteDialog({
         </dl>
 
         {error ? (
-          <p className="mt-3 text-sm font-medium text-rose-700" role="alert">
+          <p className="mt-3 text-sm font-medium text-ledger-danger" role="alert">
             {error}
           </p>
         ) : null}

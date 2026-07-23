@@ -12,6 +12,8 @@ The frontend currently provides:
 - Professional product UI treatment based on the approved Revision 2 design
   system: compact sidebar, mobile bottom navigation, ledger-style transaction
   rows, balance-led dashboard, and receipt-style AI draft review.
+- Persisted appearance settings with system mode, the existing light green
+  theme, and a black-purple dark theme.
 - Live dashboard summary cards backed by the dashboard summary proxy.
 - Live monthly budget remaining status backed by the budget remaining proxy.
 - Dashboard overview with compact summary, budget preview, recent transaction
@@ -82,6 +84,19 @@ POCKET_LEDGER_OLLAMA_MODEL=qwen3:4b-instruct
 
 No model is downloaded by Docker build, Compose startup, tests, E2E, or release
 validation.
+
+## Appearance
+
+Open `/settings` and use `Giao diện` to choose how Pocket Ledger is displayed on
+this device:
+
+- `Theo hệ thống`: follows the operating-system color preference.
+- `Sáng`: keeps the restrained green light theme.
+- `Tím đen`: uses the black-purple dark theme.
+
+The preference is stored only in the browser with the key
+`pocket-ledger-theme`. It does not call the backend and does not change ledger
+data. The default is `Theo hệ thống`.
 
 ## Setup
 

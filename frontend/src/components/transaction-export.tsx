@@ -193,7 +193,7 @@ export function TransactionExport({ compact = false, month }: TransactionExportP
         </label>
 
         {error ? (
-          <p className="text-sm font-medium text-rose-700" role="alert">
+          <p className="text-sm font-medium text-ledger-danger" role="alert">
             {error}
           </p>
         ) : null}
@@ -257,7 +257,7 @@ export function TransactionExport({ compact = false, month }: TransactionExportP
             </div>
 
             {error ? (
-              <p className="text-sm font-medium text-rose-700" role="alert">
+              <p className="text-sm font-medium text-ledger-danger" role="alert">
                 {error}
               </p>
             ) : null}
@@ -281,7 +281,7 @@ export function TransactionExport({ compact = false, month }: TransactionExportP
   }
 
   return (
-    <section className="rounded-lg border border-ledger-line bg-white p-4 shadow-soft">
+    <section className="rounded-lg border border-ledger-line bg-ledger-panel p-4 shadow-soft">
       {content}
     </section>
   );

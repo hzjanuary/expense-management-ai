@@ -1,4 +1,5 @@
 import asyncio
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -209,7 +210,8 @@ def test_budget_remaining_returns_configured_food_budget_and_db_spend(
     response = query_budget_remaining(client)
 
     assert response.status_code == 200
-    assert response.json() == {
+    payload = response.json()
+    assert payload == {
         "intent": "budget_remaining",
         "category_slug": "food",
         "currency": "VND",
@@ -223,10 +225,11 @@ def test_budget_remaining_returns_configured_food_budget_and_db_spend(
         "remaining_minor": 1_965_000,
         "is_over_budget": False,
         "transaction_count": 1,
-        "answer": "Tháng này bạn còn 1.965.000₫ cho Ăn uống.",
+        "answer": "Tháng này bạn còn 1.965.000 ₫ cho Ăn uống.",
         "needs_clarification": False,
         "clarification": None,
     }
+    assert_uses_display_vnd(payload["answer"])
 
 
 @pytest.mark.parametrize(
@@ -271,7 +274,16 @@ def test_budget_remaining_over_budget_state_is_computed(
     assert payload["spent_minor"] == 35_000
     assert payload["remaining_minor"] == -15_000
     assert payload["is_over_budget"] is True
-    assert payload["answer"] == "Tháng này bạn còn -15.000₫ cho Ăn uống."
+    assert payload["answer"] == "Tháng này bạn còn −15.000 ₫ cho Ăn uống."
+    assert_uses_display_vnd(payload["answer"])
+
+
+def assert_uses_display_vnd(answer: str | None) -> None:
+    assert answer is not None
+    assert " ₫" in answer
+    assert re.search(r"\d[\d.]*\s₫", answer)
+    assert not re.search(r"\d[\d.]*₫", answer)
+    assert not re.search(r"\d[\d.]*\s*(?:đ|VND)\b", answer, re.IGNORECASE)
 
 
 def test_budget_remaining_empty_spending_returns_full_remaining_budget(

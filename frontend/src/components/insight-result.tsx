@@ -5,7 +5,7 @@ import type {
   AiQuerySpendingResponse,
 } from "@/lib/ai";
 import { formatCategoryLabel } from "@/lib/categories";
-import { formatVnd } from "@/lib/money";
+import { formatMonthDisplayLabel, formatPercent, formatVnd } from "@/lib/money";
 
 type InsightResultProps =
   | {
@@ -111,7 +111,7 @@ function BudgetRemainingResult({
     <div className="grid gap-3">
       <InsightAnswer answer={result.answer} />
       {!hasBudget ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+        <p className="rounded-md border border-ledger-warning bg-ledger-warning-soft px-3 py-2 text-sm text-ledger-warning">
           Chưa thiết lập ngân sách cho {formatOptionalCategory(result.category_slug)}.
         </p>
       ) : null}
@@ -236,7 +236,7 @@ function SpendingBreakdownResult({
                 {entry.transaction_count}
               </td>
               <td className="rounded-r-md px-3 py-2 text-ledger-muted">
-                {entry.percentage.toFixed(2)}%
+                {formatPercent(entry.percentage)}
               </td>
             </tr>
           ))}
@@ -258,14 +258,14 @@ function InsightCard({
   title: string;
 }) {
   return (
-    <article className="rounded-lg border border-ledger-line bg-white p-5 shadow-soft">
+    <article className="rounded-lg border border-ledger-line bg-ledger-panel p-5 shadow-soft">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-sm font-semibold text-ledger-ink">{title}</h3>
           <p className="mt-1 text-xs text-ledger-muted">{subtitle}</p>
         </div>
         {isStale ? (
-          <span className="w-fit rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900">
+          <span className="w-fit rounded-md border border-ledger-warning bg-ledger-warning-soft px-2 py-1 text-xs font-semibold text-ledger-warning">
             Số liệu đã thay đổi. Hỏi lại để cập nhật.
           </span>
         ) : null}
@@ -284,7 +284,11 @@ function InsightAnswer({ answer }: { answer: string | null }) {
 }
 
 function formatAnswerText(answer: string): string {
-  return answer.replace(/(\d[\d.]*)\s*₫/g, "$1 ₫");
+  return answer.replace(/([+−-]?\d[\d.]*)\s*(?:₫|đ|VND)/gi, (match) =>
+    match
+      .replace(/\s*(?:₫|đ|VND)/i, " ₫")
+      .replace(/^-/, "−"),
+  );
 }
 
 function InsightField({ label, value }: { label: string; value: string }) {
@@ -304,16 +308,11 @@ function InsightClarification({
   clarification: { message: string; fields: string[] } | null;
 }) {
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
+    <div className="rounded-lg border border-ledger-warning bg-ledger-warning-soft px-4 py-4 text-sm text-ledger-ink">
       <p className="font-semibold">Cần thêm thông tin</p>
       <p className="mt-2 leading-6">
         {clarification?.message ?? "Bạn có thể nói rõ hơn để trợ lý trả lời chính xác."}
       </p>
-      {clarification && clarification.fields.length > 0 ? (
-        <p className="mt-2 text-xs text-amber-800">
-          {formatClarificationPrompt(clarification.fields)}
-        </p>
-      ) : null}
     </div>
   );
 }
@@ -330,7 +329,7 @@ function formatDateRange(dateRange: AiInsightDateRange | null): string {
   }
 
   if (dateRange.label === "this_month") {
-    return formatMonthLabel(dateRange.start);
+    return formatMonthDisplayLabel(dateRange.start);
   }
   if (dateRange.label === "this_week") {
     const inclusiveEnd = new Date(dateRange.end);
@@ -343,16 +342,6 @@ function formatDateRange(dateRange: AiInsightDateRange | null): string {
   return `${formatDate(dateRange.start)} đến ${formatDate(dateRange.end)} (${formatPeriodLabel(dateRange.label)})`;
 }
 
-function formatClarificationPrompt(fields: string[]): string {
-  if (fields.includes("category_slug")) {
-    return "Bạn muốn xem nhóm chi tiêu nào?";
-  }
-  if (fields.includes("date_range")) {
-    return "Bạn muốn xem trong khoảng thời gian nào?";
-  }
-  return "Bạn có thể nói rõ hơn để trợ lý trả lời chính xác.";
-}
-
 function formatDate(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -362,19 +351,6 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat("vi-VN", {
     dateStyle: "medium",
     timeZone: "Asia/Ho_Chi_Minh",
-  }).format(date);
-}
-
-function formatMonthLabel(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "Tháng này";
-  }
-
-  return new Intl.DateTimeFormat("vi-VN", {
-    month: "long",
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
   }).format(date);
 }
 

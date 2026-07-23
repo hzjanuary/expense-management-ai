@@ -141,7 +141,7 @@ export function RecentTransactions({
       : panelClassName;
   const listClassName =
     presentation === "ledger"
-      ? "mt-4 overflow-visible rounded-lg border border-ledger-line bg-white shadow-soft"
+      ? "mt-4 overflow-visible rounded-lg border border-ledger-line bg-ledger-panel shadow-soft"
       : "mt-4 overflow-visible rounded-md border border-ledger-line";
 
   return (
@@ -229,7 +229,7 @@ export function RecentTransactions({
 
 function LoadingState() {
   return (
-    <div className="grid gap-3 bg-white p-4">
+    <div className="grid gap-3 bg-ledger-panel p-4">
       <p className="text-sm font-medium text-ledger-ink">
         Đang tải giao dịch gần đây...
       </p>
@@ -247,7 +247,7 @@ function EmptyState({
   onClearFilters?: () => void;
 }) {
   return (
-    <div className="grid min-h-48 place-items-center bg-white p-6 text-center">
+    <div className="grid min-h-48 place-items-center bg-ledger-panel p-6 text-center">
       <div className="max-w-sm">
       <div
         aria-hidden="true"
@@ -274,7 +274,7 @@ function EmptyState({
         </Button>
       ) : (
         <Link
-          className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-ledger-line bg-white px-4 text-sm font-semibold text-ledger-ink transition-colors hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+          className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-ledger-line bg-ledger-panel px-4 text-sm font-semibold text-ledger-ink transition-colors hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-focus"
           href="/assistant"
         >
           Mở Trợ lý
@@ -287,8 +287,8 @@ function EmptyState({
 
 function ErrorState() {
   return (
-    <div className="bg-white p-4">
-      <p className="text-sm font-medium text-rose-700">
+    <div className="bg-ledger-panel p-4">
+      <p className="text-sm font-medium text-ledger-danger">
         Chưa tải được giao dịch.
       </p>
       <p className="mt-1 text-sm text-ledger-muted">

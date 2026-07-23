@@ -1,4 +1,5 @@
 import asyncio
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -202,7 +203,8 @@ def test_query_spending_uses_fake_provider_and_returns_db_total(
     response = query_spending(client)
 
     assert response.status_code == 200
-    assert response.json() == {
+    payload = response.json()
+    assert payload == {
         "intent": "query_spending",
         "spending_scope": "category",
         "category_slug": "food",
@@ -214,10 +216,11 @@ def test_query_spending_uses_fake_provider_and_returns_db_total(
         },
         "amount_minor": 50_000,
         "transaction_count": 2,
-        "answer": "Tháng này bạn đã chi 50.000₫ cho Ăn uống.",
+        "answer": "Tháng này bạn đã chi 50.000 ₫ cho Ăn uống.",
         "needs_clarification": False,
         "clarification": None,
     }
+    assert_uses_display_vnd(payload["answer"])
 
 
 @pytest.mark.parametrize(
@@ -271,7 +274,8 @@ def test_query_spending_supports_total_current_month_queries(
     assert payload["category_slug"] is None
     assert payload["amount_minor"] == 155_000
     assert payload["transaction_count"] == 4
-    assert payload["answer"] == "Tháng này bạn đã chi tổng cộng 155.000₫."
+    assert payload["answer"] == "Tháng này bạn đã chi tổng cộng 155.000 ₫."
+    assert_uses_display_vnd(payload["answer"])
 
 
 @pytest.mark.parametrize(
@@ -493,7 +497,8 @@ def test_query_spending_empty_ledger_returns_zero(
     payload = response.json()
     assert payload["amount_minor"] == 0
     assert payload["transaction_count"] == 0
-    assert payload["answer"] == "Tháng này bạn đã chi 0₫ cho Ăn uống."
+    assert payload["answer"] == "Tháng này bạn đã chi 0 ₫ cho Ăn uống."
+    assert_uses_display_vnd(payload["answer"])
 
 
 def test_query_spending_missing_category_returns_clarification(
@@ -674,3 +679,11 @@ def test_query_spending_is_read_only_for_ledger_budget_and_ai_state(
     assert asyncio.run(fetch_transaction_amounts(session_factory)) == before_amounts
     assert asyncio.run(count_ai_transaction_drafts(session_factory)) == before_drafts
     assert asyncio.run(count_budget_periods(session_factory)) == before_budgets
+
+
+def assert_uses_display_vnd(answer: str | None) -> None:
+    assert answer is not None
+    assert " ₫" in answer
+    assert re.search(r"\d[\d.]*\s₫", answer)
+    assert not re.search(r"\d[\d.]*₫", answer)
+    assert not re.search(r"\d[\d.]*\s*(?:đ|VND)\b", answer, re.IGNORECASE)

@@ -207,7 +207,7 @@ const spendingResponse = {
   date_range: dateRange,
   amount_minor: 35000,
   transaction_count: 1,
-  answer: "Tháng này bạn đã chi 35.000₫ cho Ăn uống.",
+  answer: "Tháng này bạn đã chi 35.000 ₫ cho Ăn uống.",
   needs_clarification: false,
   clarification: null,
 };
@@ -222,7 +222,7 @@ const budgetResponse = {
   remaining_minor: 1965000,
   is_over_budget: false,
   transaction_count: 1,
-  answer: "Tháng này bạn còn 1.965.000₫ cho Ăn uống.",
+  answer: "Tháng này bạn còn 1.965.000 ₫ cho Ăn uống.",
   needs_clarification: false,
   clarification: null,
 };
@@ -251,7 +251,7 @@ const breakdownResponse = {
       percentage: 63.16,
     },
   ],
-  answer: "Tuần này bạn chi nhiều nhất cho Ăn uống: 180.000₫.",
+  answer: "Tuần này bạn chi nhiều nhất cho nhóm Ăn uống: 180.000 ₫.",
   needs_clarification: false,
   clarification: null,
 };

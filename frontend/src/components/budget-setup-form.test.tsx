@@ -106,7 +106,7 @@ describe("budget setup form", () => {
     await userEvent.type(screen.getByLabelText(/Ngân sách tháng/i), "5000000");
     await userEvent.click(screen.getByRole("button", { name: "Thêm danh mục" }));
     await userEvent.selectOptions(screen.getByLabelText("Danh mục"), "food");
-    await userEvent.type(screen.getByLabelText("Ngân sách (VND)"), "2000000");
+    await userEvent.type(screen.getByLabelText("Ngân sách danh mục"), "2000000");
     await userEvent.click(screen.getByRole("button", { name: "Lưu ngân sách" }));
 
     await screen.findByText("Đã lưu ngân sách.");

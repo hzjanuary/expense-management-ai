@@ -657,7 +657,7 @@ Response:
   },
   "amount_minor": 35000,
   "transaction_count": 1,
-  "answer": "Tháng này bạn đã chi 35.000₫ cho Ăn uống.",
+  "answer": "Tháng này bạn đã chi 35.000 ₫ cho Ăn uống.",
   "needs_clarification": false,
   "clarification": null
 }
@@ -678,7 +678,7 @@ Total spending response:
   },
   "amount_minor": 155000,
   "transaction_count": 4,
-  "answer": "Tháng này bạn đã chi tổng cộng 155.000₫.",
+  "answer": "Tháng này bạn đã chi tổng cộng 155.000 ₫.",
   "needs_clarification": false,
   "clarification": null
 }
@@ -766,7 +766,7 @@ Response:
   "remaining_minor": 1965000,
   "is_over_budget": false,
   "transaction_count": 1,
-  "answer": "Tháng này bạn còn 1.965.000₫ cho food.",
+  "answer": "Tháng này bạn còn 1.965.000 ₫ cho Ăn uống.",
   "needs_clarification": false,
   "clarification": null
 }
@@ -789,7 +789,7 @@ No-budget response:
   "remaining_minor": null,
   "is_over_budget": null,
   "transaction_count": 1,
-  "answer": "Bạn chưa thiết lập ngân sách cho food tháng này.",
+  "answer": "Bạn chưa thiết lập ngân sách cho Ăn uống tháng này.",
   "needs_clarification": false,
   "clarification": null
 }
@@ -865,7 +865,7 @@ Response:
       "percentage": 36.84
     }
   ],
-  "answer": "Tuần này bạn chi nhiều nhất cho food: 180.000₫.",
+  "answer": "Tuần này bạn chi nhiều nhất cho nhóm Ăn uống: 180.000 ₫.",
   "needs_clarification": false,
   "clarification": null
 }
@@ -897,8 +897,13 @@ Rules:
 - The provider may classify intent, currency, and date range.
 - The provider must not answer, invent category totals, or choose the top category.
 - The API computes `total_expense_minor`, `transaction_count`, `top_category`, and `breakdown` from persisted ledger records.
-- US-503 supports `date_range.label = "this_week"`.
+- US-503 supports `date_range.label = "this_week"` and
+  `date_range.label = "this_month"`.
 - `this_week` uses the request timezone with Monday as the inclusive start and the next Monday as the exclusive end.
+- `this_month` uses the request timezone with the first local day as the
+  inclusive start and the next local month as the exclusive end.
+- Spending breakdown answers describe the top category or group. They must not
+  claim to identify the most expensive individual transaction.
 - The endpoint groups only non-deleted expense transactions matching currency and date range.
 - Income transactions, out-of-range transactions, soft-deleted transactions, and other currencies do not count.
 - Breakdown entries are ordered by amount descending, transaction count descending, then category slug ascending.

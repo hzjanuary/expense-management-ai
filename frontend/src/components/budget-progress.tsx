@@ -11,7 +11,7 @@ import {
 } from "@/lib/budgets";
 import { Button, panelClassName } from "@/components/ui";
 import { formatCategoryLabel } from "@/lib/categories";
-import { formatVnd } from "@/lib/money";
+import { formatMonthDisplayLabel, formatPercent, formatVnd } from "@/lib/money";
 
 type LoadState = "idle" | "loading" | "loaded" | "missing" | "error";
 
@@ -82,7 +82,7 @@ export function BudgetProgress({
             Tình trạng ngân sách
           </h2>
           <p className="mt-1 text-sm text-ledger-muted">
-            Số đã chi và còn lại trong {month}.
+            Số đã chi và còn lại trong {formatMonthDisplayLabel(month)}.
           </p>
         </div>
         {state === "error" ? (
@@ -168,7 +168,7 @@ function BudgetLoaded({
           role="img"
         >
           <div
-            className={isTotalOverBudget ? "h-full bg-rose-600" : "h-full bg-ledger-accent"}
+            className={isTotalOverBudget ? "h-full bg-ledger-danger" : "h-full bg-ledger-accent"}
             style={{ width: `${Math.min(progressPercent, 100)}%` }}
           />
         </div>
@@ -181,7 +181,7 @@ function BudgetLoaded({
 
   return (
     <div className="mt-5 grid gap-4">
-      <div className="rounded-lg border border-ledger-line bg-white p-5">
+      <div className="rounded-lg border border-ledger-line bg-ledger-panel p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-ledger-muted">
@@ -201,7 +201,7 @@ function BudgetLoaded({
           role="img"
         >
           <div
-            className={isTotalOverBudget ? "h-full bg-rose-600" : "h-full bg-ledger-accent"}
+            className={isTotalOverBudget ? "h-full bg-ledger-danger" : "h-full bg-ledger-accent"}
             style={{ width: `${Math.min(progressPercent, 100)}%` }}
           />
         </div>
@@ -221,7 +221,7 @@ function BudgetLoaded({
       </div>
 
       {budget.categories.length === 0 ? (
-        <div className="rounded-md border border-ledger-line bg-white p-4">
+        <div className="rounded-md border border-ledger-line bg-ledger-panel p-4">
           <p className="text-sm font-medium text-ledger-ink">
             Chưa có ngân sách danh mục
           </p>
@@ -242,7 +242,7 @@ function BudgetLoaded({
           <ul className="divide-y divide-ledger-line overflow-hidden rounded-md border border-ledger-line">
             {budget.categories.map((category) => (
               <li
-                className="grid gap-3 bg-white px-4 py-4"
+                className="grid gap-3 bg-ledger-panel px-4 py-4"
                 key={category.category_slug}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -252,7 +252,7 @@ function BudgetLoaded({
                   <span
                     className={
                       category.is_over_budget
-                        ? "rounded-md bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700"
+                        ? "rounded-md bg-ledger-danger-soft px-2 py-1 text-xs font-semibold text-ledger-danger"
                         : "rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700"
                     }
                   >
@@ -269,7 +269,7 @@ function BudgetLoaded({
                   <div
                     className={
                       category.is_over_budget
-                        ? "h-full bg-rose-600"
+                        ? "h-full bg-ledger-danger"
                         : "h-full bg-ledger-accent"
                     }
                     style={{
@@ -316,7 +316,7 @@ function BudgetAction({
     return (
       <Link
         className={[
-          "inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-ledger-line bg-white px-4 text-sm font-medium text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent",
+          "inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-ledger-line bg-ledger-panel px-4 text-sm font-medium text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-focus",
           className,
         ]
           .filter(Boolean)
@@ -353,7 +353,7 @@ function BudgetMetric({
 }) {
   const valueTone =
     tone === "expense"
-      ? "text-rose-700"
+      ? "text-ledger-danger"
       : tone === "income"
         ? "text-emerald-700"
         : "text-ledger-ink";
@@ -398,7 +398,7 @@ function BudgetMissing({
   setupHref?: string;
 }) {
   return (
-    <div className="mt-5 rounded-md border border-ledger-line bg-white p-4">
+    <div className="mt-5 rounded-md border border-ledger-line bg-ledger-panel p-4">
       <p className="text-sm font-medium text-ledger-ink">
         Chưa thiết lập ngân sách
       </p>
@@ -407,7 +407,7 @@ function BudgetMissing({
       </p>
       {setupHref ? (
         <Link
-          className="mt-3 inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-ledger-line bg-white px-4 text-sm font-medium text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-accent"
+          className="mt-3 inline-flex h-10 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-ledger-line bg-ledger-panel px-4 text-sm font-medium text-ledger-ink transition hover:border-ledger-accent hover:text-ledger-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ledger-focus"
           href={setupHref}
         >
           Thiết lập ngân sách
@@ -428,11 +428,11 @@ function BudgetMissing({
 
 function BudgetError({ message }: { message: string }) {
   return (
-    <div className="mt-5 rounded-md border border-rose-200 bg-rose-50 p-4">
-      <p className="text-sm font-medium text-rose-800">
+    <div className="mt-5 rounded-md border border-ledger-danger bg-ledger-danger-soft p-4">
+      <p className="text-sm font-medium text-ledger-danger">
         Chưa tải được ngân sách
       </p>
-      <p className="mt-1 text-sm text-rose-700">{message}</p>
+      <p className="mt-1 text-sm text-ledger-danger">{message}</p>
     </div>
   );
 }
@@ -456,8 +456,5 @@ function getProgressPercent(spentMinor: number, budgetMinor: number): number {
 }
 
 function formatProgressPercent(value: number): string {
-  return `${value.toLocaleString("vi-VN", {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
-  })}%`;
+  return formatPercent(value);
 }
