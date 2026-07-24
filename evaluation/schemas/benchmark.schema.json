@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pocket-ledger.local/schemas/vi-finance-benchmark-v1",
+  "title": "Pocket Ledger Vietnamese Financial-Language Benchmark Record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "text",
+    "locale",
+    "intent",
+    "transaction_type",
+    "amount_minor",
+    "currency",
+    "category_slug",
+    "description",
+    "date_label",
+    "date_range_label",
+    "should_create_draft",
+    "needs_clarification",
+    "clarification_reason",
+    "tags",
+    "split",
+    "source"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "locale": {
+      "const": "vi-VN"
+    },
+    "intent": {
+      "enum": [
+        "create_transaction",
+        "query_spending",
+        "budget_remaining",
+        "spending_breakdown",
+        "unknown"
+      ]
+    },
+    "transaction_type": {
+      "enum": ["expense", "income", null]
+    },
+    "amount_minor": {
+      "anyOf": [
+        {"type": "integer"},
+        {"type": "null"}
+      ]
+    },
+    "currency": {
+      "enum": ["VND", null]
+    },
+    "category_slug": {
+      "enum": [
+        "food",
+        "coffee",
+        "transport",
+        "shopping",
+        "bills",
+        "rent",
+        "health",
+        "education",
+        "entertainment",
+        "other",
+        "salary",
+        "bonus",
+        "gift",
+        "other_income",
+        null
+      ]
+    },
+    "description": {
+      "anyOf": [
+        {"type": "string"},
+        {"type": "null"}
+      ]
+    },
+    "date_label": {
+      "enum": ["today", "yesterday", null]
+    },
+    "date_range_label": {
+      "enum": ["this_week", "this_month", null]
+    },
+    "should_create_draft": {
+      "type": "boolean"
+    },
+    "needs_clarification": {
+      "type": "boolean"
+    },
+    "clarification_reason": {
+      "enum": [
+        "missing_amount",
+        "missing_category",
+        "ambiguous_amount",
+        "unsupported_period",
+        "ambiguous_intent",
+        null
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "clear",
+          "colloquial",
+          "no_diacritics",
+          "typo",
+          "mixed_language",
+          "expense",
+          "income",
+          "total_query",
+          "category_query",
+          "budget_query",
+          "breakdown_query",
+          "ambiguous_amount",
+          "quantity_ambiguity",
+          "time_ambiguity",
+          "hypothetical",
+          "price_question",
+          "unsupported",
+          "adversarial",
+          "clarification_required"
+        ]
+      }
+    },
+    "split": {
+      "enum": ["train", "dev", "test"]
+    },
+    "source": {
+      "enum": ["synthetic", "reviewed_template"]
+    },
+    "notes": {
+      "anyOf": [
+        {"type": "string"},
+        {"type": "null"}
+      ]
+    }
+  }
+}
